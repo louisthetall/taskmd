@@ -37,6 +37,7 @@ Description and subtasks go here.
 | `parent` | string | No | Single task ID (e.g., `"045"`) |
 | `created` | date | No | `YYYY-MM-DD` |
 | `verify` | array | No | List of typed verification checks (see below) |
+| `external_id` | string | No | Identifier from an external system (e.g., `"PROJ-123"`, `"42"`) |
 
 ## Frontmatter Schema
 
@@ -172,6 +173,12 @@ verify:
     check: "Pagination links appear in the API response headers"
   - type: assert
     check: "Page size defaults to 20 when not specified"
+```
+
+**`external_id`** — Identifier from an external system (e.g., a GitHub issue number or Jira issue key). Used to trace synced tasks back to their source. Written by the sync engine; not typically set manually.
+
+```yaml
+external_id: "PROJ-123"
 ```
 
 Unknown frontmatter fields are preserved during read/write operations.

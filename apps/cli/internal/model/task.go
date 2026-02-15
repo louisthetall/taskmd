@@ -83,6 +83,7 @@ type Task struct {
 	Parent       string       `yaml:"parent,omitempty" json:"parent,omitempty"`
 	Created      time.Time    `yaml:"created" json:"created"`
 	Verify       []VerifyStep `yaml:"verify,omitempty" json:"verify,omitempty"`
+	ExternalID   string       `yaml:"external_id,omitempty" json:"external_id,omitempty"`
 
 	// Content fields
 	Body     string `json:"-"`

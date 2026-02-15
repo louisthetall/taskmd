@@ -339,6 +339,49 @@ Body
 	}
 }
 
+func TestParseTaskContent_ExternalID(t *testing.T) {
+	content := []byte(`---
+id: "042"
+title: "Synced from Jira"
+status: pending
+external_id: "PROJ-123"
+---
+
+# Synced from Jira
+
+This task was synced from an external system.
+`)
+
+	task, err := ParseTaskContent("042-synced-from-jira.md", content)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if task.ExternalID != "PROJ-123" {
+		t.Errorf("expected ExternalID 'PROJ-123', got '%s'", task.ExternalID)
+	}
+}
+
+func TestParseTaskContent_ExternalIDEmpty(t *testing.T) {
+	content := []byte(`---
+id: "043"
+title: "Regular task"
+status: pending
+---
+
+# Regular task
+`)
+
+	task, err := ParseTaskContent("043-regular-task.md", content)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if task.ExternalID != "" {
+		t.Errorf("expected empty ExternalID, got '%s'", task.ExternalID)
+	}
+}
+
 // Helper function
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) &&

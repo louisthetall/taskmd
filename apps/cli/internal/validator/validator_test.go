@@ -610,6 +610,34 @@ func TestValidate_ValidParent(t *testing.T) {
 	}
 }
 
+func TestValidate_ExternalID(t *testing.T) {
+	tasks := []*model.Task{
+		{
+			ID:         "001",
+			Title:      "Synced task",
+			Status:     model.StatusPending,
+			ExternalID: "PROJ-123",
+		},
+		{
+			ID:    "002",
+			Title: "Regular task",
+		},
+	}
+
+	v := NewValidator(false)
+	result := v.Validate(tasks)
+
+	if result.Errors != 0 {
+		t.Errorf("Expected no errors for tasks with external_id, got %d", result.Errors)
+		for _, issue := range result.Issues {
+			t.Logf("  Issue: [%s] %s: %s", issue.Level, issue.TaskID, issue.Message)
+		}
+	}
+	if result.Warnings != 0 {
+		t.Errorf("Expected no warnings for tasks with external_id, got %d", result.Warnings)
+	}
+}
+
 // --- Config validation tests ---
 
 func TestValidateConfig_ValidScopes(t *testing.T) {

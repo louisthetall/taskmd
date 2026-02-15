@@ -32,6 +32,7 @@ Description and subtasks go here.
 | `touches` | array | No | Abstract scope identifiers (e.g., `["cli/graph", "cli/output"]`) |
 | `parent` | string | No | Single task ID (e.g., `"045"`) |
 | `created` | date | No | `YYYY-MM-DD` |
+| `external_id` | string | No | Identifier from an external system (e.g., `"PROJ-123"`, `"42"`) |
 
 ## Frontmatter Schema
 
@@ -141,6 +142,14 @@ parent: "045"
 **`created`** - Date when the task was created, in `YYYY-MM-DD` format.
 
 > **Used by:** `list` (sorting). Displayed for informational purposes.
+
+**`external_id`** - Identifier from an external system (e.g., a GitHub issue number or Jira issue key). Used to trace synced tasks back to their source. Written by the sync engine; not typically set manually.
+
+```yaml
+external_id: "PROJ-123"
+```
+
+> **Used by:** `sync` (tracks correspondence between local tasks and external issues).
 
 Unknown frontmatter fields are preserved during read/write operations.
 

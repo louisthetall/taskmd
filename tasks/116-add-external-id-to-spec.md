@@ -1,7 +1,7 @@
 ---
 id: "116"
 title: "Add external_id field to taskmd specification"
-status: pending
+status: completed
 priority: medium
 effort: small
 tags:
@@ -22,15 +22,15 @@ The sync engine currently writes `sync_source` and `sync_id` fields to synced ta
 
 ## Tasks
 
-- [ ] Add `external_id` to the frontmatter schema in `docs/taskmd_specification.md`
+- [x] Add `external_id` to the frontmatter schema in `docs/taskmd_specification.md`
   - Type: string, optional
   - Description: Identifier from an external system (e.g., `"PROJ-123"`, `"42"`)
   - Add to the Field Summary table and the Optional Fields section
-- [ ] Add `external_id` to the reference specification on the docs site (`apps/docs/reference/specification.md`)
-- [ ] Add `ExternalID` field to the task model in `internal/model/`
-- [ ] Update the parser (`internal/parser/`) to read `external_id` from frontmatter
-- [ ] Update the validator (`internal/validator/`) to accept `external_id` as a known field
-- [ ] Add tests for parsing and validating `external_id`
+- [x] Add `external_id` to the reference specification on the docs site (`apps/docs/reference/specification.md`)
+- [x] Add `ExternalID` field to the task model in `internal/model/`
+- [x] Update the parser (`internal/parser/`) to read `external_id` from frontmatter
+- [x] Update the validator (`internal/validator/`) to accept `external_id` as a known field
+- [x] Add tests for parsing and validating `external_id`
 
 ## Acceptance Criteria
 
