@@ -171,3 +171,33 @@ func TestSpecCommand_ContentMatchesTemplate(t *testing.T) {
 		t.Error("spec should start with expected header")
 	}
 }
+
+func TestSpecTemplate_MatchesCanonicalSpec(t *testing.T) {
+	// docs/taskmd_specification.md is the single source of truth.
+	// Two copies exist for technical reasons:
+	//   - apps/cli/internal/cli/templates/TASKMD_SPEC.md (go:embed requires module-local file)
+	//   - apps/docs/reference/specification.md (VitePress requires file in docs tree)
+	// Run `make sync-spec` from apps/cli/ to fix drift.
+	repoRoot := filepath.Join("..", "..", "..", "..")
+	canonicalPath := filepath.Join(repoRoot, "docs", "taskmd_specification.md")
+	canonical, err := os.ReadFile(canonicalPath)
+	if err != nil {
+		t.Skipf("skipping: canonical spec not found at %s", canonicalPath)
+	}
+
+	if !bytes.Equal(specTemplate, canonical) {
+		t.Error("embedded spec template has drifted from docs/taskmd_specification.md.\n" +
+			"Run `make sync-spec` from apps/cli/ to fix.")
+	}
+
+	docsPath := filepath.Join(repoRoot, "apps", "docs", "reference", "specification.md")
+	docsSite, err := os.ReadFile(docsPath)
+	if err != nil {
+		t.Skipf("skipping: docs site spec not found at %s", docsPath)
+	}
+
+	if !bytes.Equal(docsSite, canonical) {
+		t.Error("apps/docs/reference/specification.md has drifted from docs/taskmd_specification.md.\n" +
+			"Run `make sync-spec` from apps/cli/ to fix.")
+	}
+}

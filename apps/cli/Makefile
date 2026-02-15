@@ -1,4 +1,4 @@
-.PHONY: build run clean install install-full install-dev install-dev-full test lint lint-fix tidy check web-build web-embed build-full man
+.PHONY: build run clean install install-full install-dev install-dev-full test lint lint-fix tidy check web-build web-embed build-full man sync-spec
 
 # Build the binary
 build:
@@ -80,6 +80,13 @@ man: build
 	mkdir -p man
 	./taskmd man man/
 	@echo "Man pages generated in man/"
+
+# Sync spec copies from the canonical source (docs/taskmd_specification.md).
+# Run this after editing the spec.
+sync-spec:
+	cp ../../docs/taskmd_specification.md internal/cli/templates/TASKMD_SPEC.md
+	cp ../../docs/taskmd_specification.md ../../apps/docs/reference/specification.md
+	@echo "Synced spec to embedded template and docs site"
 
 # Build for multiple platforms
 build-all:
