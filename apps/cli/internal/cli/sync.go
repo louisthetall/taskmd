@@ -8,6 +8,7 @@ import (
 
 	"github.com/driangle/taskmd/apps/cli/internal/sync"
 	_ "github.com/driangle/taskmd/apps/cli/internal/sync/github" // register github sync source
+	_ "github.com/driangle/taskmd/apps/cli/internal/sync/jira"   // register jira sync source
 )
 
 var (

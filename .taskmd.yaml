@@ -10,6 +10,12 @@ sync:
       field_map:
         labels_to_tags: true
         assignee_to_owner: true
+    - name: jira
+      project: "PARK"
+      base_url: https://driangle.atlassian.net
+      token_env: JIRA_API_TOKEN
+      user_env: JIRA_USER_EMAIL
+      output_dir: ./tasks/jira
 scopes:
   cli:
     paths:

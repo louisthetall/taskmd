@@ -126,6 +126,8 @@ export TASKMD_VERBOSE=true
 
 The `sync` command reads its configuration from the `sync` section of `.taskmd.yaml`. Each source defines where to fetch tasks from, how to map fields, and where to write files.
 
+**GitHub source:**
+
 ```yaml
 # .taskmd.yaml
 dir: ./tasks
@@ -150,6 +152,45 @@ sync:
       filters:
         state: open                  # Only sync open issues
 ```
+
+**Jira source:**
+
+```yaml
+# .taskmd.yaml
+dir: ./tasks
+
+sync:
+  sources:
+    - name: jira
+      project: "PROJ"                        # Jira project key
+      base_url: https://myteam.atlassian.net  # Jira Cloud instance URL (required)
+      token_env: JIRA_API_TOKEN               # Jira API token
+      user_env: JIRA_USER_EMAIL               # Jira account email (for Basic auth)
+      output_dir: ./tasks/jira
+      field_map:
+        status:
+          To Do: pending
+          In Progress: in-progress
+          Done: completed
+        priority:
+          Highest: critical
+          High: high
+          Medium: medium
+          Low: low
+          Lowest: low
+        labels_to_tags: true
+        assignee_to_owner: true
+      filters:
+        jql: 'status != "Done"'              # Additional JQL (ANDed with project)
+```
+
+::: tip Jira Authentication
+Jira Cloud uses Basic authentication with your account email and an API token. Both `token_env` and `user_env` are required. Generate an API token at [id.atlassian.net/manage-profile/security/api-tokens](https://id.atlassian.net/manage-profile/security/api-tokens).
+:::
+
+::: tip Jira Descriptions
+Jira Cloud API v3 returns descriptions in Atlassian Document Format (ADF). taskmd automatically converts ADF to Markdown, supporting paragraphs, headings, lists, code blocks, blockquotes, and inline formatting.
+:::
 
 **Source fields:**
 

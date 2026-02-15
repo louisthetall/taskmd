@@ -972,7 +972,7 @@ taskmd tracks --format json > tracks.json
 
 ### sync - Sync External Sources
 
-Fetch tasks from configured external sources (e.g., GitHub Issues) and create or update local markdown task files. Configuration is read from `.taskmd.yaml`.
+Fetch tasks from configured external sources (GitHub Issues, Jira, etc.) and create or update local markdown task files. Configuration is read from `.taskmd.yaml`.
 
 **Basic usage:**
 ```bash
@@ -984,6 +984,7 @@ taskmd sync --dry-run
 
 # Sync a specific source
 taskmd sync --source github
+taskmd sync --source jira
 ```
 
 **Flags:**
@@ -1012,6 +1013,9 @@ taskmd sync --dry-run
 
 # Sync only GitHub source
 taskmd sync --source github
+
+# Sync only Jira source
+taskmd sync --source jira
 
 # Overwrite local changes with remote data
 taskmd sync --conflict remote
@@ -1247,7 +1251,7 @@ See [docs/.taskmd.yaml.example](../.taskmd.yaml.example) for a complete example 
 
 The `sync` command reads its configuration from the `sync` section of `.taskmd.yaml`. Each source defines where to fetch tasks from, how to map fields, and where to write files.
 
-**Example `.taskmd.yaml` with sync:**
+**Example `.taskmd.yaml` with GitHub source:**
 
 ```yaml
 # .taskmd.yaml
@@ -1273,6 +1277,39 @@ sync:
       filters:
         state: open                  # Only sync open issues
 ```
+
+**Example `.taskmd.yaml` with Jira source:**
+
+```yaml
+# .taskmd.yaml
+dir: ./tasks
+
+sync:
+  sources:
+    - name: jira
+      project: "PROJ"                        # Jira project key
+      base_url: https://myteam.atlassian.net  # Jira Cloud instance URL (required)
+      token_env: JIRA_API_TOKEN               # Jira API token
+      user_env: JIRA_USER_EMAIL               # Jira account email (for Basic auth)
+      output_dir: ./tasks/jira
+      field_map:
+        status:
+          To Do: pending
+          In Progress: in-progress
+          Done: completed
+        priority:
+          Highest: critical
+          High: high
+          Medium: medium
+          Low: low
+          Lowest: low
+        labels_to_tags: true
+        assignee_to_owner: true
+      filters:
+        jql: 'status != "Done"'              # Additional JQL (ANDed with project)
+```
+
+Jira uses Basic authentication (email + API token). Both `token_env` and `user_env` are required. The `base_url` must point to your Jira Cloud instance. Descriptions in Jira's ADF (Atlassian Document Format) are automatically converted to Markdown.
 
 **Source fields:**
 

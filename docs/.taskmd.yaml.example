@@ -30,7 +30,46 @@ web:
 # Set to false to disable worklog behavior in agent workflows.
 worklogs: true
 
-# Note: Only 'dir', 'web.port', 'web.auto_open_browser', and 'worklogs' are supported
-# in config files. Other flags like 'format', 'verbose', and 'quiet' are intentionally
-# CLI-only to keep config files focused on project-specific settings rather than
-# per-invocation preferences.
+# Sync configuration - fetch tasks from external sources
+# Run 'taskmd sync' to pull tasks, or 'taskmd sync --dry-run' to preview changes.
+# sync:
+#   sources:
+#     # GitHub Issues source
+#     - name: github
+#       project: "owner/repo"            # GitHub owner/repo
+#       token_env: GITHUB_TOKEN          # Env var holding a GitHub personal access token
+#       output_dir: ./tasks/github       # Where to write synced task files
+#       field_map:
+#         status:
+#           open: pending
+#           closed: completed
+#         labels_to_tags: true
+#         assignee_to_owner: true
+#       filters:
+#         state: open                    # Only sync open issues
+#
+#     # Jira Cloud source
+#     - name: jira
+#       project: "PROJ"                  # Jira project key
+#       base_url: https://myteam.atlassian.net  # Jira Cloud instance URL
+#       token_env: JIRA_API_TOKEN        # Env var holding a Jira API token
+#       user_env: JIRA_USER_EMAIL        # Env var holding your Jira account email
+#       output_dir: ./tasks/jira
+#       field_map:
+#         status:
+#           To Do: pending
+#           In Progress: in-progress
+#           Done: completed
+#         priority:
+#           High: high
+#           Medium: medium
+#           Low: low
+#         labels_to_tags: true
+#         assignee_to_owner: true
+#       filters:
+#         jql: 'status != "Done"'        # Additional JQL filter (ANDed with project)
+
+# Note: Only 'dir', 'web.port', 'web.auto_open_browser', 'worklogs', and 'sync' are
+# supported in config files. Other flags like 'format', 'verbose', and 'quiet' are
+# intentionally CLI-only to keep config files focused on project-specific settings
+# rather than per-invocation preferences.
