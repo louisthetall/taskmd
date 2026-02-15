@@ -332,12 +332,13 @@ func (e *Engine) localFileChanged(ts TaskState) (bool, error) {
 	return currentHash != ts.LocalHash, nil
 }
 
-func (e *Engine) scanExistingIDs(outputDir string) ([]string, error) {
-	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+func (e *Engine) scanExistingIDs(_ string) ([]string, error) {
+	scanDir := e.ConfigDir
+	if _, err := os.Stat(scanDir); os.IsNotExist(err) {
 		return nil, nil
 	}
 
-	taskScanner := scanner.NewScanner(outputDir, e.Verbose, nil)
+	taskScanner := scanner.NewScanner(scanDir, e.Verbose, nil)
 	result, err := taskScanner.Scan()
 	if err != nil {
 		return nil, err

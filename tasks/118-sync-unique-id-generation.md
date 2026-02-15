@@ -1,7 +1,7 @@
 ---
 id: "118"
 title: "Generate unique IDs for synced tasks across all local tasks"
-status: pending
+status: completed
 priority: high
 effort: small
 dependencies:
@@ -35,10 +35,10 @@ func (e *Engine) scanExistingIDs(outputDir string) ([]string, error) {
 
 ## Tasks
 
-- [ ] Change `scanExistingIDs` to scan the project root (`ConfigDir`) instead of just `outputDir`, so it discovers all task IDs across all groups/directories
-- [ ] Ensure the scanner result includes tasks from all subdirectories (the scanner already does recursive scanning)
-- [ ] Add a test that creates tasks in a separate directory (simulating existing project tasks) and verifies that synced tasks get non-colliding IDs
-- [ ] Add a test that syncs from two different sources into different output directories and verifies IDs don't collide between them
+- [x] Change `scanExistingIDs` to scan the project root (`ConfigDir`) instead of just `outputDir`, so it discovers all task IDs across all groups/directories
+- [x] Ensure the scanner result includes tasks from all subdirectories (the scanner already does recursive scanning)
+- [x] Add a test that creates tasks in a separate directory (simulating existing project tasks) and verifies that synced tasks get non-colliding IDs
+- [x] Add a test that syncs from two different sources into different output directories and verifies IDs don't collide between them
 
 ## Acceptance Criteria
 

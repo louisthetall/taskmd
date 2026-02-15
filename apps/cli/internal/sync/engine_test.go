@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -588,5 +589,123 @@ func TestEngine_StateTimestamps(t *testing.T) {
 	ts := state.Tasks["EXT-1"]
 	if ts.LastSynced.Before(before) {
 		t.Error("expected task LastSynced to be recent")
+	}
+}
+
+// createTaskFile creates a minimal task file that the scanner can discover.
+func createTaskFile(t *testing.T, dir, id, title string) {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatalf("failed to create dir: %v", err)
+	}
+	content := fmt.Sprintf("---\nid: %q\ntitle: %q\nstatus: pending\n---\n\n# %s\n", id, title, title)
+	path := filepath.Join(dir, fmt.Sprintf("%s-%s.md", id, "task"))
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write task file: %v", err)
+	}
+}
+
+func TestEngine_IDsUniqueAcrossProjectDirectories(t *testing.T) {
+	sourceName := "test-cross-dir-ids"
+	defer cleanupRegistry(sourceName)
+
+	setupMockSource(sourceName, []ExternalTask{
+		{ExternalID: "EXT-1", Title: "Synced task", Status: "open"},
+	})
+
+	dir := t.TempDir()
+
+	// Create existing tasks in a separate directory (simulating tasks/cli/)
+	cliDir := filepath.Join(dir, "tasks", "cli")
+	createTaskFile(t, cliDir, "113", "Existing task 113")
+	createTaskFile(t, cliDir, "114", "Existing task 114")
+	createTaskFile(t, cliDir, "115", "Existing task 115")
+
+	// Sync writes to a different directory (tasks/jira/)
+	outputDir := filepath.Join(dir, "tasks", "jira")
+
+	engine := &Engine{ConfigDir: dir}
+	srcCfg := SourceConfig{
+		Name:      sourceName,
+		OutputDir: outputDir,
+		FieldMap:  FieldMap{Status: map[string]string{"open": "pending"}},
+	}
+
+	result, err := engine.RunSync(srcCfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Created) != 1 {
+		t.Fatalf("expected 1 created, got %d", len(result.Created))
+	}
+
+	// The synced task must get an ID > 115 to avoid collision
+	newID := result.Created[0].LocalID
+	if newID <= "115" {
+		t.Errorf("expected ID > 115, got %s (collides with existing tasks)", newID)
+	}
+	if newID != "116" {
+		t.Errorf("expected ID 116, got %s", newID)
+	}
+}
+
+func TestEngine_IDsUniqueAcrossMultipleSyncSources(t *testing.T) {
+	sourceA := "test-source-a"
+	sourceB := "test-source-b"
+	defer cleanupRegistry(sourceA)
+	defer cleanupRegistry(sourceB)
+
+	setupMockSource(sourceA, []ExternalTask{
+		{ExternalID: "A-1", Title: "Task from source A", Status: "open"},
+		{ExternalID: "A-2", Title: "Another from source A", Status: "open"},
+	})
+	setupMockSource(sourceB, []ExternalTask{
+		{ExternalID: "B-1", Title: "Task from source B", Status: "open"},
+	})
+
+	dir := t.TempDir()
+	outputDirA := filepath.Join(dir, "tasks", "source-a")
+	outputDirB := filepath.Join(dir, "tasks", "source-b")
+
+	engine := &Engine{ConfigDir: dir}
+	fieldMap := FieldMap{Status: map[string]string{"open": "pending"}}
+
+	// Sync source A first
+	resultA, err := engine.RunSync(SourceConfig{
+		Name: sourceA, OutputDir: outputDirA, FieldMap: fieldMap,
+	})
+	if err != nil {
+		t.Fatalf("source A sync error: %v", err)
+	}
+	if len(resultA.Created) != 2 {
+		t.Fatalf("expected 2 created from source A, got %d", len(resultA.Created))
+	}
+
+	// Sync source B — IDs must not collide with source A's tasks
+	resultB, err := engine.RunSync(SourceConfig{
+		Name: sourceB, OutputDir: outputDirB, FieldMap: fieldMap,
+	})
+	if err != nil {
+		t.Fatalf("source B sync error: %v", err)
+	}
+	if len(resultB.Created) != 1 {
+		t.Fatalf("expected 1 created from source B, got %d", len(resultB.Created))
+	}
+
+	// Collect all assigned IDs
+	allIDs := make(map[string]bool)
+	for _, a := range resultA.Created {
+		allIDs[a.LocalID] = true
+	}
+	for _, b := range resultB.Created {
+		if allIDs[b.LocalID] {
+			t.Errorf("ID collision: source B task got ID %s which was already assigned to source A", b.LocalID)
+		}
+		allIDs[b.LocalID] = true
+	}
+
+	if len(allIDs) != 3 {
+		t.Errorf("expected 3 unique IDs across both sources, got %d", len(allIDs))
 	}
 }
