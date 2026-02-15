@@ -709,3 +709,73 @@ func TestEngine_IDsUniqueAcrossMultipleSyncSources(t *testing.T) {
 		t.Errorf("expected 3 unique IDs across both sources, got %d", len(allIDs))
 	}
 }
+
+func TestEngine_ExternalIDInTaskFiles(t *testing.T) {
+	sourceName := "test-external-id"
+	defer cleanupRegistry(sourceName)
+
+	mock := &mockSource{
+		name: sourceName,
+		tasks: []ExternalTask{
+			{ExternalID: "PROJ-42", Title: "Task with external ID", Status: "open"},
+		},
+	}
+	Register(mock)
+
+	dir := t.TempDir()
+	outputDir := filepath.Join(dir, "tasks")
+
+	engine := &Engine{ConfigDir: dir}
+	srcCfg := SourceConfig{
+		Name:      sourceName,
+		OutputDir: outputDir,
+		FieldMap:  FieldMap{Status: map[string]string{"open": "pending", "closed": "completed"}},
+	}
+
+	// Create: external_id should appear in the new file
+	result, err := engine.RunSync(srcCfg)
+	if err != nil {
+		t.Fatalf("first sync error: %v", err)
+	}
+	if len(result.Created) != 1 {
+		t.Fatalf("expected 1 created, got %d", len(result.Created))
+	}
+
+	filePath := result.Created[0].FilePath
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("failed to read created file: %v", err)
+	}
+
+	if !strings.Contains(string(content), `external_id: "PROJ-42"`) {
+		t.Errorf("created file missing external_id, content:\n%s", content)
+	}
+	if strings.Contains(string(content), "sync_id") {
+		t.Errorf("created file should not contain sync_id, content:\n%s", content)
+	}
+
+	// Update: external_id should be preserved after an external change
+	mock.tasks = []ExternalTask{
+		{ExternalID: "PROJ-42", Title: "Updated title", Status: "closed"},
+	}
+
+	result2, err := engine.RunSync(srcCfg)
+	if err != nil {
+		t.Fatalf("second sync error: %v", err)
+	}
+	if len(result2.Updated) != 1 {
+		t.Errorf("expected 1 updated, got %d", len(result2.Updated))
+	}
+
+	updatedContent, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("failed to read updated file: %v", err)
+	}
+
+	if !strings.Contains(string(updatedContent), `external_id: "PROJ-42"`) {
+		t.Errorf("updated file should preserve external_id, content:\n%s", updatedContent)
+	}
+	if !strings.Contains(string(updatedContent), "Updated title") {
+		t.Errorf("updated file should have new title, content:\n%s", updatedContent)
+	}
+}

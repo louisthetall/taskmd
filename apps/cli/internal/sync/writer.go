@@ -65,7 +65,7 @@ func renderTaskFile(id string, mapped MappedTask, externalID, sourceName string)
 	b.WriteString("dependencies: []\n")
 	b.WriteString(taskfile.FormatInlineTags(mapped.Tags) + "\n")
 	fmt.Fprintf(&b, "sync_source: %s\n", sourceName)
-	fmt.Fprintf(&b, "sync_id: %q\n", externalID)
+	fmt.Fprintf(&b, "external_id: %q\n", externalID)
 	b.WriteString("---\n")
 
 	if mapped.Description != "" {

@@ -1,7 +1,7 @@
 ---
 id: "117"
 title: "Write external_id in synced task files"
-status: pending
+status: completed
 priority: medium
 effort: small
 dependencies:
@@ -24,11 +24,11 @@ The sync writer (`internal/sync/writer.go`) currently writes `sync_source` and `
 
 ## Tasks
 
-- [ ] In `internal/sync/writer.go`, replace `sync_id` with `external_id` in `renderTaskFile`
-- [ ] Ensure `UpdateSyncedTaskFile` preserves `external_id` on updates
-- [ ] Keep `sync_source` as-is (it indicates provenance, separate from the external ID)
-- [ ] Update existing tests in `internal/sync/` that assert on rendered frontmatter
-- [ ] Add a test that verifies `external_id` appears in the written file for both create and update paths
+- [x] In `internal/sync/writer.go`, replace `sync_id` with `external_id` in `renderTaskFile`
+- [x] Ensure `UpdateSyncedTaskFile` preserves `external_id` on updates
+- [x] Keep `sync_source` as-is (it indicates provenance, separate from the external ID)
+- [x] Update existing tests in `internal/sync/` that assert on rendered frontmatter
+- [x] Add a test that verifies `external_id` appears in the written file for both create and update paths
 
 ## Acceptance Criteria
 
