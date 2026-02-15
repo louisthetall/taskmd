@@ -70,8 +70,9 @@ func (j *JiraSource) FetchTasks(cfg sync.SourceConfig) ([]sync.ExternalTask, err
 
 	var tasks []sync.ExternalTask
 
-	for startAt := 0; ; {
-		issues, total, err := fetchPage(client, baseURL, jql, auth, startAt)
+	nextPageToken := ""
+	for page := 0; page < maxPages; page++ {
+		issues, token, err := fetchPage(client, baseURL, jql, auth, nextPageToken)
 		if err != nil {
 			return nil, err
 		}
@@ -80,10 +81,10 @@ func (j *JiraSource) FetchTasks(cfg sync.SourceConfig) ([]sync.ExternalTask, err
 			tasks = append(tasks, issueToExternalTask(issue, baseURL))
 		}
 
-		startAt += len(issues)
-		if startAt >= total || len(issues) == 0 || startAt/maxResults >= maxPages {
+		if token == "" || len(issues) == 0 {
 			break
 		}
+		nextPageToken = token
 	}
 
 	return tasks, nil
@@ -92,10 +93,8 @@ func (j *JiraSource) FetchTasks(cfg sync.SourceConfig) ([]sync.ExternalTask, err
 // JSON response types
 
 type searchResponse struct {
-	StartAt    int         `json:"startAt"`
-	MaxResults int         `json:"maxResults"`
-	Total      int         `json:"total"`
-	Issues     []jiraIssue `json:"issues"`
+	Issues        []jiraIssue `json:"issues"`
+	NextPageToken string      `json:"nextPageToken"`
 }
 
 type jiraIssue struct {
@@ -152,19 +151,25 @@ func buildJQL(project string, filters map[string]any) string {
 	return jql
 }
 
-func fetchPage(client *http.Client, baseURL, jql, auth string, startAt int) ([]jiraIssue, int, error) {
-	endpoint := baseURL + "/rest/api/3/search"
+// issueFields is the list of fields requested from the Jira API.
+const issueFields = "summary,description,status,priority,assignee,labels,created,updated"
+
+func fetchPage(client *http.Client, baseURL, jql, auth, pageToken string) ([]jiraIssue, string, error) {
+	endpoint := baseURL + "/rest/api/3/search/jql"
 
 	params := url.Values{}
 	params.Set("jql", jql)
-	params.Set("startAt", strconv.Itoa(startAt))
 	params.Set("maxResults", strconv.Itoa(maxResults))
+	params.Set("fields", issueFields)
+	if pageToken != "" {
+		params.Set("nextPageToken", pageToken)
+	}
 
 	reqURL := endpoint + "?" + params.Encode()
 
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to create request: %w", err)
+		return nil, "", fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Authorization", auth)
@@ -172,21 +177,21 @@ func fetchPage(client *http.Client, baseURL, jql, auth string, startAt int) ([]j
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, 0, fmt.Errorf("request failed: %w", err)
+		return nil, "", fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, 0, fmt.Errorf("Jira API returned %d: %s", resp.StatusCode, string(body))
+		return nil, "", fmt.Errorf("Jira API returned %d: %s", resp.StatusCode, string(body))
 	}
 
 	var result searchResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, 0, fmt.Errorf("failed to decode response: %w", err)
+		return nil, "", fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return result.Issues, result.Total, nil
+	return result.Issues, result.NextPageToken, nil
 }
 
 func issueToExternalTask(issue jiraIssue, baseURL string) sync.ExternalTask {

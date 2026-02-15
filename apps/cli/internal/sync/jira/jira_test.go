@@ -109,7 +109,7 @@ func newTestIssues() []jiraIssue {
 func fetchTestTasks(t *testing.T, issues []jiraIssue) ([]sync.ExternalTask, string) {
 	t.Helper()
 
-	resp := searchResponse{Total: len(issues), Issues: issues}
+	resp := searchResponse{Issues: issues}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.Header.Get("Authorization"), "Basic ") {
@@ -118,7 +118,7 @@ func fetchTestTasks(t *testing.T, issues []jiraIssue) ([]sync.ExternalTask, stri
 		if r.Header.Get("Accept") != "application/json" {
 			t.Errorf("unexpected accept header: %s", r.Header.Get("Accept"))
 		}
-		if !strings.Contains(r.URL.Path, "/rest/api/3/search") {
+		if !strings.Contains(r.URL.Path, "/rest/api/3/search/jql") {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		json.NewEncoder(w).Encode(resp)
@@ -198,10 +198,10 @@ func TestJiraSource_FetchTasks_Pagination(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
-		startAt := r.URL.Query().Get("startAt")
+		pageToken := r.URL.Query().Get("nextPageToken")
 
-		switch startAt {
-		case "0", "":
+		if pageToken == "" {
+			// First page: return maxResults issues with a nextPageToken
 			issues := make([]jiraIssue, maxResults)
 			for i := range issues {
 				issues[i] = jiraIssue{
@@ -213,17 +213,13 @@ func TestJiraSource_FetchTasks_Pagination(t *testing.T) {
 				}
 			}
 			resp := searchResponse{
-				StartAt:    0,
-				MaxResults: maxResults,
-				Total:      maxResults + 1,
-				Issues:     issues,
+				Issues:        issues,
+				NextPageToken: "page2-token",
 			}
 			json.NewEncoder(w).Encode(resp)
-		default:
+		} else {
+			// Second page: return 1 issue with no nextPageToken (last page)
 			resp := searchResponse{
-				StartAt:    maxResults,
-				MaxResults: maxResults,
-				Total:      maxResults + 1,
 				Issues: []jiraIssue{
 					{
 						Key: fmt.Sprintf("PROJ-%d", maxResults+1),
@@ -268,7 +264,7 @@ func TestJiraSource_FetchTasks_JQLFilter(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedJQL = r.URL.Query().Get("jql")
-		json.NewEncoder(w).Encode(searchResponse{Total: 0, Issues: []jiraIssue{}})
+		json.NewEncoder(w).Encode(searchResponse{Issues: []jiraIssue{}})
 	}))
 	defer srv.Close()
 
@@ -328,7 +324,6 @@ func TestJiraSource_FetchTasks_APIError(t *testing.T) {
 
 func TestJiraSource_FetchTasks_NilFields(t *testing.T) {
 	resp := searchResponse{
-		Total: 1,
 		Issues: []jiraIssue{
 			{
 				Key: "PROJ-10",
@@ -385,7 +380,7 @@ func TestJiraSource_FetchTasks_NilFields(t *testing.T) {
 
 func TestJiraSource_FetchTasks_EmptyResponse(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		json.NewEncoder(w).Encode(searchResponse{Total: 0, Issues: []jiraIssue{}})
+		json.NewEncoder(w).Encode(searchResponse{Issues: []jiraIssue{}})
 	}))
 	defer srv.Close()
 
