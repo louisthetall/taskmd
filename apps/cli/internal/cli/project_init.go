@@ -377,6 +377,7 @@ func printInitSummary(createdPaths []string) {
 	fmt.Println("\nYou're ready! Try:")
 	fmt.Println("  taskmd add \"My first task\"")
 	fmt.Println("  taskmd list")
+	fmt.Println("  taskmd web start --open")
 }
 
 func printFilesToStdout(files []fileToWrite) error {

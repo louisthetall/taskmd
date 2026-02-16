@@ -1,7 +1,7 @@
 ---
 id: "130"
 title: "Improve init command with interactive project setup"
-status: in-progress
+status: completed
 priority: high
 effort: medium
 tags:
@@ -81,28 +81,28 @@ taskmd init --claude --gemini
 
 ## Tasks
 
-- [ ] Add "prompt only when missing" logic to `runProjectInit` in `project_init.go`:
-  - [ ] Task directory path — prompt if `--task-dir` not provided (default: `./tasks`)
-  - [ ] Agent config selection — prompt if none of `--claude`/`--gemini`/`--codex` provided (multi-select, default: Claude)
-  - [ ] Skip all prompts when stdin is not a TTY (piped/CI) — use defaults silently
-- [ ] Create the tasks directory if it doesn't exist
-- [ ] Generate a minimal `.taskmd.yaml` in the project root:
+- [x] Add "prompt only when missing" logic to `runProjectInit` in `project_init.go`:
+  - [x] Task directory path — prompt if `--task-dir` not provided (default: `./tasks`)
+  - [x] Agent config selection — prompt if none of `--claude`/`--gemini`/`--codex` provided (multi-select, default: Claude)
+  - [x] Skip all prompts when stdin is not a TTY (piped/CI) — use defaults silently
+- [x] Create the tasks directory if it doesn't exist
+- [x] Generate a minimal `.taskmd.yaml` in the project root:
   ```yaml
   dir: ./tasks
   ```
-- [ ] Add `--task-dir` flag to set the task directory non-interactively
-- [ ] Skip `.taskmd.yaml` creation if one already exists (warn the user, respect `--force`)
-- [ ] Skip tasks directory creation if it already exists (not an error, just note it)
-- [ ] Move TASKMD_SPEC.md into the tasks directory instead of the project root
-- [ ] Print a helpful "next steps" summary after setup (as shown above)
-- [ ] Update command help text and examples
-- [ ] Add tests covering:
-  - [ ] All flags provided — no prompts fired
-  - [ ] No flags — prompts for task dir and agent selection
-  - [ ] Partial flags — prompts only for missing values
-  - [ ] Non-TTY stdin — skips prompts, uses defaults
-  - [ ] Existing `.taskmd.yaml` is not overwritten without `--force`
-  - [ ] Existing tasks directory is handled gracefully
+- [x] Add `--task-dir` flag to set the task directory non-interactively
+- [x] Skip `.taskmd.yaml` creation if one already exists (warn the user, respect `--force`)
+- [x] Skip tasks directory creation if it already exists (not an error, just note it)
+- [x] Move TASKMD_SPEC.md into the tasks directory instead of the project root
+- [x] Print a helpful "next steps" summary after setup (as shown above)
+- [x] Update command help text and examples
+- [x] Add tests covering:
+  - [x] All flags provided — no prompts fired
+  - [x] No flags — prompts for task dir and agent selection
+  - [x] Partial flags — prompts only for missing values
+  - [x] Non-TTY stdin — skips prompts, uses defaults
+  - [x] Existing `.taskmd.yaml` is not overwritten without `--force`
+  - [x] Existing tasks directory is handled gracefully
 
 ## Acceptance Criteria
 
