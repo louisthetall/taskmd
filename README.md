@@ -1,8 +1,8 @@
 # taskmd
 
-A CLI tool for managing tasks and projects using markdown files. Store your tasks as human-readable `.md` files with YAML frontmatter, and use the CLI or web interface to manage, visualize, and track your work.
+> Markdown-based task management designed for both humans and AI coding assistants.
 
-It's made to be LLM-friendly, so you can easily integrate it into your workflows and automate task management with AI.
+Store your tasks as `.md` files with YAML frontmatter, and use the CLI or web interface to manage, visualize, and track your work.
 
 ## Features
 

@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: taskmd
-  text: Manage tasks with markdown
-  tagline: A CLI tool for managing tasks and projects using human-readable markdown files with YAML frontmatter.
+  text: Task management for humans and AI
+  tagline: Markdown-based task management designed for both humans and AI coding assistants.
   actions:
     - theme: brand
       text: Get Started
