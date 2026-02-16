@@ -7,12 +7,11 @@ import {
   EFFORT_COLORS,
 } from "../tasks/TaskTable/constants.ts";
 import { toggleInSet } from "../tasks/TaskTable/utils.ts";
+import { TagAutocomplete } from "./TagAutocomplete.tsx";
 
 const INACTIVE_PILL =
   "bg-gray-50 border border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-400";
 
-const TAG_ACTIVE =
-  "bg-blue-100 text-blue-700 ring-1 ring-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-700";
 
 interface PillRowProps {
   label: string;
@@ -35,7 +34,7 @@ function PillRow({ label, items, selected, colors, onToggle }: PillRowProps) {
             key={item}
             onClick={() => onToggle(item)}
             className={`px-2.5 py-1 text-xs rounded-full transition-colors duration-150 ${
-              active ? (colors[item] ?? TAG_ACTIVE) : INACTIVE_PILL
+              active ? (colors[item] ?? "") : INACTIVE_PILL
             }`}
           >
             {item}
@@ -101,12 +100,10 @@ export function BoardFilterBar({
         />
       )}
       {groupBy !== "tag" && availableTags.length > 0 && (
-        <PillRow
-          label="Tags"
-          items={availableTags}
-          selected={selectedTags}
-          colors={{}}
-          onToggle={(t) => onTagsChange(toggleInSet(selectedTags, t))}
+        <TagAutocomplete
+          availableTags={availableTags}
+          selectedTags={selectedTags}
+          onTagsChange={onTagsChange}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 ---
 id: "084"
 title: "Sync source: Jira"
-status: in-progress
+status: completed
 priority: low
 effort: small
 dependencies:
