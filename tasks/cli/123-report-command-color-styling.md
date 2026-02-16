@@ -1,7 +1,7 @@
 ---
 id: "123"
 title: "Add color styling to the report command"
-status: pending
+status: completed
 priority: medium
 effort: medium
 tags:
@@ -24,16 +24,16 @@ Color should only apply to the **terminal (md) format** — HTML and JSON output
 
 ## Tasks
 
-- [ ] Update `outputReportMarkdown` to accept/use a lipgloss renderer from `getRenderer()`
-- [ ] Colorize status labels in the "By Status" breakdown (`writeMarkdownStatusBreakdown`)
-- [ ] Colorize priority labels in the "By Priority" breakdown (`writeMarkdownPriorityBreakdown`)
-- [ ] Colorize group headings using `formatHeading` in `writeMarkdownGroups`
-- [ ] Colorize task IDs using `formatTaskID` in task listings
-- [ ] Colorize status text in critical path entries (`writeMarkdownCriticalPath`)
-- [ ] Colorize blocked task details in `writeMarkdownBlockedTasks`
-- [ ] Use `formatLabel` for section headings ("Summary", "Critical Path", etc.)
-- [ ] Skip color when output is directed to a file (`--out` flag) — ensure `colorsEnabled()` handles this correctly
-- [ ] Add tests for colored vs plain output in `report_test.go`
+- [x] Update `outputReportMarkdown` to accept/use a lipgloss renderer from `getRenderer()`
+- [x] Colorize status labels in the "By Status" breakdown (`writeMarkdownStatusBreakdown`)
+- [x] Colorize priority labels in the "By Priority" breakdown (`writeMarkdownPriorityBreakdown`)
+- [x] Colorize group headings using `formatHeading` in `writeMarkdownGroups`
+- [x] Colorize task IDs using `formatTaskID` in task listings
+- [x] Colorize status text in critical path entries (`writeMarkdownCriticalPath`)
+- [x] Colorize blocked task details in `writeMarkdownBlockedTasks`
+- [x] Use `formatLabel` for section headings ("Summary", "Critical Path", etc.)
+- [x] Skip color when output is directed to a file (`--out` flag) — ensure `colorsEnabled()` handles this correctly
+- [x] Add tests for colored vs plain output in `report_test.go`
 
 ## Acceptance Criteria
 

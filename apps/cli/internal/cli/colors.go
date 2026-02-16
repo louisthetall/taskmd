@@ -156,3 +156,10 @@ func formatLabel(label string, r *lipgloss.Renderer) string {
 func formatDim(text string, r *lipgloss.Renderer) string {
 	return r.NewStyle().Foreground(lipgloss.Color("8")).Render(text)
 }
+
+// getNoColorRenderer returns a renderer with color disabled (Ascii profile).
+func getNoColorRenderer() *lipgloss.Renderer {
+	r := lipgloss.NewRenderer(os.Stdout)
+	r.SetColorProfile(termenv.Ascii)
+	return r
+}

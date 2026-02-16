@@ -188,13 +188,13 @@ func TestReportCommand_MarkdownStatusBreakdown(t *testing.T) {
 	if !strings.Contains(output, "### By Status") {
 		t.Error("Expected '### By Status' breakdown")
 	}
-	if !strings.Contains(output, "**pending**: 4") {
+	if !strings.Contains(output, "pending: 4") {
 		t.Error("Expected 4 pending tasks in breakdown")
 	}
-	if !strings.Contains(output, "**completed**: 1") {
+	if !strings.Contains(output, "completed: 1") {
 		t.Error("Expected 1 completed task in breakdown")
 	}
-	if !strings.Contains(output, "**in-progress**: 1") {
+	if !strings.Contains(output, "in-progress: 1") {
 		t.Error("Expected 1 in-progress task in breakdown")
 	}
 }
@@ -629,7 +629,7 @@ created: 2026-02-08
 
 	output := captureReportOutput(t, tmpDir)
 
-	if !strings.Contains(output, "**completed**: 1") {
+	if !strings.Contains(output, "completed: 1") {
 		t.Error("Expected completed count of 1")
 	}
 	if !strings.Contains(output, "No blocked tasks.") {
@@ -684,5 +684,138 @@ func TestReportCommand_CriticalPathOrdering(t *testing.T) {
 	}
 	if idx001 != -1 && idx005 != -1 && idx001 > idx005 {
 		t.Error("Expected task 001 to appear before task 005 in critical path")
+	}
+}
+
+// --- Color tests ---
+
+func TestReportCommand_ColorEnabled(t *testing.T) {
+	tmpDir := createReportTestFiles(t)
+	resetReportFlags()
+	noColor = false
+	forceColor = true
+	defer func() { forceColor = false }()
+
+	os.Unsetenv("NO_COLOR")
+
+	output := captureReportOutput(t, tmpDir)
+
+	// With colors enabled, output should contain ANSI escape codes
+	if !strings.Contains(output, "\x1b[") {
+		t.Error("Expected colored report output to contain ANSI escape codes")
+	}
+
+	// Content should still be present
+	if !strings.Contains(output, "Project Report") {
+		t.Error("Expected report heading in colored output")
+	}
+	if !strings.Contains(output, "001") {
+		t.Error("Expected task IDs in colored output")
+	}
+}
+
+func TestReportCommand_NoColorFlag(t *testing.T) {
+	tmpDir := createReportTestFiles(t)
+	resetReportFlags()
+	noColor = true
+
+	os.Unsetenv("NO_COLOR")
+
+	output := captureReportOutput(t, tmpDir)
+
+	// With --no-color flag, output should NOT contain ANSI escape codes
+	if strings.Contains(output, "\x1b[") {
+		t.Error("Expected no ANSI codes in --no-color report output")
+	}
+
+	// Content should still be present
+	if !strings.Contains(output, "Project Report") {
+		t.Error("Expected report heading in no-color output")
+	}
+	if !strings.Contains(output, "001") {
+		t.Error("Expected task IDs in no-color output")
+	}
+}
+
+func TestReportCommand_NoColorEnvVar(t *testing.T) {
+	tmpDir := createReportTestFiles(t)
+	resetReportFlags()
+	noColor = false
+
+	t.Setenv("NO_COLOR", "1")
+
+	output := captureReportOutput(t, tmpDir)
+
+	if strings.Contains(output, "\x1b[") {
+		t.Error("Expected no ANSI codes when NO_COLOR env var is set")
+	}
+}
+
+func TestReportCommand_FileOutputNoColor(t *testing.T) {
+	tmpDir := createReportTestFiles(t)
+	outFile := filepath.Join(t.TempDir(), "report.md")
+
+	resetReportFlags()
+	reportOut = outFile
+	noColor = false
+	forceColor = true
+	defer func() { forceColor = false }()
+
+	os.Unsetenv("NO_COLOR")
+
+	err := runReport(reportCmd, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runReport failed: %v", err)
+	}
+
+	content, err := os.ReadFile(outFile)
+	if err != nil {
+		t.Fatalf("Failed to read output file: %v", err)
+	}
+
+	// File output should NOT contain ANSI escape codes
+	if strings.Contains(string(content), "\x1b[") {
+		t.Error("Expected no ANSI codes in file output")
+	}
+
+	// Content should still be present
+	if !strings.Contains(string(content), "Project Report") {
+		t.Error("Expected report heading in file output")
+	}
+}
+
+func TestReportCommand_ColoredSections(t *testing.T) {
+	tmpDir := createReportTestFiles(t)
+	resetReportFlags()
+	noColor = false
+	forceColor = true
+	defer func() { forceColor = false }()
+
+	os.Unsetenv("NO_COLOR")
+
+	output := captureReportOutput(t, tmpDir)
+
+	// Status breakdown should contain colored status labels
+	if !strings.Contains(output, "pending") {
+		t.Error("Expected 'pending' in status breakdown")
+	}
+	if !strings.Contains(output, "completed") {
+		t.Error("Expected 'completed' in status breakdown")
+	}
+
+	// Critical path should contain task IDs and statuses
+	if !strings.Contains(output, "001") {
+		t.Error("Expected task 001 in critical path")
+	}
+
+	// Section headings should be present (formatted by formatLabel)
+	if !strings.Contains(output, "Summary") {
+		t.Error("Expected Summary section heading")
+	}
+	if !strings.Contains(output, "Critical Path") {
+		t.Error("Expected Critical Path section heading")
+	}
+	if !strings.Contains(output, "Blocked Tasks") {
+		t.Error("Expected Blocked Tasks section heading")
 	}
 }

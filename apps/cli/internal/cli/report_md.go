@@ -5,18 +5,22 @@ import (
 	"io"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/driangle/taskmd/apps/cli/internal/metrics"
 	"github.com/driangle/taskmd/apps/cli/internal/model"
 )
 
 func outputReportMarkdown(data *reportData, w io.Writer) error {
-	fmt.Fprintln(w, "# Project Report")
+	r := getReportRenderer()
+
+	fmt.Fprintln(w, formatLabel("# Project Report", r))
 	fmt.Fprintln(w)
 
-	writeMarkdownSummary(data.Metrics, w)
-	writeMarkdownGroups(data, w)
-	writeMarkdownCriticalPath(data.CriticalPath, w)
-	writeMarkdownBlockedTasks(data, w)
+	writeMarkdownSummary(data.Metrics, w, r)
+	writeMarkdownGroups(data, w, r)
+	writeMarkdownCriticalPath(data.CriticalPath, w, r)
+	writeMarkdownBlockedTasks(data, w, r)
 
 	if data.IncludeGraph {
 		writeMarkdownGraph(data.GraphMermaid, w)
@@ -25,8 +29,16 @@ func outputReportMarkdown(data *reportData, w io.Writer) error {
 	return nil
 }
 
-func writeMarkdownSummary(m *metrics.Metrics, w io.Writer) {
-	fmt.Fprintln(w, "## Summary")
+// getReportRenderer returns a renderer that disables color when writing to a file.
+func getReportRenderer() *lipgloss.Renderer {
+	if reportOut != "" {
+		return getNoColorRenderer()
+	}
+	return getRenderer()
+}
+
+func writeMarkdownSummary(m *metrics.Metrics, w io.Writer, r *lipgloss.Renderer) {
+	fmt.Fprintln(w, formatLabel("## Summary", r))
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "| Metric | Value |\n")
 	fmt.Fprintf(w, "|--------|-------|\n")
@@ -36,27 +48,27 @@ func writeMarkdownSummary(m *metrics.Metrics, w io.Writer) {
 	fmt.Fprintf(w, "| Avg Dependencies | %.1f |\n", m.AvgDependenciesPerTask)
 	fmt.Fprintln(w)
 
-	writeMarkdownStatusBreakdown(m, w)
-	writeMarkdownPriorityBreakdown(m, w)
+	writeMarkdownStatusBreakdown(m, w, r)
+	writeMarkdownPriorityBreakdown(m, w, r)
 }
 
-func writeMarkdownStatusBreakdown(m *metrics.Metrics, w io.Writer) {
+func writeMarkdownStatusBreakdown(m *metrics.Metrics, w io.Writer, r *lipgloss.Renderer) {
 	statusOrder := []model.Status{
 		model.StatusPending, model.StatusInProgress, model.StatusBlocked,
 		model.StatusCompleted, model.StatusCancelled,
 	}
 
-	fmt.Fprintln(w, "### By Status")
+	fmt.Fprintln(w, formatLabel("### By Status", r))
 	fmt.Fprintln(w)
 	for _, s := range statusOrder {
 		if count, ok := m.TasksByStatus[s]; ok && count > 0 {
-			fmt.Fprintf(w, "- **%s**: %d\n", s, count)
+			fmt.Fprintf(w, "- %s: %d\n", formatStatus(string(s), r), count)
 		}
 	}
 	fmt.Fprintln(w)
 }
 
-func writeMarkdownPriorityBreakdown(m *metrics.Metrics, w io.Writer) {
+func writeMarkdownPriorityBreakdown(m *metrics.Metrics, w io.Writer, r *lipgloss.Renderer) {
 	priorityOrder := []model.Priority{
 		model.PriorityCritical, model.PriorityHigh,
 		model.PriorityMedium, model.PriorityLow,
@@ -73,28 +85,30 @@ func writeMarkdownPriorityBreakdown(m *metrics.Metrics, w io.Writer) {
 		return
 	}
 
-	fmt.Fprintln(w, "### By Priority")
+	fmt.Fprintln(w, formatLabel("### By Priority", r))
 	fmt.Fprintln(w)
 	for _, p := range priorityOrder {
 		if count, ok := m.TasksByPriority[p]; ok && count > 0 {
-			fmt.Fprintf(w, "- **%s**: %d\n", p, count)
+			fmt.Fprintf(w, "- %s: %d\n", formatPriority(string(p), r), count)
 		}
 	}
 	fmt.Fprintln(w)
 }
 
-func writeMarkdownGroups(data *reportData, w io.Writer) {
-	fmt.Fprintf(w, "## Tasks by %s\n", capitalizeFirst(data.GroupBy))
+func writeMarkdownGroups(data *reportData, w io.Writer, r *lipgloss.Renderer) {
+	fmt.Fprintf(w, "%s\n", formatLabel(fmt.Sprintf("## Tasks by %s", capitalizeFirst(data.GroupBy)), r))
 	fmt.Fprintln(w)
 
 	for _, key := range data.GroupedTasks.Keys {
 		tasks := data.GroupedTasks.Groups[key]
-		fmt.Fprintf(w, "### %s (%d)\n", key, len(tasks))
+		coloredHeading := formatHeading(key, data.GroupBy, r)
+		fmt.Fprintf(w, "### %s (%d)\n", coloredHeading, len(tasks))
 		fmt.Fprintln(w)
 		for _, t := range tasks {
-			line := fmt.Sprintf("- [%s] %s", t.ID, t.Title)
+			formattedID := formatTaskID(t.ID, r)
+			line := fmt.Sprintf("- [%s] %s", formattedID, t.Title)
 			if t.Priority != "" {
-				line += fmt.Sprintf(" (priority: %s)", t.Priority)
+				line += fmt.Sprintf(" (priority: %s)", formatPriority(string(t.Priority), r))
 			}
 			fmt.Fprintln(w, line)
 		}
@@ -102,8 +116,8 @@ func writeMarkdownGroups(data *reportData, w io.Writer) {
 	}
 }
 
-func writeMarkdownCriticalPath(cpTasks []reportTask, w io.Writer) {
-	fmt.Fprintln(w, "## Critical Path")
+func writeMarkdownCriticalPath(cpTasks []reportTask, w io.Writer, r *lipgloss.Renderer) {
+	fmt.Fprintln(w, formatLabel("## Critical Path", r))
 	fmt.Fprintln(w)
 
 	if len(cpTasks) == 0 {
@@ -113,13 +127,15 @@ func writeMarkdownCriticalPath(cpTasks []reportTask, w io.Writer) {
 	}
 
 	for i, t := range cpTasks {
-		fmt.Fprintf(w, "%d. [%s] %s (%s)\n", i+1, t.ID, t.Title, t.Status)
+		formattedID := formatTaskID(t.ID, r)
+		formattedStatus := formatStatus(t.Status, r)
+		fmt.Fprintf(w, "%d. [%s] %s (%s)\n", i+1, formattedID, t.Title, formattedStatus)
 	}
 	fmt.Fprintln(w)
 }
 
-func writeMarkdownBlockedTasks(data *reportData, w io.Writer) {
-	fmt.Fprintln(w, "## Blocked Tasks")
+func writeMarkdownBlockedTasks(data *reportData, w io.Writer, r *lipgloss.Renderer) {
+	fmt.Fprintln(w, formatLabel("## Blocked Tasks", r))
 	fmt.Fprintln(w)
 
 	if len(data.BlockedTasks) == 0 {
@@ -139,8 +155,9 @@ func writeMarkdownBlockedTasks(data *reportData, w io.Writer) {
 	allTaskMap := buildTaskMapFromGroups(data)
 
 	for _, t := range data.BlockedTasks {
-		waitingOn := formatWaitingOn(t.Dependencies, allTaskMap)
-		fmt.Fprintf(w, "- [%s] %s\n  Waiting on: %s\n", t.ID, t.Title, waitingOn)
+		formattedID := formatTaskID(t.ID, r)
+		waitingOn := formatWaitingOnColored(t.Dependencies, allTaskMap, r)
+		fmt.Fprintf(w, "- [%s] %s\n  Waiting on: %s\n", formattedID, t.Title, waitingOn)
 	}
 	fmt.Fprintln(w)
 }
@@ -166,6 +183,20 @@ func formatWaitingOn(deps []string, taskMap map[string]reportTask) string {
 			parts[i] = fmt.Sprintf("%s (%s)", depID, t.Status)
 		} else {
 			parts[i] = depID
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+func formatWaitingOnColored(deps []string, taskMap map[string]reportTask, r *lipgloss.Renderer) string {
+	parts := make([]string, len(deps))
+	for i, depID := range deps {
+		if t, ok := taskMap[depID]; ok {
+			formattedID := formatTaskID(depID, r)
+			formattedStatus := formatStatus(t.Status, r)
+			parts[i] = fmt.Sprintf("%s (%s)", formattedID, formattedStatus)
+		} else {
+			parts[i] = formatTaskID(depID, r)
 		}
 	}
 	return strings.Join(parts, ", ")
