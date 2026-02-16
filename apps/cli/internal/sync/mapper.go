@@ -1,5 +1,7 @@
 package sync
 
+import "strings"
+
 // MappedTask holds the result of mapping an ExternalTask to taskmd fields.
 type MappedTask struct {
 	Title       string
@@ -27,10 +29,17 @@ func MapExternalTask(ext ExternalTask, fm FieldMap) MappedTask {
 	}
 
 	if fm.LabelsToTags {
-		m.Tags = append(m.Tags, ext.Labels...)
+		for _, label := range ext.Labels {
+			m.Tags = append(m.Tags, normalizeLabel(label))
+		}
 	}
 
 	return m
+}
+
+// normalizeLabel lowercases and replaces spaces with hyphens.
+func normalizeLabel(label string) string {
+	return strings.ReplaceAll(strings.ToLower(label), " ", "-")
 }
 
 func mapField(value string, mapping map[string]string, fallback string) string {

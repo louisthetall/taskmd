@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -31,6 +32,39 @@ func init() {
 }
 
 func (g *GitHubSource) Name() string { return "github" }
+
+// DetectRepo attempts to parse owner/repo from the git remote origin URL.
+// Returns empty string if detection fails.
+func DetectRepo() string {
+	out, err := exec.Command("git", "remote", "get-url", "origin").Output()
+	if err != nil {
+		return ""
+	}
+	return ParseRepoFromRemote(strings.TrimSpace(string(out)))
+}
+
+// ParseRepoFromRemote extracts owner/repo from an SSH or HTTPS git remote URL.
+func ParseRepoFromRemote(remote string) string {
+	// SSH: git@github.com:owner/repo.git
+	if strings.HasPrefix(remote, "git@") {
+		if idx := strings.Index(remote, ":"); idx != -1 {
+			path := remote[idx+1:]
+			path = strings.TrimSuffix(path, ".git")
+			return path
+		}
+	}
+
+	// HTTPS: https://github.com/owner/repo.git
+	if strings.Contains(remote, "://") {
+		remote = strings.TrimSuffix(remote, ".git")
+		parts := strings.Split(remote, "/")
+		if len(parts) >= 2 {
+			return parts[len(parts)-2] + "/" + parts[len(parts)-1]
+		}
+	}
+
+	return ""
+}
 
 func (g *GitHubSource) ValidateConfig(cfg sync.SourceConfig) error {
 	if cfg.Project == "" {

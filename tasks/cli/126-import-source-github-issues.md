@@ -1,7 +1,7 @@
 ---
 id: "126"
 title: "Import source: GitHub Issues"
-status: pending
+status: completed
 priority: high
 effort: small
 dependencies: ["125"]
@@ -22,22 +22,22 @@ Implement the GitHub Issues source for the `taskmd import` command so users can 
 
 ## Tasks
 
-- [ ] Create `internal/import/github/github.go` implementing the `Source` interface
-- [ ] Interactive prompts:
-  - [ ] Repository (`owner/repo`) — auto-detect from git remote if possible
-  - [ ] Filter: all open, by label, by assignee, by milestone
-- [ ] Non-interactive flags: `--repo`, `--filter`, `--labels`, `--milestone`, `--assignee`
-- [ ] Use GitHub API via `gh` CLI or `go-github` library (prefer `gh api` for zero-config auth)
-- [ ] Map GitHub fields to taskmd:
-  - [ ] Issue title → `title`
-  - [ ] Issue number → `external_id`
-  - [ ] Issue state (open/closed) → `status` (pending/completed)
-  - [ ] Issue labels → `tags`
-  - [ ] Issue assignee → `owner`
-  - [ ] Issue body → markdown body with original URL as reference link
-  - [ ] Issue milestone → tag or group (configurable)
-- [ ] Handle pagination for repos with many issues
-- [ ] Add tests with mock GitHub API responses
+- [x] Create `internal/import/github/github.go` implementing the `Source` interface
+- [x] Interactive prompts:
+  - [x] Repository (`owner/repo`) — auto-detect from git remote if possible
+  - [x] Filter: all open, by label, by assignee, by milestone
+- [x] Non-interactive flags: `--repo`, `--filter`, `--labels`, `--milestone`, `--assignee`
+- [x] Use GitHub API via `gh` CLI or `go-github` library (prefer `gh api` for zero-config auth)
+- [x] Map GitHub fields to taskmd:
+  - [x] Issue title → `title`
+  - [x] Issue number → `external_id`
+  - [x] Issue state (open/closed) → `status` (pending/completed)
+  - [x] Issue labels → `tags`
+  - [x] Issue assignee → `owner`
+  - [x] Issue body → markdown body with original URL as reference link
+  - [x] Issue milestone → tag or group (configurable)
+- [x] Handle pagination for repos with many issues
+- [x] Add tests with mock GitHub API responses
 
 ## Acceptance Criteria
 

@@ -175,3 +175,49 @@ func TestMapExternalTask_EmptyFieldMap(t *testing.T) {
 		t.Errorf("expected no tags, got %v", mapped.Tags)
 	}
 }
+
+func TestNormalizeLabel(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"bug", "bug"},
+		{"Bug", "bug"},
+		{"Good First Issue", "good-first-issue"},
+		{"HELP WANTED", "help-wanted"},
+		{"in progress", "in-progress"},
+		{"already-hyphenated", "already-hyphenated"},
+		{"MiXeD CaSe Label", "mixed-case-label"},
+		{"", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := normalizeLabel(tt.input)
+			if got != tt.expected {
+				t.Errorf("normalizeLabel(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMapExternalTask_LabelNormalization(t *testing.T) {
+	fm := FieldMap{LabelsToTags: true}
+
+	ext := ExternalTask{
+		Title:  "Test",
+		Status: "open",
+		Labels: []string{"Bug", "Good First Issue", "help wanted"},
+	}
+	mapped := MapExternalTask(ext, fm)
+
+	expected := []string{"bug", "good-first-issue", "help-wanted"}
+	if len(mapped.Tags) != len(expected) {
+		t.Fatalf("expected %d tags, got %d: %v", len(expected), len(mapped.Tags), mapped.Tags)
+	}
+	for i, tag := range mapped.Tags {
+		if tag != expected[i] {
+			t.Errorf("tag[%d] = %q, want %q", i, tag, expected[i])
+		}
+	}
+}

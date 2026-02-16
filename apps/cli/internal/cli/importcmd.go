@@ -9,18 +9,23 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/driangle/taskmd/apps/cli/internal/sync"
+	"github.com/driangle/taskmd/apps/cli/internal/sync/github"
 )
 
 var (
-	importSource   string
-	importProject  string
-	importTokenEnv string
-	importUserEnv  string
-	importBaseURL  string
-	importOutDir   string
-	importFilter   string
-	importDryRun   bool
-	importFormat   string
+	importSource    string
+	importProject   string
+	importTokenEnv  string
+	importUserEnv   string
+	importBaseURL   string
+	importOutDir    string
+	importFilter    string
+	importDryRun    bool
+	importFormat    string
+	importRepo      string
+	importLabels    string
+	importMilestone string
+	importAssignee  string
 )
 
 var importCmd = &cobra.Command{
@@ -32,12 +37,20 @@ for populating your tasks/ directory.
 
 When run without --source, an interactive wizard guides you through setup.
 
+GitHub-specific shortcut flags:
+  --repo        Alias for --project (owner/repo)
+  --labels      Filter by labels (comma-separated)
+  --milestone   Filter by milestone
+  --assignee    Filter by assignee
+
 Examples:
   taskmd import
+  taskmd import --source github --repo owner/repo
   taskmd import --source github --project owner/repo --token-env GITHUB_TOKEN
+  taskmd import --source github --repo owner/repo --labels bug,critical --assignee alice
   taskmd import --source jira --project PROJ --token-env JIRA_TOKEN --user-env JIRA_USER --base-url https://company.atlassian.net
-  taskmd import --source github --project owner/repo --token-env GITHUB_TOKEN --dry-run
-  taskmd import --source github --project owner/repo --token-env GITHUB_TOKEN --format json
+  taskmd import --source github --repo owner/repo --dry-run
+  taskmd import --source github --repo owner/repo --format json
   taskmd import --source github --project owner/repo --token-env GITHUB_TOKEN --filter "state:open labels:bug"`,
 	Args: cobra.NoArgs,
 	RunE: runImport,
@@ -55,6 +68,12 @@ func init() {
 	importCmd.Flags().StringVar(&importFilter, "filter", "", `source-specific filters as key:value pairs (e.g. "state:open labels:bug")`)
 	importCmd.Flags().BoolVar(&importDryRun, "dry-run", false, "preview import without writing files")
 	importCmd.Flags().StringVar(&importFormat, "format", "table", "output format: table, json, yaml")
+
+	// GitHub-specific shortcut flags
+	importCmd.Flags().StringVar(&importRepo, "repo", "", "alias for --project (owner/repo for GitHub)")
+	importCmd.Flags().StringVar(&importLabels, "labels", "", "filter by labels (comma-separated, GitHub)")
+	importCmd.Flags().StringVar(&importMilestone, "milestone", "", "filter by milestone (GitHub)")
+	importCmd.Flags().StringVar(&importAssignee, "assignee", "", "filter by assignee (GitHub)")
 }
 
 func runImport(_ *cobra.Command, _ []string) error {
@@ -95,10 +114,23 @@ func runImport(_ *cobra.Command, _ []string) error {
 }
 
 func buildImportConfigFromFlags() (sync.ImportConfig, error) {
+	project := importProject
+	tokenEnv := importTokenEnv
+
+	// GitHub-specific: --repo is an alias for --project
+	if importSource == "github" {
+		if project == "" && importRepo != "" {
+			project = importRepo
+		}
+		if tokenEnv == "" {
+			tokenEnv = "GITHUB_TOKEN"
+		}
+	}
+
 	srcCfg := sync.SourceConfig{
 		Name:     importSource,
-		Project:  importProject,
-		TokenEnv: importTokenEnv,
+		Project:  project,
+		TokenEnv: tokenEnv,
 		UserEnv:  importUserEnv,
 		BaseURL:  importBaseURL,
 	}
@@ -107,12 +139,48 @@ func buildImportConfigFromFlags() (sync.ImportConfig, error) {
 		srcCfg.Filters = parseImportFilters(importFilter)
 	}
 
+	// GitHub-specific: merge shortcut flags into filters
+	if importSource == "github" {
+		srcCfg.Filters = mergeGitHubShortcutFlags(srcCfg.Filters)
+	}
+
 	return sync.ImportConfig{
 		SourceName: importSource,
 		SourceCfg:  srcCfg,
 		OutputDir:  importOutDir,
 		ScanDir:    ".",
 	}, nil
+}
+
+// mergeGitHubShortcutFlags merges --labels, --milestone, --assignee flags
+// into the filter map and defaults state to "open" if not set.
+func mergeGitHubShortcutFlags(filters map[string]any) map[string]any {
+	if filters == nil {
+		filters = make(map[string]any)
+	}
+
+	if importLabels != "" {
+		if _, ok := filters["labels"]; !ok {
+			filters["labels"] = importLabels
+		}
+	}
+	if importMilestone != "" {
+		if _, ok := filters["milestone"]; !ok {
+			filters["milestone"] = importMilestone
+		}
+	}
+	if importAssignee != "" {
+		if _, ok := filters["assignee"]; !ok {
+			filters["assignee"] = importAssignee
+		}
+	}
+
+	// Default to open issues for import
+	if _, ok := filters["state"]; !ok {
+		filters["state"] = "open"
+	}
+
+	return filters
 }
 
 func runImportWizard() (sync.ImportConfig, error) {
@@ -169,6 +237,10 @@ func wizardSelectSource() (string, error) {
 func wizardSourceConfig(sourceName string) (sync.SourceConfig, error) {
 	cfg := sync.SourceConfig{Name: sourceName}
 
+	if sourceName == "github" {
+		return wizardGitHubConfig(cfg)
+	}
+
 	if err := promptInput("Project identifier", projectHint(sourceName), "", &cfg.Project); err != nil {
 		return cfg, err
 	}
@@ -184,6 +256,84 @@ func wizardSourceConfig(sourceName string) (sync.SourceConfig, error) {
 		}
 	}
 	return cfg, nil
+}
+
+func wizardGitHubConfig(cfg sync.SourceConfig) (sync.SourceConfig, error) {
+	// Auto-detect repo from git remote
+	detected := github.DetectRepo()
+	placeholder := "owner/repo"
+	if detected != "" {
+		cfg.Project = detected
+		placeholder = detected
+	}
+
+	if err := promptInput("Repository", "GitHub repository (e.g. owner/repo)", placeholder, &cfg.Project); err != nil {
+		return cfg, err
+	}
+
+	cfg.TokenEnv = "GITHUB_TOKEN"
+	if err := promptInput("Auth token env var", "Name of the environment variable holding your GitHub token", "GITHUB_TOKEN", &cfg.TokenEnv); err != nil {
+		return cfg, err
+	}
+
+	filters, err := wizardGitHubFilters()
+	if err != nil {
+		return cfg, err
+	}
+	cfg.Filters = filters
+
+	return cfg, nil
+}
+
+func wizardGitHubFilters() (map[string]any, error) {
+	var filterChoice string
+	err := huh.NewSelect[string]().
+		Title("Which issues to import?").
+		Options(
+			huh.NewOption("All open issues", "open"),
+			huh.NewOption("Filter by label", "label"),
+			huh.NewOption("Filter by assignee", "assignee"),
+			huh.NewOption("Filter by milestone", "milestone"),
+			huh.NewOption("All issues (open + closed)", "all"),
+		).
+		Value(&filterChoice).
+		Run()
+	if err != nil {
+		return nil, fmt.Errorf("wizard cancelled: %w", err)
+	}
+
+	filters := map[string]any{"state": "open"}
+
+	switch filterChoice {
+	case "all":
+		filters["state"] = "all"
+	case "label":
+		var labels string
+		if err := promptInput("Labels", "Comma-separated labels to filter by", "", &labels); err != nil {
+			return nil, err
+		}
+		if labels != "" {
+			filters["labels"] = labels
+		}
+	case "assignee":
+		var assignee string
+		if err := promptInput("Assignee", "GitHub username", "", &assignee); err != nil {
+			return nil, err
+		}
+		if assignee != "" {
+			filters["assignee"] = assignee
+		}
+	case "milestone":
+		var milestone string
+		if err := promptInput("Milestone", "Milestone name or number", "", &milestone); err != nil {
+			return nil, err
+		}
+		if milestone != "" {
+			filters["milestone"] = milestone
+		}
+	}
+
+	return filters, nil
 }
 
 func wizardOutputDir() (string, error) {

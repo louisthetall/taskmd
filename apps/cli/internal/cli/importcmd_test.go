@@ -21,6 +21,10 @@ func resetImportFlags() {
 	importFilter = ""
 	importDryRun = false
 	importFormat = "table"
+	importRepo = ""
+	importLabels = ""
+	importMilestone = ""
+	importAssignee = ""
 }
 
 func TestImportCommand_NonInteractive(t *testing.T) {
@@ -355,5 +359,211 @@ func TestImportCommand_InvalidFormat(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "unsupported format") {
 		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestImportCommand_RepoFlagAliasesProject(t *testing.T) {
+	resetImportFlags()
+	importSource = "github"
+	importRepo = "myorg/myrepo"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.Project != "myorg/myrepo" {
+		t.Errorf("expected project=myorg/myrepo, got %q", cfg.SourceCfg.Project)
+	}
+}
+
+func TestImportCommand_ProjectTakesPrecedenceOverRepo(t *testing.T) {
+	resetImportFlags()
+	importSource = "github"
+	importProject = "explicit/project"
+	importRepo = "fallback/repo"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.Project != "explicit/project" {
+		t.Errorf("expected project=explicit/project, got %q", cfg.SourceCfg.Project)
+	}
+}
+
+func TestImportCommand_RepoFlagIgnoredForNonGitHub(t *testing.T) {
+	resetImportFlags()
+	importSource = "jira"
+	importRepo = "should-be-ignored"
+	importProject = "PROJ"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.Project != "PROJ" {
+		t.Errorf("expected project=PROJ, got %q", cfg.SourceCfg.Project)
+	}
+}
+
+func TestImportCommand_GitHubDefaultTokenEnv(t *testing.T) {
+	resetImportFlags()
+	importSource = "github"
+	importRepo = "owner/repo"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.TokenEnv != "GITHUB_TOKEN" {
+		t.Errorf("expected default token env=GITHUB_TOKEN, got %q", cfg.SourceCfg.TokenEnv)
+	}
+}
+
+func TestImportCommand_GitHubDefaultStateOpen(t *testing.T) {
+	resetImportFlags()
+	importSource = "github"
+	importRepo = "owner/repo"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.Filters == nil {
+		t.Fatal("expected filters to be set")
+	}
+	if cfg.SourceCfg.Filters["state"] != "open" {
+		t.Errorf("expected default state=open, got %v", cfg.SourceCfg.Filters["state"])
+	}
+}
+
+func TestImportCommand_GitHubStateNotOverridden(t *testing.T) {
+	resetImportFlags()
+	importSource = "github"
+	importRepo = "owner/repo"
+	importFilter = "state:closed"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.Filters["state"] != "closed" {
+		t.Errorf("expected state=closed (from --filter), got %v", cfg.SourceCfg.Filters["state"])
+	}
+}
+
+func TestImportCommand_LabelsShortcutFlag(t *testing.T) {
+	resetImportFlags()
+	importSource = "github"
+	importRepo = "owner/repo"
+	importLabels = "bug,critical"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.Filters["labels"] != "bug,critical" {
+		t.Errorf("expected labels=bug,critical, got %v", cfg.SourceCfg.Filters["labels"])
+	}
+}
+
+func TestImportCommand_MilestoneShortcutFlag(t *testing.T) {
+	resetImportFlags()
+	importSource = "github"
+	importRepo = "owner/repo"
+	importMilestone = "v1.0"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.Filters["milestone"] != "v1.0" {
+		t.Errorf("expected milestone=v1.0, got %v", cfg.SourceCfg.Filters["milestone"])
+	}
+}
+
+func TestImportCommand_AssigneeShortcutFlag(t *testing.T) {
+	resetImportFlags()
+	importSource = "github"
+	importRepo = "owner/repo"
+	importAssignee = "alice"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.Filters["assignee"] != "alice" {
+		t.Errorf("expected assignee=alice, got %v", cfg.SourceCfg.Filters["assignee"])
+	}
+}
+
+func TestImportCommand_FilterFlagTakesPrecedenceOverShortcut(t *testing.T) {
+	resetImportFlags()
+	importSource = "github"
+	importRepo = "owner/repo"
+	importFilter = "labels:from-filter"
+	importLabels = "from-shortcut"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// --filter labels take precedence over --labels shortcut
+	if cfg.SourceCfg.Filters["labels"] != "from-filter" {
+		t.Errorf("expected labels=from-filter (from --filter), got %v", cfg.SourceCfg.Filters["labels"])
+	}
+}
+
+func TestImportCommand_AllShortcutFlags(t *testing.T) {
+	resetImportFlags()
+	importSource = "github"
+	importRepo = "owner/repo"
+	importLabels = "bug"
+	importMilestone = "v2.0"
+	importAssignee = "bob"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.Filters["labels"] != "bug" {
+		t.Errorf("expected labels=bug, got %v", cfg.SourceCfg.Filters["labels"])
+	}
+	if cfg.SourceCfg.Filters["milestone"] != "v2.0" {
+		t.Errorf("expected milestone=v2.0, got %v", cfg.SourceCfg.Filters["milestone"])
+	}
+	if cfg.SourceCfg.Filters["assignee"] != "bob" {
+		t.Errorf("expected assignee=bob, got %v", cfg.SourceCfg.Filters["assignee"])
+	}
+	if cfg.SourceCfg.Filters["state"] != "open" {
+		t.Errorf("expected default state=open, got %v", cfg.SourceCfg.Filters["state"])
+	}
+}
+
+func TestImportCommand_NonGitHubNoDefaultState(t *testing.T) {
+	resetImportFlags()
+	importSource = "jira"
+	importProject = "PROJ"
+	importTokenEnv = "JIRA_TOKEN"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Non-github sources should not get default state filter
+	if cfg.SourceCfg.Filters != nil {
+		t.Errorf("expected nil filters for non-github source, got %v", cfg.SourceCfg.Filters)
 	}
 }

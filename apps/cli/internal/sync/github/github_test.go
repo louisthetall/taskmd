@@ -467,3 +467,61 @@ func TestGitHubSource_FetchTasks_UnsetToken(t *testing.T) {
 		t.Errorf("expected error to mention env var name, got: %v", err)
 	}
 }
+
+func TestParseRepoFromRemote(t *testing.T) {
+	tests := []struct {
+		name     string
+		remote   string
+		expected string
+	}{
+		{
+			name:     "SSH URL",
+			remote:   "git@github.com:owner/repo.git",
+			expected: "owner/repo",
+		},
+		{
+			name:     "SSH URL without .git",
+			remote:   "git@github.com:owner/repo",
+			expected: "owner/repo",
+		},
+		{
+			name:     "HTTPS URL",
+			remote:   "https://github.com/owner/repo.git",
+			expected: "owner/repo",
+		},
+		{
+			name:     "HTTPS URL without .git",
+			remote:   "https://github.com/owner/repo",
+			expected: "owner/repo",
+		},
+		{
+			name:     "GitHub Enterprise SSH",
+			remote:   "git@github.example.com:org/project.git",
+			expected: "org/project",
+		},
+		{
+			name:     "GitHub Enterprise HTTPS",
+			remote:   "https://github.example.com/org/project.git",
+			expected: "org/project",
+		},
+		{
+			name:     "empty string",
+			remote:   "",
+			expected: "",
+		},
+		{
+			name:     "invalid URL",
+			remote:   "not-a-url",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ParseRepoFromRemote(tt.remote)
+			if got != tt.expected {
+				t.Errorf("ParseRepoFromRemote(%q) = %q, want %q", tt.remote, got, tt.expected)
+			}
+		})
+	}
+}
