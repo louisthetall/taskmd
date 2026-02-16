@@ -1,7 +1,7 @@
 ---
 id: "125"
 title: "Add interactive 'import' command foundation"
-status: pending
+status: completed
 priority: high
 effort: medium
 tags:
