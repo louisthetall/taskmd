@@ -328,10 +328,24 @@ Update documentation when:
 - Adding new task file conventions
 - Implementing new output formats
 
+### Specification Sync
+
+The taskmd specification lives in `docs/taskmd_specification.md` (the canonical source). Two copies must stay in sync:
+- `apps/cli/internal/cli/templates/TASKMD_SPEC.md` (embedded in the CLI binary)
+- `apps/docs/reference/specification.md` (docs site)
+
+**After editing `docs/taskmd_specification.md`, always run:**
+
+```bash
+cd apps/cli && make sync-spec
+```
+
+This copies the canonical spec to both locations. A test (`TestSpecTemplate_MatchesCanonicalSpec`) will fail if they drift.
+
 ### Documentation Locations
 
 - **CLI commands**: Help text in the command definition
-- **Task format**: `docs/TASKMD_SPEC.md`
+- **Task format**: `docs/taskmd_specification.md` (canonical spec — see Specification Sync above)
 - **Development**: This file (`CLAUDE.md`)
 - **Project overview**: `PLAN.md`
 

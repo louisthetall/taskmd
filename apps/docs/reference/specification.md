@@ -23,7 +23,7 @@ Description and subtasks go here.
 
 | Field | Type | Required | Values / Format |
 |-------|------|----------|-----------------|
-| `id` | string | **Yes** | Zero-padded number (e.g., `"001"`, `"042"`) |
+| `id` | string | **Yes** | Unique identifier (e.g., `"001"`, `"42"`, `"cli-049"`) |
 | `title` | string | **Yes** | Brief, descriptive text |
 | `status` | enum | Recommended | `pending`, `in-progress`, `completed`, `blocked`, `cancelled` |
 | `priority` | enum | No | `low`, `medium`, `high`, `critical` |
@@ -41,9 +41,11 @@ Description and subtasks go here.
 
 ## Frontmatter Schema
 
+<!-- Unknown frontmatter fields are silently ignored by the parser and preserved as-is in the file. -->
+
 ### Required Fields
 
-**`id`** — Unique identifier for the task. Use zero-padded numeric IDs (e.g., `"001"`, `"042"`). Must be unique across all tasks in the project.
+**`id`** — Unique identifier for the task. Any non-empty string is valid (e.g., `"001"`, `"42"`, `"cli-049"`). Must be unique across all tasks in the project.
 
 **`title`** — Brief, action-oriented description of the task.
 
@@ -181,8 +183,6 @@ verify:
 external_id: "PROJ-123"
 ```
 
-Unknown frontmatter fields are preserved during read/write operations.
-
 ## File Organization
 
 ### File Naming
@@ -190,13 +190,14 @@ Unknown frontmatter fields are preserved during read/write operations.
 Task files follow this pattern:
 
 ```
-NNN-descriptive-title.md
+ID-descriptive-title.md
 ```
 
-Where `NNN` is the zero-padded task ID and `descriptive-title` is a lowercase hyphen-separated slug. Examples:
+Where `ID` is the task ID and `descriptive-title` is a lowercase hyphen-separated slug. Examples:
 
 - `001-project-scaffolding.md`
 - `042-implement-user-auth.md`
+- `cli-049-add-graph-command.md`
 
 The ID prefix may be omitted if the `id` field in frontmatter is the sole identifier.
 
