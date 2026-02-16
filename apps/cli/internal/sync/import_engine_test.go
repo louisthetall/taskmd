@@ -432,6 +432,150 @@ func TestRunImport_EmptyResult(t *testing.T) {
 	}
 }
 
+func TestRunImport_JiraStatusMapping(t *testing.T) {
+	// Register mock under "jira" to trigger Jira-specific field mappings
+	defer cleanupRegistry("jira")
+
+	Register(&mockSource{
+		name: "jira",
+		tasks: []ExternalTask{
+			{ExternalID: "PROJ-1", Title: "Todo task", Status: "To Do"},
+			{ExternalID: "PROJ-2", Title: "In progress task", Status: "In Progress"},
+			{ExternalID: "PROJ-3", Title: "Done task", Status: "Done"},
+		},
+	})
+
+	dir := t.TempDir()
+	outputDir := filepath.Join(dir, "tasks")
+
+	cfg := ImportConfig{
+		SourceName: "jira",
+		SourceCfg:  SourceConfig{Name: "jira"},
+		OutputDir:  outputDir,
+		ScanDir:    dir,
+	}
+
+	result, err := RunImport(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Created) != 3 {
+		t.Fatalf("expected 3 created, got %d", len(result.Created))
+	}
+
+	statusTests := []struct {
+		file     string
+		expected string
+	}{
+		{result.Created[0].FilePath, "status: pending"},
+		{result.Created[1].FilePath, "status: in-progress"},
+		{result.Created[2].FilePath, "status: completed"},
+	}
+
+	for _, st := range statusTests {
+		content, err := os.ReadFile(st.file)
+		if err != nil {
+			t.Fatalf("failed to read %s: %v", st.file, err)
+		}
+		if !strings.Contains(string(content), st.expected) {
+			t.Errorf("expected %q in %s, got:\n%s", st.expected, st.file, string(content))
+		}
+	}
+}
+
+func TestRunImport_JiraPriorityMapping(t *testing.T) {
+	// Register mock under "jira" to trigger Jira-specific field mappings
+	defer cleanupRegistry("jira")
+
+	Register(&mockSource{
+		name: "jira",
+		tasks: []ExternalTask{
+			{ExternalID: "PROJ-1", Title: "Highest pri", Status: "To Do", Priority: "Highest"},
+			{ExternalID: "PROJ-2", Title: "High pri", Status: "To Do", Priority: "High"},
+			{ExternalID: "PROJ-3", Title: "Medium pri", Status: "To Do", Priority: "Medium"},
+			{ExternalID: "PROJ-4", Title: "Low pri", Status: "To Do", Priority: "Low"},
+			{ExternalID: "PROJ-5", Title: "Lowest pri", Status: "To Do", Priority: "Lowest"},
+		},
+	})
+
+	dir := t.TempDir()
+	outputDir := filepath.Join(dir, "tasks")
+
+	cfg := ImportConfig{
+		SourceName: "jira",
+		SourceCfg:  SourceConfig{Name: "jira"},
+		OutputDir:  outputDir,
+		ScanDir:    dir,
+	}
+
+	result, err := RunImport(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Created) != 5 {
+		t.Fatalf("expected 5 created, got %d", len(result.Created))
+	}
+
+	priorityTests := []struct {
+		file     string
+		expected string
+	}{
+		{result.Created[0].FilePath, "priority: critical"},
+		{result.Created[1].FilePath, "priority: high"},
+		{result.Created[2].FilePath, "priority: medium"},
+		{result.Created[3].FilePath, "priority: low"},
+		{result.Created[4].FilePath, "priority: low"},
+	}
+
+	for _, pt := range priorityTests {
+		content, err := os.ReadFile(pt.file)
+		if err != nil {
+			t.Fatalf("failed to read %s: %v", pt.file, err)
+		}
+		if !strings.Contains(string(content), pt.expected) {
+			t.Errorf("expected %q in %s, got:\n%s", pt.expected, pt.file, string(content))
+		}
+	}
+}
+
+func TestRunImport_NonJiraUsesDefaultFieldMap(t *testing.T) {
+	sourceName := "test-import-default-map"
+	defer cleanupRegistry(sourceName)
+
+	setupMockSource(sourceName, []ExternalTask{
+		{ExternalID: "GH-1", Title: "Open issue", Status: "open", Priority: "high"},
+	})
+
+	dir := t.TempDir()
+	outputDir := filepath.Join(dir, "tasks")
+
+	cfg := ImportConfig{
+		SourceName: sourceName,
+		SourceCfg:  SourceConfig{Name: sourceName},
+		OutputDir:  outputDir,
+		ScanDir:    dir,
+	}
+
+	result, err := RunImport(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, err := os.ReadFile(result.Created[0].FilePath)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+	s := string(content)
+	if !strings.Contains(s, "status: pending") {
+		t.Errorf("expected 'open' mapped to 'pending', got:\n%s", s)
+	}
+	if !strings.Contains(s, "priority: high") {
+		t.Errorf("expected priority 'high', got:\n%s", s)
+	}
+}
+
 func TestAppendSourceURL(t *testing.T) {
 	tests := []struct {
 		name     string

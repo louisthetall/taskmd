@@ -26,6 +26,8 @@ var (
 	importLabels    string
 	importMilestone string
 	importAssignee  string
+	importURL       string
+	importJQL       string
 )
 
 var importCmd = &cobra.Command{
@@ -43,12 +45,17 @@ GitHub-specific shortcut flags:
   --milestone   Filter by milestone
   --assignee    Filter by assignee
 
+Jira-specific shortcut flags:
+  --url         Alias for --base-url (Jira instance URL)
+  --jql         Jira Query Language filter
+
 Examples:
   taskmd import
   taskmd import --source github --repo owner/repo
   taskmd import --source github --project owner/repo --token-env GITHUB_TOKEN
   taskmd import --source github --repo owner/repo --labels bug,critical --assignee alice
-  taskmd import --source jira --project PROJ --token-env JIRA_TOKEN --user-env JIRA_USER --base-url https://company.atlassian.net
+  taskmd import --source jira --project PROJ --url https://company.atlassian.net
+  taskmd import --source jira --project PROJ --url https://company.atlassian.net --jql "assignee = currentUser()"
   taskmd import --source github --repo owner/repo --dry-run
   taskmd import --source github --repo owner/repo --format json
   taskmd import --source github --project owner/repo --token-env GITHUB_TOKEN --filter "state:open labels:bug"`,
@@ -74,6 +81,10 @@ func init() {
 	importCmd.Flags().StringVar(&importLabels, "labels", "", "filter by labels (comma-separated, GitHub)")
 	importCmd.Flags().StringVar(&importMilestone, "milestone", "", "filter by milestone (GitHub)")
 	importCmd.Flags().StringVar(&importAssignee, "assignee", "", "filter by assignee (GitHub)")
+
+	// Jira-specific shortcut flags
+	importCmd.Flags().StringVar(&importURL, "url", "", "alias for --base-url (Jira instance URL)")
+	importCmd.Flags().StringVar(&importJQL, "jql", "", "Jira Query Language filter")
 }
 
 func runImport(_ *cobra.Command, _ []string) error {
@@ -117,6 +128,9 @@ func buildImportConfigFromFlags() (sync.ImportConfig, error) {
 	project := importProject
 	tokenEnv := importTokenEnv
 
+	baseURL := importBaseURL
+	userEnv := importUserEnv
+
 	// GitHub-specific: --repo is an alias for --project
 	if importSource == "github" {
 		if project == "" && importRepo != "" {
@@ -127,12 +141,25 @@ func buildImportConfigFromFlags() (sync.ImportConfig, error) {
 		}
 	}
 
+	// Jira-specific: --url is an alias for --base-url, default env vars
+	if importSource == "jira" {
+		if baseURL == "" && importURL != "" {
+			baseURL = importURL
+		}
+		if tokenEnv == "" {
+			tokenEnv = "JIRA_TOKEN"
+		}
+		if userEnv == "" {
+			userEnv = "JIRA_USER"
+		}
+	}
+
 	srcCfg := sync.SourceConfig{
 		Name:     importSource,
 		Project:  project,
 		TokenEnv: tokenEnv,
-		UserEnv:  importUserEnv,
-		BaseURL:  importBaseURL,
+		UserEnv:  userEnv,
+		BaseURL:  baseURL,
 	}
 
 	if importFilter != "" {
@@ -142,6 +169,11 @@ func buildImportConfigFromFlags() (sync.ImportConfig, error) {
 	// GitHub-specific: merge shortcut flags into filters
 	if importSource == "github" {
 		srcCfg.Filters = mergeGitHubShortcutFlags(srcCfg.Filters)
+	}
+
+	// Jira-specific: merge --jql into filters
+	if importSource == "jira" {
+		srcCfg.Filters = mergeJiraShortcutFlags(srcCfg.Filters)
 	}
 
 	return sync.ImportConfig{
@@ -180,6 +212,20 @@ func mergeGitHubShortcutFlags(filters map[string]any) map[string]any {
 		filters["state"] = "open"
 	}
 
+	return filters
+}
+
+// mergeJiraShortcutFlags merges --jql flag into the filter map.
+func mergeJiraShortcutFlags(filters map[string]any) map[string]any {
+	if importJQL == "" {
+		return filters
+	}
+	if filters == nil {
+		filters = make(map[string]any)
+	}
+	if _, ok := filters["jql"]; !ok {
+		filters["jql"] = importJQL
+	}
 	return filters
 }
 

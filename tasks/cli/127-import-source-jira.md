@@ -1,7 +1,7 @@
 ---
 id: "127"
 title: "Import source: Jira"
-status: pending
+status: in-progress
 priority: medium
 effort: small
 dependencies: ["125"]
@@ -22,26 +22,26 @@ Implement the Jira source for the `taskmd import` command so users can import is
 
 ## Tasks
 
-- [ ] Create `internal/import/jira/jira.go` implementing the `Source` interface
-- [ ] Interactive prompts:
-  - [ ] Jira instance URL (e.g., `https://company.atlassian.net`)
-  - [ ] Authentication (API token + email, or personal access token)
-  - [ ] Project key (e.g., `PROJ`)
+- [x] Create `internal/import/jira/jira.go` implementing the `Source` interface
+- [x] Interactive prompts:
+  - [x] Jira instance URL (e.g., `https://company.atlassian.net`)
+  - [x] Authentication (API token + email, or personal access token)
+  - [x] Project key (e.g., `PROJ`)
   - [ ] Filter: all non-done issues, by status, by assignee, by sprint, or JQL query
-- [ ] Non-interactive flags: `--url`, `--project`, `--filter`, `--jql`
-- [ ] Use Jira REST API v3
-- [ ] Map Jira fields to taskmd:
-  - [ ] Summary → `title`
-  - [ ] Issue key (e.g., `PROJ-123`) → `external_id`
-  - [ ] Status → `status` (map To Do→pending, In Progress→in-progress, Done→completed)
-  - [ ] Priority (Highest/High/Medium/Low/Lowest) → `priority` (critical/high/medium/low)
-  - [ ] Labels → `tags`
-  - [ ] Assignee → `owner`
-  - [ ] Description (Atlassian Document Format) → markdown body
+- [x] Non-interactive flags: `--url`, `--project`, `--filter`, `--jql`
+- [x] Use Jira REST API v3
+- [x] Map Jira fields to taskmd:
+  - [x] Summary → `title`
+  - [x] Issue key (e.g., `PROJ-123`) → `external_id`
+  - [x] Status → `status` (map To Do→pending, In Progress→in-progress, Done→completed)
+  - [x] Priority (Highest/High/Medium/Low/Lowest) → `priority` (critical/high/medium/low)
+  - [x] Labels → `tags`
+  - [x] Assignee → `owner`
+  - [x] Description (Atlassian Document Format) → markdown body
   - [ ] Story points → `effort` mapping (configurable thresholds)
-- [ ] Convert Atlassian Document Format (ADF) to markdown for issue descriptions
-- [ ] Handle pagination for large projects
-- [ ] Add tests with mock Jira API responses
+- [x] Convert Atlassian Document Format (ADF) to markdown for issue descriptions
+- [x] Handle pagination for large projects
+- [x] Add tests with mock Jira API responses
 
 ## Acceptance Criteria
 

@@ -49,7 +49,7 @@ func RunImport(cfg ImportConfig) (*ImportResult, error) {
 		return nil, fmt.Errorf("failed to scan existing tasks: %w", err)
 	}
 
-	fieldMap := resolveImportFieldMap(cfg.SourceCfg.FieldMap)
+	fieldMap := resolveImportFieldMap(cfg.SourceName, cfg.SourceCfg.FieldMap)
 	result := &ImportResult{}
 
 	for _, ext := range externalTasks {
@@ -83,8 +83,11 @@ func fetchImportTasks(cfg ImportConfig) ([]ExternalTask, error) {
 	return src.FetchTasks(cfg.SourceCfg)
 }
 
-func resolveImportFieldMap(userMap FieldMap) FieldMap {
+func resolveImportFieldMap(sourceName string, userMap FieldMap) FieldMap {
 	fm := defaultImportFieldMap()
+	if sourceName == "jira" {
+		fm = jiraDefaultFieldMap()
+	}
 	if len(userMap.Status) > 0 {
 		fm.Status = userMap.Status
 	}
@@ -131,7 +134,7 @@ func importTask(
 	return action, append(existingIDs, newID)
 }
 
-// defaultImportFieldMap returns sensible defaults for one-shot imports.
+// defaultImportFieldMap returns sensible defaults for one-shot imports (GitHub-oriented).
 func defaultImportFieldMap() FieldMap {
 	return FieldMap{
 		Status: map[string]string{
@@ -143,6 +146,28 @@ func defaultImportFieldMap() FieldMap {
 			"high":     "high",
 			"medium":   "medium",
 			"low":      "low",
+		},
+		LabelsToTags:    true,
+		AssigneeToOwner: true,
+	}
+}
+
+// jiraDefaultFieldMap returns Jira-specific defaults for status and priority mappings.
+func jiraDefaultFieldMap() FieldMap {
+	return FieldMap{
+		Status: map[string]string{
+			"To Do":       "pending",
+			"In Progress": "in-progress",
+			"Done":        "completed",
+			"open":        "pending",
+			"closed":      "completed",
+		},
+		Priority: map[string]string{
+			"Highest": "critical",
+			"High":    "high",
+			"Medium":  "medium",
+			"Low":     "low",
+			"Lowest":  "low",
 		},
 		LabelsToTags:    true,
 		AssigneeToOwner: true,

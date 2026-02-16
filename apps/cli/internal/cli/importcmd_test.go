@@ -25,6 +25,8 @@ func resetImportFlags() {
 	importLabels = ""
 	importMilestone = ""
 	importAssignee = ""
+	importURL = ""
+	importJQL = ""
 }
 
 func TestImportCommand_NonInteractive(t *testing.T) {
@@ -565,5 +567,141 @@ func TestImportCommand_NonGitHubNoDefaultState(t *testing.T) {
 	// Non-github sources should not get default state filter
 	if cfg.SourceCfg.Filters != nil {
 		t.Errorf("expected nil filters for non-github source, got %v", cfg.SourceCfg.Filters)
+	}
+}
+
+func TestImportCommand_JiraURLFlagAliasesBaseURL(t *testing.T) {
+	resetImportFlags()
+	importSource = "jira"
+	importProject = "PROJ"
+	importURL = "https://company.atlassian.net"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.BaseURL != "https://company.atlassian.net" {
+		t.Errorf("expected base-url from --url, got %q", cfg.SourceCfg.BaseURL)
+	}
+}
+
+func TestImportCommand_BaseURLTakesPrecedenceOverURL(t *testing.T) {
+	resetImportFlags()
+	importSource = "jira"
+	importProject = "PROJ"
+	importBaseURL = "https://explicit.atlassian.net"
+	importURL = "https://fallback.atlassian.net"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.BaseURL != "https://explicit.atlassian.net" {
+		t.Errorf("expected --base-url to take precedence, got %q", cfg.SourceCfg.BaseURL)
+	}
+}
+
+func TestImportCommand_URLFlagIgnoredForNonJira(t *testing.T) {
+	resetImportFlags()
+	importSource = "github"
+	importRepo = "owner/repo"
+	importURL = "https://should-be-ignored.com"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.BaseURL != "" {
+		t.Errorf("expected empty base-url for non-jira source, got %q", cfg.SourceCfg.BaseURL)
+	}
+}
+
+func TestImportCommand_JQLFlagPopulatesFilters(t *testing.T) {
+	resetImportFlags()
+	importSource = "jira"
+	importProject = "PROJ"
+	importJQL = "assignee = currentUser()"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.Filters == nil {
+		t.Fatal("expected filters to be set")
+	}
+	if cfg.SourceCfg.Filters["jql"] != "assignee = currentUser()" {
+		t.Errorf("expected jql filter, got %v", cfg.SourceCfg.Filters["jql"])
+	}
+}
+
+func TestImportCommand_FilterFlagTakesPrecedenceOverJQL(t *testing.T) {
+	resetImportFlags()
+	importSource = "jira"
+	importProject = "PROJ"
+	importFilter = "jql:from-filter"
+	importJQL = "from-shortcut"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// --filter jql takes precedence over --jql shortcut
+	if cfg.SourceCfg.Filters["jql"] != "from-filter" {
+		t.Errorf("expected jql from --filter, got %v", cfg.SourceCfg.Filters["jql"])
+	}
+}
+
+func TestImportCommand_JiraDefaultTokenEnv(t *testing.T) {
+	resetImportFlags()
+	importSource = "jira"
+	importProject = "PROJ"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.TokenEnv != "JIRA_TOKEN" {
+		t.Errorf("expected default token env=JIRA_TOKEN, got %q", cfg.SourceCfg.TokenEnv)
+	}
+}
+
+func TestImportCommand_JiraDefaultUserEnv(t *testing.T) {
+	resetImportFlags()
+	importSource = "jira"
+	importProject = "PROJ"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.UserEnv != "JIRA_USER" {
+		t.Errorf("expected default user env=JIRA_USER, got %q", cfg.SourceCfg.UserEnv)
+	}
+}
+
+func TestImportCommand_JiraExplicitEnvOverridesDefaults(t *testing.T) {
+	resetImportFlags()
+	importSource = "jira"
+	importProject = "PROJ"
+	importTokenEnv = "MY_JIRA_TOKEN"
+	importUserEnv = "MY_JIRA_USER"
+
+	cfg, err := buildImportConfigFromFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SourceCfg.TokenEnv != "MY_JIRA_TOKEN" {
+		t.Errorf("expected explicit token env, got %q", cfg.SourceCfg.TokenEnv)
+	}
+	if cfg.SourceCfg.UserEnv != "MY_JIRA_USER" {
+		t.Errorf("expected explicit user env, got %q", cfg.SourceCfg.UserEnv)
 	}
 }
