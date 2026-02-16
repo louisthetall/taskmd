@@ -1,7 +1,7 @@
 ---
 id: "130"
 title: "Improve init command with interactive project setup"
-status: pending
+status: in-progress
 priority: high
 effort: medium
 tags:
