@@ -1,5 +1,5 @@
 ---
-id: "146"
+id: "149"
 title: "Add type field to taskmd specification"
 status: pending
 priority: medium
@@ -19,13 +19,13 @@ Add an optional `type` enum field to the frontmatter schema to separate work-typ
 
 ## Enum Values
 
-| Type | Meaning |
-|------|---------|
-| `feature` | New functionality |
-| `bug` | Incorrect behavior that needs fixing |
+| Type          | Meaning                                                          |
+| ------------- | ---------------------------------------------------------------- |
+| `feature`     | New functionality                                                |
+| `bug`         | Incorrect behavior that needs fixing                             |
 | `improvement` | Enhancing existing functionality (perf, UX, polish, refactoring) |
-| `chore` | Infrastructure, tooling, CI/CD, maintenance |
-| `docs` | Documentation creation or updates |
+| `chore`       | Infrastructure, tooling, CI/CD, maintenance                      |
+| `docs`        | Documentation creation or updates                                |
 
 ## Tasks
 
