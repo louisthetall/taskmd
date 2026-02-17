@@ -225,12 +225,13 @@ func promptAgentSelection() {
 	}
 }
 
-// collectInitFiles returns files split into root (agent configs) and task dir (spec).
+// collectInitFiles returns files split into root and task dir.
+// Agent configs and spec are both placed in the task directory.
 func collectInitFiles() (rootFiles, taskDirFiles []fileToWrite) {
 	if !projectInitNoAgent {
 		agents := getProjectInitAgents()
 		for _, agent := range agents {
-			rootFiles = append(rootFiles, fileToWrite{
+			taskDirFiles = append(taskDirFiles, fileToWrite{
 				filename: agent.filename,
 				content:  agent.template,
 			})

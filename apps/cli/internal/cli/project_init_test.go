@@ -415,10 +415,16 @@ func TestProjectInit_SeparateDirectories(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Agent config should be in project root
-	claudePath := filepath.Join(rootDir, "CLAUDE.md")
+	// Agent config should be in task directory
+	claudePath := filepath.Join(taskDirPath, "CLAUDE.md")
 	if _, err := os.Stat(claudePath); os.IsNotExist(err) {
-		t.Error("CLAUDE.md should have been created in project root")
+		t.Error("CLAUDE.md should have been created in task directory")
+	}
+
+	// Agent config should NOT be in project root
+	claudeInRoot := filepath.Join(rootDir, "CLAUDE.md")
+	if _, err := os.Stat(claudeInRoot); err == nil {
+		t.Error("CLAUDE.md should not have been created in project root")
 	}
 
 	// Spec should be in task directory
@@ -430,10 +436,7 @@ func TestProjectInit_SeparateDirectories(t *testing.T) {
 	// Spec should NOT be in project root
 	specInRoot := filepath.Join(rootDir, specFilename)
 	if _, err := os.Stat(specInRoot); err == nil {
-		// Only fail if it's in root but NOT in taskDir (since they might overlap)
-		if rootDir != taskDirPath {
-			t.Error("TASKMD_SPEC.md should not have been created in project root")
-		}
+		t.Error("TASKMD_SPEC.md should not have been created in project root")
 	}
 }
 
