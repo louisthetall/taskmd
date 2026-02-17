@@ -1,7 +1,7 @@
 ---
 id: "141"
 title: "Add `sync down` subcommand"
-status: pending
+status: completed
 priority: medium
 effort: small
 tags: [cli, sync]
@@ -16,12 +16,12 @@ Restructure `taskmd sync` from a standalone command into a parent command with s
 
 ## Tasks
 
-- [ ] Convert `syncCmd` from a runnable command to a parent command (remove `RunE`, set `Args` to allow subcommands)
-- [ ] Create `syncDownCmd` as a subcommand of `syncCmd` with `Use: "down"`
-- [ ] Move all existing flags (`--dry-run`, `--source`, `--conflict`) to `syncDownCmd`
-- [ ] Move `runSync` logic to the `down` subcommand's `RunE`
-- [ ] Update tests to invoke the `down` subcommand
-- [ ] Update help text and examples to reference `taskmd sync down`
+- [x] Convert `syncCmd` from a runnable command to a parent command (remove `RunE`, set `Args` to allow subcommands)
+- [x] Create `syncDownCmd` as a subcommand of `syncCmd` with `Use: "down"`
+- [x] Move all existing flags (`--dry-run`, `--source`, `--conflict`) to `syncDownCmd`
+- [x] Move `runSync` logic to the `down` subcommand's `RunE`
+- [x] Update tests to invoke the `down` subcommand
+- [x] Update help text and examples to reference `taskmd sync down`
 
 ## Acceptance Criteria
 

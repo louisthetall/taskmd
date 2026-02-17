@@ -972,19 +972,23 @@ taskmd tracks --format json > tracks.json
 
 ### sync - Sync External Sources
 
-Fetch tasks from configured external sources (GitHub Issues, Jira, etc.) and create or update local markdown task files. Configuration is read from `.taskmd.yaml`.
+Commands for syncing tasks with external sources (GitHub Issues, Jira, etc.). Running `taskmd sync` alone displays usage and available subcommands.
+
+#### sync down
+
+Fetch tasks from configured external sources and create or update local markdown task files. Configuration is read from `.taskmd.yaml`.
 
 **Basic usage:**
 ```bash
 # Sync all configured sources
-taskmd sync
+taskmd sync down
 
 # Preview without writing files
-taskmd sync --dry-run
+taskmd sync down --dry-run
 
 # Sync a specific source
-taskmd sync --source github
-taskmd sync --source jira
+taskmd sync down --source github
+taskmd sync down --source jira
 ```
 
 **Flags:**
@@ -1006,22 +1010,22 @@ taskmd sync --source jira
 **Examples:**
 ```bash
 # Full sync
-taskmd sync
+taskmd sync down
 
 # Preview what would change
-taskmd sync --dry-run
+taskmd sync down --dry-run
 
 # Sync only GitHub source
-taskmd sync --source github
+taskmd sync down --source github
 
 # Sync only Jira source
-taskmd sync --source jira
+taskmd sync down --source jira
 
 # Overwrite local changes with remote data
-taskmd sync --conflict remote
+taskmd sync down --conflict remote
 
 # Keep local changes, ignore remote updates
-taskmd sync --conflict local
+taskmd sync down --conflict local
 ```
 
 See the [Sync Configuration](#sync-configuration) section below for how to set up `.taskmd.yaml` for sync.

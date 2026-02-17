@@ -20,7 +20,7 @@ func TestSyncCommand_MissingConfig(t *testing.T) {
 	}
 	defer os.Chdir(origDir)
 
-	err := runSync(syncCmd, nil)
+	err := runSync(syncDownCmd, nil)
 	if err == nil {
 		t.Fatal("expected error when config is missing")
 	}
@@ -55,7 +55,7 @@ func TestSyncCommand_DryRun(t *testing.T) {
 	syncDryRun = true
 	syncSource = ""
 
-	err := runSync(syncCmd, nil)
+	err := runSync(syncDownCmd, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestSyncCommand_SourceFilter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := runSync(syncCmd, nil)
+	err := runSync(syncDownCmd, nil)
 	if err == nil {
 		t.Fatal("expected error for nonexistent source filter")
 	}
@@ -118,7 +118,7 @@ func TestSyncCommand_FullSync(t *testing.T) {
 	syncDryRun = false
 	syncSource = ""
 
-	err := runSync(syncCmd, nil)
+	err := runSync(syncDownCmd, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestSyncCommand_SourceFilterMatch(t *testing.T) {
 	syncDryRun = false
 	syncSource = sourceName
 
-	err := runSync(syncCmd, nil)
+	err := runSync(syncDownCmd, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -199,12 +199,31 @@ func TestSyncCommand_InvalidConflictFlag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := runSync(syncCmd, nil)
+	err := runSync(syncDownCmd, nil)
 	if err == nil {
 		t.Fatal("expected error for invalid --conflict value")
 	}
 	if !strings.Contains(err.Error(), "invalid --conflict") {
 		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestSyncCommand_ParentShowsHelp(t *testing.T) {
+	// syncCmd should have no RunE — invoking it prints help
+	if syncCmd.RunE != nil {
+		t.Error("syncCmd should not have RunE; it's a parent command")
+	}
+
+	// Verify "down" is a registered subcommand
+	found := false
+	for _, sub := range syncCmd.Commands() {
+		if sub.Use == "down" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected 'down' subcommand registered under syncCmd")
 	}
 }
 

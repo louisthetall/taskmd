@@ -20,27 +20,34 @@ var (
 var syncCmd = &cobra.Command{
 	Use:   "sync",
 	Short: "Sync tasks from external sources",
-	Long: `Sync fetches tasks from configured external sources (GitHub Issues, Jira, etc.)
-and creates or updates local markdown task files.
+	Long:  `Commands for syncing tasks with external sources (GitHub Issues, Jira, etc.).`,
+}
+
+var syncDownCmd = &cobra.Command{
+	Use:   "down",
+	Short: "Pull tasks from external sources",
+	Long: `Fetch tasks from configured external sources (GitHub Issues, Jira, etc.)
+and create or update local markdown task files.
 
 Configuration is read from .taskmd.yaml in the current directory.
 
 Examples:
-  taskmd sync
-  taskmd sync --dry-run
-  taskmd sync --source github
-  taskmd sync --conflict remote
-  taskmd sync --conflict local`,
+  taskmd sync down
+  taskmd sync down --dry-run
+  taskmd sync down --source github
+  taskmd sync down --conflict remote
+  taskmd sync down --conflict local`,
 	Args: cobra.NoArgs,
 	RunE: runSync,
 }
 
 func init() {
 	rootCmd.AddCommand(syncCmd)
+	syncCmd.AddCommand(syncDownCmd)
 
-	syncCmd.Flags().BoolVar(&syncDryRun, "dry-run", false, "preview changes without writing files")
-	syncCmd.Flags().StringVar(&syncSource, "source", "", "sync only the named source")
-	syncCmd.Flags().StringVar(&syncConflict, "conflict", "skip", "conflict resolution strategy: skip, remote, local")
+	syncDownCmd.Flags().BoolVar(&syncDryRun, "dry-run", false, "preview changes without writing files")
+	syncDownCmd.Flags().StringVar(&syncSource, "source", "", "sync only the named source")
+	syncDownCmd.Flags().StringVar(&syncConflict, "conflict", "skip", "conflict resolution strategy: skip, remote, local")
 }
 
 func runSync(_ *cobra.Command, _ []string) error {

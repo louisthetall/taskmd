@@ -31,7 +31,7 @@ web:
 worklogs: true
 
 # Sync configuration - fetch tasks from external sources
-# Run 'taskmd sync' to pull tasks, or 'taskmd sync --dry-run' to preview changes.
+# Run 'taskmd sync down' to pull tasks, or 'taskmd sync down --dry-run' to preview changes.
 # sync:
 #   sources:
 #     # GitHub Issues source
