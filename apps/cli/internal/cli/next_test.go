@@ -1314,9 +1314,77 @@ func TestNext_Critical_WithLimit(t *testing.T) {
 func TestNext_Critical_NoCriticalTasksAvailable(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create a scenario where actionable tasks are NOT on critical path
-	// Critical path: 001 -> 003 (longer chain)
-	// Non-critical: 002 (shorter parallel path)
+	// Create a scenario where --critical + tag filter yields no results.
+	// Critical path: 001 → 002 (both pending, tagged "api")
+	// Non-critical: 003 (pending, no deps, shorter path, tagged "docs")
+	//
+	// Filtering by tag=docs + --critical should find no tasks because
+	// 003 is the only docs-tagged task and it's not on the critical path.
+	tasks := map[string]string{
+		"001.md": `---
+id: "001"
+title: "API foundation"
+status: pending
+priority: high
+effort: large
+dependencies: []
+tags: ["api"]
+created: 2026-02-01
+---`,
+		"002.md": `---
+id: "002"
+title: "API endpoints"
+status: pending
+priority: high
+effort: large
+dependencies: ["001"]
+tags: ["api"]
+created: 2026-02-02
+---`,
+		"003.md": `---
+id: "003"
+title: "Write docs"
+status: pending
+priority: low
+effort: small
+dependencies: []
+tags: ["docs"]
+created: 2026-02-03
+---`,
+	}
+
+	for filename, content := range tasks {
+		err := os.WriteFile(filepath.Join(tmpDir, filename), []byte(content), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+	}
+
+	resetNextFlags()
+	nextFormat = "table"
+	nextCritical = true
+	nextFilters = []string{"tag=docs"}
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	// 003 is actionable and docs-tagged but NOT on critical path (shorter chain)
+	// So --critical + tag=docs should show no results
+	if !strings.Contains(output, "No critical path tasks available") {
+		t.Errorf("Expected 'No critical path tasks available' message, got: %s", output)
+	}
+}
+
+func TestNext_Critical_CompletedDepsIgnored(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Completed dependency chains should NOT inflate critical path depth.
+	// 001 (completed) → 003 (completed) → 004 (completed): all done, irrelevant
+	// 002 (pending, depends on completed 001): only remaining task
+	//
+	// 002 should BE the critical path since it's the only remaining work.
 	tasks := map[string]string{
 		"001.md": `---
 id: "001"
@@ -1329,7 +1397,7 @@ created: 2026-02-01
 ---`,
 		"002.md": `---
 id: "002"
-title: "Short path task"
+title: "Remaining task"
 status: pending
 priority: low
 effort: small
@@ -1364,18 +1432,29 @@ created: 2026-02-04
 	}
 
 	resetNextFlags()
-	nextFormat = "table"
+	nextFormat = "json"
 	nextCritical = true
+	nextLimit = 10
 
 	output, err := captureNextOutput(t, []string{tmpDir})
 	if err != nil {
 		t.Fatalf("runNext failed: %v", err)
 	}
 
-	// Task 002 is actionable but not on critical path (001->003->004 is longer)
-	// So filtering by --critical should show no results
-	if !strings.Contains(output, "No critical path tasks available") {
-		t.Errorf("Expected 'No critical path tasks available' message, got: %s", output)
+	var recs []Recommendation
+	if err := json.Unmarshal([]byte(output), &recs); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	// 002 is the only pending task — it IS the critical path
+	if len(recs) != 1 {
+		t.Fatalf("Expected 1 critical path task, got %d", len(recs))
+	}
+	if recs[0].ID != "002" {
+		t.Errorf("Expected task 002 on critical path, got %s", recs[0].ID)
+	}
+	if !recs[0].OnCriticalPath {
+		t.Error("Expected task 002 to be marked on_critical_path")
 	}
 }
 

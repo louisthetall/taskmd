@@ -2,7 +2,7 @@
 id: "129"
 title: "Import source: Linear"
 status: pending
-priority: medium
+priority: low
 effort: small
 dependencies: ["125"]
 tags:

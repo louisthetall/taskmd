@@ -277,6 +277,12 @@ func calculateDepthMap(tasks []*model.Task, taskMap map[string]*model.Task) map[
 			return 0
 		}
 
+		// Resolved tasks represent no remaining work —
+		// they should not contribute depth to the critical path.
+		if task.Status.IsResolved() {
+			return 0
+		}
+
 		visited[taskID] = true
 		defer delete(visited, taskID)
 
@@ -313,7 +319,8 @@ func markCriticalPathDependencies(
 	}
 
 	for _, depID := range task.Dependencies {
-		if depthMap[depID] == targetDepth-1 {
+		depDepth, exists := depthMap[depID]
+		if exists && depDepth == targetDepth-1 {
 			criticalPath[depID] = true
 			markCriticalPathDependencies(depID, taskMap, depthMap, targetDepth-1, criticalPath)
 		}

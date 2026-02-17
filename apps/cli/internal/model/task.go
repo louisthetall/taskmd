@@ -16,6 +16,12 @@ const (
 	StatusCancelled  Status = "cancelled"
 )
 
+// IsResolved returns true if the status represents a terminal state
+// where the task is no longer active (completed or cancelled).
+func (s Status) IsResolved() bool {
+	return s == StatusCompleted || s == StatusCancelled
+}
+
 // Priority represents the importance level of a task
 type Priority string
 
