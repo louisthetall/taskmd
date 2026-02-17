@@ -1,7 +1,7 @@
 ---
 name: add-task
 description: Create a new task file following the taskmd specification. Use when the user wants to add a new task to the project.
-allowed-tools: Read, Glob, Write
+allowed-tools: Read, Glob, Write, Bash
 ---
 
 # Add Task
@@ -41,4 +41,5 @@ Followed by a markdown body with:
 - A `## Tasks` section with a checkbox list of subtasks
 - An `## Acceptance Criteria` section
 
-5. **Confirm** the created file path and ID to the user
+5. **Validate** by running `taskmd validate` to ensure the new task file is valid. If validation fails, fix the issues before proceeding.
+6. **Confirm** the created file path and ID to the user

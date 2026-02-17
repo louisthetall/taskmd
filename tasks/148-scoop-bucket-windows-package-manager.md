@@ -1,11 +1,11 @@
 ---
-id: "142"
+id: "148"
 title: "Create Scoop bucket for Windows package manager"
 status: pending
 priority: medium
 effort: medium
 tags: [distribution, windows, packaging]
-dependencies: ["141"]
+dependencies: ["147"]
 created: 2026-02-17
 ---
 

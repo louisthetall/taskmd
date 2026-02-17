@@ -5,7 +5,7 @@ status: pending
 priority: medium
 effort: small
 tags: [docs, windows]
-dependencies: ["142"]
+dependencies: ["148"]
 created: 2026-02-17
 ---
 
