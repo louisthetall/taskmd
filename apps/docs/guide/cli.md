@@ -25,6 +25,7 @@ Complete reference for using taskmd from the command line.
 | `sync` | Sync tasks from external sources |
 | `web` | Web dashboard commands |
 | `init` | Initialize a project with agent configuration and spec files |
+| `commit-msg` | Generate conventional commit messages from task metadata |
 | `completion` | Generate shell completion scripts |
 
 ---
@@ -452,6 +453,47 @@ title: \"My new task\"
 status: pending
 ---" > "tasks/${ID}-my-new-task.md"
 ```
+
+### commit-msg - Generate Commit Messages
+
+Generate a conventional commit message derived from task metadata.
+
+When `--task-id` is provided, the message is generated from that task. When no `--task-id` is provided, the command inspects staged changes (`git diff --cached`) to find task files whose status changed to `completed` and generates a message from those tasks automatically.
+
+The subject line format is `type(scope): lowercase title (task ID)`, where the scope is the task's group directory (if any).
+
+```bash
+# Generate message for a specific task
+taskmd commit-msg --task-id 042
+
+# Use a custom commit type
+taskmd commit-msg --task-id 042 --type feat
+
+# Include completed subtasks as bullet points in the body
+taskmd commit-msg --task-id 042 --body
+
+# Subject line only (no body)
+taskmd commit-msg --task-id 042 --short
+
+# Auto-detect completed tasks from staged changes
+taskmd commit-msg
+
+# Use with git commit
+git commit -m "$(taskmd commit-msg --task-id 042)"
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--task-id` | | Task ID to generate the message for (omit to auto-detect from staged changes) |
+| `--type` | `chore` | Commit type prefix (`feat`, `fix`, `chore`, `docs`, `test`, `refactor`) |
+| `--body` | `false` | Include completed subtasks (`- [x]`) as bullet points in the commit body |
+| `--short` | `false` | Output the subject line only (no body) |
+
+**Auto-detection:**
+
+When `--task-id` is omitted, the command runs `git diff --cached` and looks for task files where `+status: completed` appears in the diff. It then generates a commit message from all matched tasks. If multiple tasks are found, the subject line lists all task IDs (e.g., `chore: complete tasks 042, 043`).
 
 ### report - Generate Reports
 

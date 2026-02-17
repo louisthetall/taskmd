@@ -1,7 +1,7 @@
 ---
 id: "138"
 title: "Document the commit-msg command"
-status: pending
+status: completed
 priority: medium
 effort: small
 tags:
@@ -18,17 +18,17 @@ Add documentation for the recently added `commit-msg` CLI command to the CLI gui
 
 ## Tasks
 
-- [ ] Add `commit-msg` to the Quick Reference table in `apps/docs/guide/cli.md`
-- [ ] Add a dedicated `### commit-msg` section with description, flags table, and usage examples
-- [ ] Include examples for all key workflows:
+- [x] Add `commit-msg` to the Quick Reference table in `apps/docs/guide/cli.md`
+- [x] Add a dedicated `### commit-msg` section with description, flags table, and usage examples
+- [x] Include examples for all key workflows:
   - Single task: `taskmd commit-msg --task-id 042`
   - Custom type: `taskmd commit-msg --task-id 042 --type feat`
   - With body (subtasks): `taskmd commit-msg --task-id 042 --body`
   - Short mode: `taskmd commit-msg --task-id 042 --short`
   - Auto-detect from staged changes: `taskmd commit-msg`
   - Git integration: `git commit -m "$(taskmd commit-msg --task-id 042)"`
-- [ ] Document all flags (`--task-id`, `--type`, `--body`, `--short`) in a flags table
-- [ ] Explain auto-detection behavior (inspects `git diff --cached` for tasks changed to `completed`)
+- [x] Document all flags (`--task-id`, `--type`, `--body`, `--short`) in a flags table
+- [x] Explain auto-detection behavior (inspects `git diff --cached` for tasks changed to `completed`)
 
 ## Acceptance Criteria
 
