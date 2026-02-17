@@ -1,7 +1,7 @@
 ---
 id: "139"
 title: "Document all non-documented CLI commands"
-status: pending
+status: completed
 priority: medium
 effort: medium
 tags:
@@ -39,18 +39,18 @@ The following commands exist in the codebase but are absent from the CLI guide:
 
 ## Tasks
 
-- [ ] Add all missing commands to the Quick Reference table
-- [ ] Document `verify` -- flags, examples, verify types (bash, assert)
-- [ ] Document `add` -- flags, examples for creating tasks interactively or via flags
-- [ ] Document `search` -- flags, examples for full-text search
-- [ ] Document `context` -- flags, examples for showing file context from `touches`/`context` fields
-- [ ] Document `status` -- flags, examples for lightweight task metadata lookup
-- [ ] Document `worklog` -- flags, examples for viewing and adding worklog entries
-- [ ] Document `import` -- flags, examples for importing from external sources
-- [ ] Document `spec` -- flags, examples for generating the specification
-- [ ] Document `mcp` -- brief section explaining MCP server usage
-- [ ] Document `man` -- brief section explaining man page generation
-- [ ] Note `show`/`update` as aliases in the `get`/`set` sections
+- [x] Add all missing commands to the Quick Reference table
+- [x] Document `verify` -- flags, examples, verify types (bash, assert)
+- [x] Document `add` -- flags, examples for creating tasks interactively or via flags
+- [x] Document `search` -- flags, examples for full-text search
+- [x] Document `context` -- flags, examples for showing file context from `touches`/`context` fields
+- [x] Document `status` -- flags, examples for lightweight task metadata lookup
+- [x] Document `worklog` -- flags, examples for viewing and adding worklog entries
+- [x] Document `import` -- flags, examples for importing from external sources
+- [x] Document `spec` -- flags, examples for generating the specification
+- [x] Document `mcp` -- brief section explaining MCP server usage
+- [x] Document `man` -- brief section explaining man page generation
+- [x] Note `show`/`update` as aliases in the `get`/`set` sections
 
 ## Acceptance Criteria
 
