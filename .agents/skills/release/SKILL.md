@@ -2,6 +2,8 @@
 name: release
 description: Create a new release by bumping versions, tagging, pushing, and generating release notes. Use when the user wants to release a new version.
 allowed-tools: Bash, Read, Edit, Grep, Glob, Task
+metadata:
+  internal: true
 ---
 
 # Release

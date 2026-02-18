@@ -2,6 +2,8 @@
 name: audit-docs
 description: Audit documentation coverage across CLI commands, web features, and configuration. Builds the CLI, discovers all commands/flags, checks web pages, and cross-references against docs/ and apps/docs/.
 allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Task
+metadata:
+  internal: true
 ---
 
 # Audit Documentation
