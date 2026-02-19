@@ -1,7 +1,7 @@
 ---
 id: "157"
 title: "Add a Claude Code skill to convert TODOs into tasks"
-status: pending
+status: completed
 priority: medium
 effort: medium
 dependencies:
@@ -21,18 +21,18 @@ Create a new skill for the taskmd Claude Code plugin that allows a coding agent 
 
 ## Tasks
 
-- [ ] Create a new skill definition (e.g. `todos-to-tasks` or `import-todos`) in the plugin skill directory
-- [ ] Skill instructions should tell the agent to:
-  - [ ] Run `taskmd todos list --format json` to discover all TODOs
-  - [ ] Present results as a numbered list showing: number, file:line, marker, text
-  - [ ] Ask the user which TODOs to convert (by number, range, or "all")
-  - [ ] For each selected TODO, invoke `/add-task` with context from the TODO (marker as type hint, text as title/description, file path as context)
-- [ ] Register the skill in the plugin manifest so it appears as a slash command (e.g. `/import-todos`)
-- [ ] Ensure the skill handles edge cases:
-  - [ ] No TODOs found — inform the user
-  - [ ] User selects none — exit gracefully
-  - [ ] Duplicate detection — warn if a TODO's text closely matches an existing task title
-- [ ] Write documentation for the skill in the plugin README or help text
+- [x] Create a new skill definition (e.g. `todos-to-tasks` or `import-todos`) in the plugin skill directory
+- [x] Skill instructions should tell the agent to:
+  - [x] Run `taskmd todos list --format json` to discover all TODOs
+  - [x] Present results as a numbered list showing: number, file:line, marker, text
+  - [x] Ask the user which TODOs to convert (by number, range, or "all")
+  - [x] For each selected TODO, invoke `/add-task` with context from the TODO (marker as type hint, text as title/description, file path as context)
+- [x] Register the skill in the plugin manifest so it appears as a slash command (e.g. `/import-todos`)
+- [x] Ensure the skill handles edge cases:
+  - [x] No TODOs found — inform the user
+  - [x] User selects none — exit gracefully
+  - [x] Duplicate detection — warn if a TODO's text closely matches an existing task title
+- [x] Write documentation for the skill in the plugin README or help text
 
 ## Acceptance Criteria
 

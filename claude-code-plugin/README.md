@@ -62,6 +62,7 @@ Use `--scope user` instead of `--scope project` to install across all projects.
 | list-tasks | `/taskmd:list-tasks` | List tasks with optional filters |
 | validate | `/taskmd:validate` | Validate task files for errors |
 | divide-and-conquer | `/taskmd:divide-and-conquer <ID>` | Split a large task into smaller sub-tasks |
+| import-todos | `/taskmd:import-todos` | Discover TODO/FIXME comments and convert them into task files |
 
 ## Usage Examples
 
@@ -92,6 +93,12 @@ Use `--scope user` instead of `--scope project` to install across all projects.
 
 # Look up a specific task
 /taskmd:get-task 042
+
+# Import TODOs from code as tasks
+/taskmd:import-todos
+
+# Import only FIXME comments from a specific directory
+/taskmd:import-todos --marker FIXME --dir ./src
 ```
 
 ## MCP Server Integration (Optional)
