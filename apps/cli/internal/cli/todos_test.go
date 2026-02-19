@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/viper"
+
 	"github.com/driangle/taskmd/apps/cli/internal/todos"
 )
 
@@ -316,5 +318,235 @@ func TestTodosList_InvalidFormat(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "unsupported format") {
 		t.Errorf("expected 'unsupported format' error, got: %s", err.Error())
+	}
+}
+
+func TestMergeConfigExcludes_ConfigOnly(t *testing.T) {
+	viper.Set("todos.exclude", []string{"*_test.go", "*.generated.*"})
+	defer viper.Set("todos.exclude", nil)
+
+	result := mergeConfigExcludes(nil)
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 patterns, got %d", len(result))
+	}
+	if result[0] != "*_test.go" || result[1] != "*.generated.*" {
+		t.Errorf("unexpected patterns: %v", result)
+	}
+}
+
+func TestMergeConfigExcludes_CLIOnly(t *testing.T) {
+	viper.Set("todos.exclude", nil)
+
+	result := mergeConfigExcludes([]string{"vendor/*"})
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 pattern, got %d", len(result))
+	}
+	if result[0] != "vendor/*" {
+		t.Errorf("unexpected pattern: %v", result)
+	}
+}
+
+func TestMergeConfigExcludes_BothMerged(t *testing.T) {
+	viper.Set("todos.exclude", []string{"*_test.go"})
+	defer viper.Set("todos.exclude", nil)
+
+	result := mergeConfigExcludes([]string{"vendor/*"})
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 patterns, got %d", len(result))
+	}
+	if result[0] != "vendor/*" {
+		t.Errorf("expected CLI pattern first, got %s", result[0])
+	}
+	if result[1] != "*_test.go" {
+		t.Errorf("expected config pattern second, got %s", result[1])
+	}
+}
+
+func TestMergeConfigExcludes_NeitherSet(t *testing.T) {
+	viper.Set("todos.exclude", nil)
+
+	result := mergeConfigExcludes(nil)
+
+	if result != nil {
+		t.Fatalf("expected nil, got %v", result)
+	}
+}
+
+func TestTodosList_ConfigExcludePattern(t *testing.T) {
+	resetTodosFlags()
+	dir := t.TempDir()
+	todosDir = dir
+	todosFormat = "json"
+
+	writeTodosTestFile(t, filepath.Join(dir, "main.go"), `package main
+// TODO: keep this
+`)
+	writeTodosTestFile(t, filepath.Join(dir, "main_test.go"), `package main
+// TODO: exclude this via config
+`)
+
+	viper.Set("todos.exclude", []string{"*_test.go"})
+	defer viper.Set("todos.exclude", nil)
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runTodosList(nil, nil)
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("runTodosList failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+
+	var parsed []todos.TodoItem
+	if err := json.Unmarshal(buf.Bytes(), &parsed); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	if len(parsed) != 1 {
+		t.Fatalf("expected 1 item (test file excluded by config), got %d", len(parsed))
+	}
+	if parsed[0].FilePath != "main.go" {
+		t.Errorf("expected main.go, got %s", parsed[0].FilePath)
+	}
+}
+
+func TestTodosList_ConfigAndCLIExcludeCombine(t *testing.T) {
+	resetTodosFlags()
+	dir := t.TempDir()
+	todosDir = dir
+	todosFormat = "json"
+	todosExclude = []string{"*.py"}
+
+	writeTodosTestFile(t, filepath.Join(dir, "main.go"), `package main
+// TODO: keep this
+`)
+	writeTodosTestFile(t, filepath.Join(dir, "main_test.go"), `package main
+// TODO: exclude via config
+`)
+	writeTodosTestFile(t, filepath.Join(dir, "app.py"), `# TODO: exclude via CLI flag
+`)
+
+	viper.Set("todos.exclude", []string{"*_test.go"})
+	defer viper.Set("todos.exclude", nil)
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runTodosList(nil, nil)
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("runTodosList failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+
+	var parsed []todos.TodoItem
+	if err := json.Unmarshal(buf.Bytes(), &parsed); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	if len(parsed) != 1 {
+		t.Fatalf("expected 1 item (test+py excluded), got %d", len(parsed))
+	}
+	if parsed[0].FilePath != "main.go" {
+		t.Errorf("expected main.go, got %s", parsed[0].FilePath)
+	}
+}
+
+func TestTodosList_ConfigExcludePathPattern(t *testing.T) {
+	resetTodosFlags()
+	dir := t.TempDir()
+	todosDir = dir
+	todosFormat = "json"
+
+	writeTodosTestFile(t, filepath.Join(dir, "main.go"), `package main
+// TODO: keep this
+`)
+	writeTodosTestFile(t, filepath.Join(dir, "sub", "deep.go"), `package sub
+// TODO: exclude via path pattern
+`)
+
+	viper.Set("todos.exclude", []string{"sub/*.go"})
+	defer viper.Set("todos.exclude", nil)
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runTodosList(nil, nil)
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("runTodosList failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+
+	var parsed []todos.TodoItem
+	if err := json.Unmarshal(buf.Bytes(), &parsed); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	if len(parsed) != 1 {
+		t.Fatalf("expected 1 item (sub/*.go excluded by config), got %d", len(parsed))
+	}
+	if parsed[0].FilePath != "main.go" {
+		t.Errorf("expected main.go, got %s", parsed[0].FilePath)
+	}
+}
+
+func TestTodosList_NoConfigExcludeUnchangedBehavior(t *testing.T) {
+	resetTodosFlags()
+	dir := t.TempDir()
+	todosDir = dir
+	todosFormat = "json"
+
+	// Ensure no config excludes are set
+	viper.Set("todos.exclude", nil)
+
+	writeTodosTestFile(t, filepath.Join(dir, "main.go"), `package main
+// TODO: one
+`)
+	writeTodosTestFile(t, filepath.Join(dir, "main_test.go"), `package main
+// TODO: two
+`)
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runTodosList(nil, nil)
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("runTodosList failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+
+	var parsed []todos.TodoItem
+	if err := json.Unmarshal(buf.Bytes(), &parsed); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	if len(parsed) != 2 {
+		t.Fatalf("expected 2 items (no config excludes), got %d", len(parsed))
 	}
 }

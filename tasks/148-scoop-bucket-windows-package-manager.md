@@ -2,7 +2,7 @@
 id: "148"
 title: "Create Scoop bucket for Windows package manager"
 status: pending
-priority: medium
+priority: low
 effort: medium
 tags: [distribution, windows, packaging]
 dependencies: ["147"]

@@ -1,7 +1,7 @@
 ---
 id: "158"
 title: "Add configurable ignore patterns for todos command in .taskmd.yaml"
-status: pending
+status: completed
 priority: medium
 effort: medium
 type: improvement
@@ -39,13 +39,13 @@ todos:
 
 ## Tasks
 
-- [ ] Add `todos.exclude` field to `.taskmd.yaml` config schema
-- [ ] Read `todos.exclude` from Viper config in the todos command (`internal/cli/todos.go`)
-- [ ] Merge config-based exclude patterns with CLI `--exclude` flag patterns (additive)
-- [ ] Add tests for config-based exclude patterns (single pattern, multiple patterns, glob patterns)
-- [ ] Test that CLI `--exclude` flags combine with config patterns (not replace)
-- [ ] Test with path-based glob patterns (e.g., `apps/cli/internal/todos/*_test.go`)
-- [ ] Update help text for the todos command to mention `.taskmd.yaml` configuration
+- [x] Add `todos.exclude` field to `.taskmd.yaml` config schema
+- [x] Read `todos.exclude` from Viper config in the todos command (`internal/cli/todos.go`)
+- [x] Merge config-based exclude patterns with CLI `--exclude` flag patterns (additive)
+- [x] Add tests for config-based exclude patterns (single pattern, multiple patterns, glob patterns)
+- [x] Test that CLI `--exclude` flags combine with config patterns (not replace)
+- [x] Test with path-based glob patterns (e.g., `apps/cli/internal/todos/*_test.go`)
+- [x] Update help text for the todos command to mention `.taskmd.yaml` configuration
 
 ## Acceptance Criteria
 

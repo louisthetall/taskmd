@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/driangle/taskmd/apps/cli/internal/todos"
 )
@@ -35,6 +36,9 @@ and display them with file path, line number, marker type, and comment text.
 
 Respects .gitignore and skips common non-source directories (node_modules, .git, vendor, etc.).
 Supports language-aware comment parsing for Go, JavaScript, TypeScript, Python, Ruby, Shell, CSS, HTML, Rust, YAML, and TOML.
+
+Exclude patterns can also be configured in .taskmd.yaml under todos.exclude.
+CLI --exclude flags are additive with config patterns (both are applied).
 
 Examples:
   taskmd todos list
@@ -74,11 +78,13 @@ func runTodosList(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
+	excludeGlobs := mergeConfigExcludes(todosExclude)
+
 	items, err := todos.Scan(todos.ScanOptions{
 		Dir:          todosDir,
 		Markers:      markers,
 		IncludeGlobs: todosInclude,
-		ExcludeGlobs: todosExclude,
+		ExcludeGlobs: excludeGlobs,
 		Verbose:      flags.Verbose,
 	})
 	if err != nil {
@@ -99,6 +105,21 @@ func runTodosList(_ *cobra.Command, _ []string) error {
 	default:
 		return outputTodosTable(items)
 	}
+}
+
+// mergeConfigExcludes combines CLI --exclude flags with todos.exclude from .taskmd.yaml.
+func mergeConfigExcludes(cliExcludes []string) []string {
+	configExcludes := viper.GetStringSlice("todos.exclude")
+	if len(configExcludes) == 0 {
+		return cliExcludes
+	}
+	if len(cliExcludes) == 0 {
+		return configExcludes
+	}
+	merged := make([]string, 0, len(cliExcludes)+len(configExcludes))
+	merged = append(merged, cliExcludes...)
+	merged = append(merged, configExcludes...)
+	return merged
 }
 
 func validateMarkers(markers []string) error {

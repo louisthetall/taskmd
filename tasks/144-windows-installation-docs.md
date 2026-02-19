@@ -2,7 +2,7 @@
 id: "144"
 title: "Update installation docs with Windows instructions"
 status: pending
-priority: medium
+priority: low
 effort: small
 tags: [docs, windows]
 dependencies: ["148"]

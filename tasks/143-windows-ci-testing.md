@@ -2,7 +2,7 @@
 id: "143"
 title: "Add Windows CI testing"
 status: pending
-priority: medium
+priority: low
 effort: small
 tags: [ci, windows, testing]
 created: 2026-02-17

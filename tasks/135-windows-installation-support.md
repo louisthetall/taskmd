@@ -2,7 +2,7 @@
 id: "135"
 title: "Windows installation support"
 status: pending
-priority: medium
+priority: low
 effort: medium
 tags: [distribution, windows, packaging]
 created: 2026-02-16

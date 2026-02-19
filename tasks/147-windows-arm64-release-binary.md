@@ -2,7 +2,7 @@
 id: "147"
 title: "Add Windows ARM64 binary to release workflow"
 status: completed
-priority: medium
+priority: low
 effort: small
 tags: [distribution, windows, ci]
 created: 2026-02-17
