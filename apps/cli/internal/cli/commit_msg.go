@@ -78,39 +78,44 @@ func runCommitMsg(_ *cobra.Command, _ []string) error {
 
 	tasks := result.Tasks
 
-	var matched []*model.Task
-	var isNewPending bool
 	if commitMsgTaskID != "" {
 		task := findExactMatch(commitMsgTaskID, tasks)
 		if task == nil {
 			return fmt.Errorf("task not found: %s", commitMsgTaskID)
 		}
-		matched = append(matched, task)
-	} else {
-		matched, err = findCompletedTasksFromDiff(tasks, scanDir)
-		if err != nil {
-			return err
-		}
-		if len(matched) == 0 {
-			matched, err = findNewPendingTasksFromDiff(tasks, scanDir)
-			if err != nil {
-				return err
-			}
-			if len(matched) == 0 {
-				return fmt.Errorf("no completed tasks found in staged changes")
-			}
-			isNewPending = true
-		}
+		fmt.Print(buildCommitMessage([]*model.Task{task}, commitMsgType, commitMsgBody, commitMsgShort))
+		return nil
 	}
 
-	var msg string
-	if isNewPending {
-		msg = buildAddedTaskMessage(matched, commitMsgType)
-	} else {
-		msg = buildCommitMessage(matched, commitMsgType, commitMsgBody, commitMsgShort)
+	changes, err := findTaskChangesFromDiff(tasks, scanDir)
+	if err != nil {
+		return err
 	}
-	fmt.Print(msg)
+	if changes.IsEmpty() {
+		return fmt.Errorf("no task changes found in staged changes")
+	}
+
+	fmt.Print(buildMessageFromChanges(changes, commitMsgType, commitMsgBody, commitMsgShort))
 	return nil
+}
+
+// buildMessageFromChanges routes to the appropriate message builder based on
+// which change categories are present. Single-category changes use dedicated
+// formats for backward compatibility; mixed changes use the combined format.
+func buildMessageFromChanges(changes TaskChanges, commitType string, includeBody, short bool) string {
+	onlyCompleted := len(changes.Completed) > 0 && len(changes.Added) == 0 &&
+		len(changes.Started) == 0 && len(changes.Blocked) == 0 && len(changes.Cancelled) == 0
+	if onlyCompleted {
+		return buildCommitMessage(changes.Completed, commitType, includeBody, short)
+	}
+
+	onlyAdded := len(changes.Added) > 0 && len(changes.Completed) == 0 &&
+		len(changes.Started) == 0 && len(changes.Blocked) == 0 && len(changes.Cancelled) == 0
+	if onlyAdded {
+		return buildAddedTaskMessage(changes.Added, commitType)
+	}
+
+	return buildMixedCommitMessage(changes, commitType, includeBody, short)
 }
 
 func buildCommitMessage(tasks []*model.Task, commitType string, includeBody, short bool) string {
@@ -203,6 +208,114 @@ func formatSubtaskBullets(subtasks []string) string {
 	return strings.Join(lines, "\n")
 }
 
+// buildAddedTaskMessage generates a commit message for newly added pending tasks.
+func buildAddedTaskMessage(tasks []*model.Task, commitType string) string {
+	ids := make([]string, len(tasks))
+	for i, t := range tasks {
+		ids[i] = t.ID
+	}
+
+	var subject string
+	if len(tasks) == 1 {
+		subject = fmt.Sprintf("%s: added task %s", commitType, ids[0])
+	} else {
+		subject = fmt.Sprintf("%s: added tasks %s", commitType, strings.Join(ids, ", "))
+	}
+	return subject + "\n"
+}
+
+// buildMixedCommitMessage generates a commit message covering multiple change types.
+// Subject line uses semicolon-separated segments: "chore: complete task 042; add task 045"
+func buildMixedCommitMessage(changes TaskChanges, commitType string, includeBody, short bool) string {
+	var segments []string
+
+	if len(changes.Completed) > 0 {
+		segments = append(segments, changeSegment("complete", changes.Completed))
+	}
+	if len(changes.Added) > 0 {
+		segments = append(segments, changeSegment("add", changes.Added))
+	}
+	if len(changes.Started) > 0 {
+		segments = append(segments, changeSegment("start", changes.Started))
+	}
+	if len(changes.Blocked) > 0 {
+		segments = append(segments, changeSegment("block", changes.Blocked))
+	}
+	if len(changes.Cancelled) > 0 {
+		segments = append(segments, changeSegment("cancel", changes.Cancelled))
+	}
+
+	subject := fmt.Sprintf("%s: %s", commitType, strings.Join(segments, "; "))
+	if short {
+		return subject + "\n"
+	}
+
+	var parts []string
+	parts = append(parts, subject)
+
+	if includeBody {
+		body := buildMixedBody(changes)
+		if body != "" {
+			parts = append(parts, body)
+		}
+	}
+
+	return strings.Join(parts, "\n\n") + "\n"
+}
+
+// changeSegment returns a string like "complete task 042" or "add tasks 045, 046".
+func changeSegment(verb string, tasks []*model.Task) string {
+	ids := make([]string, len(tasks))
+	for i, t := range tasks {
+		ids[i] = t.ID
+	}
+	if len(tasks) == 1 {
+		return fmt.Sprintf("%s task %s", verb, ids[0])
+	}
+	return fmt.Sprintf("%s tasks %s", verb, strings.Join(ids, ", "))
+}
+
+// buildMixedBody creates the body section for mixed-type commit messages.
+// Each category gets a section with task titles (and subtasks for completed).
+func buildMixedBody(changes TaskChanges) string {
+	type categoryGroup struct {
+		label string
+		tasks []*model.Task
+	}
+
+	categories := []categoryGroup{
+		{"Completed", changes.Completed},
+		{"Added", changes.Added},
+		{"Started", changes.Started},
+		{"Blocked", changes.Blocked},
+		{"Cancelled", changes.Cancelled},
+	}
+
+	var sections []string
+	for _, cat := range categories {
+		if len(cat.tasks) == 0 {
+			continue
+		}
+		var lines []string
+		for _, t := range cat.tasks {
+			if cat.label == "Completed" {
+				subtasks := extractCompletedSubtasks(t.Body)
+				if len(subtasks) > 0 {
+					lines = append(lines, fmt.Sprintf("%s:\n%s", t.Title, formatSubtaskBullets(subtasks)))
+				} else {
+					lines = append(lines, fmt.Sprintf("- %s (task %s)", t.Title, t.ID))
+				}
+			} else {
+				lines = append(lines, fmt.Sprintf("- %s (task %s)", t.Title, t.ID))
+			}
+		}
+		section := fmt.Sprintf("%s:\n%s", cat.label, strings.Join(lines, "\n"))
+		sections = append(sections, section)
+	}
+
+	return strings.Join(sections, "\n\n")
+}
+
 func lowerFirst(s string) string {
 	if s == "" {
 		return s
@@ -212,40 +325,124 @@ func lowerFirst(s string) string {
 	return string(runes)
 }
 
-// findCompletedTasksFromDiff runs git diff --cached, parses for files with
-// +status: completed, and matches them against scanned tasks.
-func findCompletedTasksFromDiff(tasks []*model.Task, scanDir string) ([]*model.Task, error) {
-	diffOutput, err := gitDiffFunc(scanDir)
-	if err != nil {
-		return nil, fmt.Errorf("git diff failed: %w", err)
-	}
+// DiffResult categorizes files from a unified diff by their status change.
+type DiffResult struct {
+	Completed []string // files with +status: completed
+	Added     []string // new files (--- /dev/null) with +status: pending
+	Started   []string // files with +status: in-progress
+	Blocked   []string // files with +status: blocked
+	Cancelled []string // files with +status: cancelled
+}
 
-	completedFiles := parseCompletedFilesFromDiff(diffOutput)
-	if len(completedFiles) == 0 {
-		return nil, nil
-	}
+// IsEmpty returns true if no changes were detected.
+func (d DiffResult) IsEmpty() bool {
+	return len(d.Completed) == 0 && len(d.Added) == 0 && len(d.Started) == 0 &&
+		len(d.Blocked) == 0 && len(d.Cancelled) == 0
+}
 
-	// Git diff paths are relative to the git repo root, not scanDir.
-	// Resolve the git toplevel to build absolute paths for matching.
-	gitRoot, err := resolveGitRoot(scanDir)
-	if err != nil {
-		return nil, err
-	}
+// parseDiffResult parses unified diff output and categorizes files by their
+// status change. New files (--- /dev/null) with +status: pending are "Added";
+// all others are categorized by their +status: line.
+func parseDiffResult(diff string) DiffResult {
+	var result DiffResult
+	var currentFile string
+	var isNewFile bool
 
-	absCompletedFiles := make(map[string]bool)
-	for _, f := range completedFiles {
-		abs := filepath.Join(gitRoot, f)
-		absCompletedFiles[filepath.Clean(abs)] = true
-	}
-
-	var matched []*model.Task
-	for _, t := range tasks {
-		cleaned := filepath.Clean(t.FilePath)
-		if absCompletedFiles[cleaned] {
-			matched = append(matched, t)
+	s := bufio.NewScanner(strings.NewReader(diff))
+	for s.Scan() {
+		line := s.Text()
+		if strings.HasPrefix(line, "--- ") {
+			isNewFile = line == "--- /dev/null"
+		} else if strings.HasPrefix(line, "+++ b/") {
+			currentFile = strings.TrimPrefix(line, "+++ b/")
+		} else if currentFile != "" && strings.HasPrefix(line, "+status: ") {
+			status := strings.TrimPrefix(line, "+status: ")
+			status = strings.TrimSpace(status)
+			switch status {
+			case "completed":
+				result.Completed = append(result.Completed, currentFile)
+			case "pending":
+				if isNewFile {
+					result.Added = append(result.Added, currentFile)
+				}
+			case "in-progress":
+				result.Started = append(result.Started, currentFile)
+			case "blocked":
+				result.Blocked = append(result.Blocked, currentFile)
+			case "cancelled":
+				result.Cancelled = append(result.Cancelled, currentFile)
+			}
+			currentFile = "" // avoid duplicates from same file
 		}
 	}
-	return matched, nil
+	return result
+}
+
+// TaskChanges holds tasks categorized by their change type.
+type TaskChanges struct {
+	Completed []*model.Task
+	Added     []*model.Task
+	Started   []*model.Task
+	Blocked   []*model.Task
+	Cancelled []*model.Task
+}
+
+// IsEmpty returns true if no task changes were found.
+func (tc TaskChanges) IsEmpty() bool {
+	return len(tc.Completed) == 0 && len(tc.Added) == 0 && len(tc.Started) == 0 &&
+		len(tc.Blocked) == 0 && len(tc.Cancelled) == 0
+}
+
+// findTaskChangesFromDiff runs git diff --cached, parses all status changes,
+// and matches them against scanned tasks.
+func findTaskChangesFromDiff(tasks []*model.Task, scanDir string) (TaskChanges, error) {
+	var changes TaskChanges
+
+	diffOutput, err := gitDiffFunc(scanDir)
+	if err != nil {
+		return changes, fmt.Errorf("git diff failed: %w", err)
+	}
+
+	dr := parseDiffResult(diffOutput)
+	if dr.IsEmpty() {
+		return changes, nil
+	}
+
+	gitRoot, err := resolveGitRoot(scanDir)
+	if err != nil {
+		return changes, err
+	}
+
+	// Build absolute path sets for each category.
+	absMap := func(files []string) map[string]bool {
+		m := make(map[string]bool, len(files))
+		for _, f := range files {
+			m[filepath.Clean(filepath.Join(gitRoot, f))] = true
+		}
+		return m
+	}
+	completedSet := absMap(dr.Completed)
+	addedSet := absMap(dr.Added)
+	startedSet := absMap(dr.Started)
+	blockedSet := absMap(dr.Blocked)
+	cancelledSet := absMap(dr.Cancelled)
+
+	for _, t := range tasks {
+		cleaned := filepath.Clean(t.FilePath)
+		switch {
+		case completedSet[cleaned]:
+			changes.Completed = append(changes.Completed, t)
+		case addedSet[cleaned]:
+			changes.Added = append(changes.Added, t)
+		case startedSet[cleaned]:
+			changes.Started = append(changes.Started, t)
+		case blockedSet[cleaned]:
+			changes.Blocked = append(changes.Blocked, t)
+		case cancelledSet[cleaned]:
+			changes.Cancelled = append(changes.Cancelled, t)
+		}
+	}
+	return changes, nil
 }
 
 // gitRootFunc resolves the git repository root. Override in tests.
@@ -263,98 +460,6 @@ func defaultGitRoot(scanDir string) (string, error) {
 		return "", fmt.Errorf("failed to find git root: %w", err)
 	}
 	return strings.TrimSpace(string(out)), nil
-}
-
-// parseCompletedFilesFromDiff parses unified diff output and returns file paths
-// that have a line matching "+status: completed".
-func parseCompletedFilesFromDiff(diff string) []string {
-	var files []string
-	var currentFile string
-
-	s := bufio.NewScanner(strings.NewReader(diff))
-	for s.Scan() {
-		line := s.Text()
-		if strings.HasPrefix(line, "+++ b/") {
-			currentFile = strings.TrimPrefix(line, "+++ b/")
-		} else if strings.HasPrefix(line, "+status: completed") && currentFile != "" {
-			files = append(files, currentFile)
-			currentFile = "" // avoid duplicates from same file
-		}
-	}
-	return files
-}
-
-// buildAddedTaskMessage generates a commit message for newly added pending tasks.
-func buildAddedTaskMessage(tasks []*model.Task, commitType string) string {
-	ids := make([]string, len(tasks))
-	for i, t := range tasks {
-		ids[i] = t.ID
-	}
-
-	var subject string
-	if len(tasks) == 1 {
-		subject = fmt.Sprintf("%s: added task %s", commitType, ids[0])
-	} else {
-		subject = fmt.Sprintf("%s: added tasks %s", commitType, strings.Join(ids, ", "))
-	}
-	return subject + "\n"
-}
-
-// findNewPendingTasksFromDiff runs git diff --cached, parses for newly added files
-// with +status: pending, and matches them against scanned tasks.
-func findNewPendingTasksFromDiff(tasks []*model.Task, scanDir string) ([]*model.Task, error) {
-	diffOutput, err := gitDiffFunc(scanDir)
-	if err != nil {
-		return nil, fmt.Errorf("git diff failed: %w", err)
-	}
-
-	pendingFiles := parseNewPendingFilesFromDiff(diffOutput)
-	if len(pendingFiles) == 0 {
-		return nil, nil
-	}
-
-	gitRoot, err := resolveGitRoot(scanDir)
-	if err != nil {
-		return nil, err
-	}
-
-	absPendingFiles := make(map[string]bool)
-	for _, f := range pendingFiles {
-		abs := filepath.Join(gitRoot, f)
-		absPendingFiles[filepath.Clean(abs)] = true
-	}
-
-	var matched []*model.Task
-	for _, t := range tasks {
-		cleaned := filepath.Clean(t.FilePath)
-		if absPendingFiles[cleaned] {
-			matched = append(matched, t)
-		}
-	}
-	return matched, nil
-}
-
-// parseNewPendingFilesFromDiff parses unified diff output and returns file paths
-// for newly added files that have a line matching "+status: pending".
-// A file is considered "new" if the diff shows it was added (--- /dev/null).
-func parseNewPendingFilesFromDiff(diff string) []string {
-	var files []string
-	var currentFile string
-	var isNewFile bool
-
-	s := bufio.NewScanner(strings.NewReader(diff))
-	for s.Scan() {
-		line := s.Text()
-		if strings.HasPrefix(line, "--- ") {
-			isNewFile = line == "--- /dev/null"
-		} else if strings.HasPrefix(line, "+++ b/") {
-			currentFile = strings.TrimPrefix(line, "+++ b/")
-		} else if isNewFile && strings.HasPrefix(line, "+status: pending") && currentFile != "" {
-			files = append(files, currentFile)
-			currentFile = ""
-		}
-	}
-	return files
 }
 
 func runGitDiffCached(scanDir string) (string, error) {

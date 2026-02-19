@@ -94,6 +94,32 @@ created: 2026-02-17
 
 # Add filter feature
 `,
+		"cli/047-in-progress.md": `---
+id: "047"
+title: "Implement export"
+status: in-progress
+priority: medium
+effort: medium
+tags: [cli]
+group: cli
+created: 2026-02-17
+---
+
+# Implement export
+`,
+		"cli/048-blocked.md": `---
+id: "048"
+title: "Add import feature"
+status: blocked
+priority: low
+effort: medium
+tags: [cli]
+group: cli
+created: 2026-02-17
+---
+
+# Add import feature
+`,
 	}
 
 	for name, content := range files {
@@ -445,24 +471,30 @@ func TestCommitMsg_EmptyDiff(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for empty diff")
 	}
-	if !strings.Contains(err.Error(), "no completed tasks found") {
-		t.Errorf("expected 'no completed tasks found' error, got: %v", err)
+	if !strings.Contains(err.Error(), "no task changes found") {
+		t.Errorf("expected 'no task changes found' error, got: %v", err)
 	}
 }
 
-func TestCommitMsg_DiffNoCompletedTasks(t *testing.T) {
+func TestCommitMsg_DiffOnlyInProgress(t *testing.T) {
 	tmpDir := createCommitMsgTestFiles(t)
 	resetCommitMsgFlags()
 	taskDir = tmpDir
 
-	mockGitDiffAndRoot(t, "+++ b/cli/042-feature.md\n+status: in-progress\n", tmpDir)
+	// in-progress status change should now be detected as a "started" task
+	mockGitDiffAndRoot(t,
+		"--- a/cli/042-feature.md\n"+
+			"+++ b/cli/042-feature.md\n"+
+			"+status: in-progress\n",
+		tmpDir)
 
-	_, err := captureCommitMsgOutput(t)
-	if err == nil {
-		t.Fatal("expected error when no tasks changed to completed")
+	output, err := captureCommitMsgOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(err.Error(), "no completed tasks found") {
-		t.Errorf("expected 'no completed tasks found' error, got: %v", err)
+
+	if !strings.Contains(output, "start task 042") {
+		t.Errorf("expected 'start task' message, got:\n%s", output)
 	}
 }
 
@@ -516,51 +548,94 @@ func TestExtractCompletedSubtasks(t *testing.T) {
 	}
 }
 
-func TestParseCompletedFilesFromDiff(t *testing.T) {
+func TestParseDiffResult(t *testing.T) {
 	tests := []struct {
-		name string
-		diff string
-		want []string
+		name      string
+		diff      string
+		completed []string
+		added     []string
+		started   []string
+		blocked   []string
+		cancelled []string
 	}{
 		{
-			name: "single completed file",
-			diff: "+++ b/tasks/cli/042.md\n@@ -4 +4 @@\n-status: pending\n+status: completed\n",
-			want: []string{"tasks/cli/042.md"},
+			name:      "single completed file",
+			diff:      "+++ b/tasks/cli/042.md\n@@ -4 +4 @@\n-status: pending\n+status: completed\n",
+			completed: []string{"tasks/cli/042.md"},
 		},
 		{
-			name: "multiple completed files",
-			diff: "+++ b/a.md\n+status: completed\n+++ b/b.md\n+status: completed\n",
-			want: []string{"a.md", "b.md"},
+			name:      "multiple completed files",
+			diff:      "+++ b/a.md\n+status: completed\n+++ b/b.md\n+status: completed\n",
+			completed: []string{"a.md", "b.md"},
 		},
 		{
-			name: "non-completed status change",
-			diff: "+++ b/a.md\n+status: in-progress\n",
-			want: nil,
+			name:    "in-progress status change",
+			diff:    "--- a/a.md\n+++ b/a.md\n+status: in-progress\n",
+			started: []string{"a.md"},
+		},
+		{
+			name:  "new pending file",
+			diff:  "--- /dev/null\n+++ b/tasks/cli/045.md\n+status: pending\n",
+			added: []string{"tasks/cli/045.md"},
+		},
+		{
+			name: "modified pending file ignored",
+			diff: "--- a/tasks/cli/045.md\n+++ b/tasks/cli/045.md\n+status: pending\n",
+		},
+		{
+			name:    "blocked status change",
+			diff:    "--- a/a.md\n+++ b/a.md\n+status: blocked\n",
+			blocked: []string{"a.md"},
+		},
+		{
+			name:      "cancelled status change",
+			diff:      "--- a/a.md\n+++ b/a.md\n+status: cancelled\n",
+			cancelled: []string{"a.md"},
 		},
 		{
 			name: "empty diff",
 			diff: "",
-			want: nil,
 		},
 		{
 			name: "no status line",
 			diff: "+++ b/a.md\n+title: something\n",
-			want: nil,
+		},
+		{
+			name:  "mixed new and modified files",
+			diff:  "--- /dev/null\n+++ b/new.md\n+status: pending\n--- a/old.md\n+++ b/old.md\n+status: pending\n",
+			added: []string{"new.md"},
+		},
+		{
+			name:      "multiple categories in one diff",
+			diff:      "--- a/a.md\n+++ b/a.md\n+status: completed\n--- /dev/null\n+++ b/b.md\n+status: pending\n--- a/c.md\n+++ b/c.md\n+status: in-progress\n",
+			completed: []string{"a.md"},
+			added:     []string{"b.md"},
+			started:   []string{"c.md"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := parseCompletedFilesFromDiff(tt.diff)
-			if len(got) != len(tt.want) {
-				t.Fatalf("parseCompletedFilesFromDiff() = %v, want %v", got, tt.want)
-			}
-			for i := range got {
-				if got[i] != tt.want[i] {
-					t.Errorf("parseCompletedFilesFromDiff()[%d] = %q, want %q", i, got[i], tt.want[i])
-				}
-			}
+			got := parseDiffResult(tt.diff)
+			assertStringSlice(t, "Completed", got.Completed, tt.completed)
+			assertStringSlice(t, "Added", got.Added, tt.added)
+			assertStringSlice(t, "Started", got.Started, tt.started)
+			assertStringSlice(t, "Blocked", got.Blocked, tt.blocked)
+			assertStringSlice(t, "Cancelled", got.Cancelled, tt.cancelled)
 		})
+	}
+}
+
+func assertStringSlice(t *testing.T, label string, got, want []string) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Errorf("%s: got %v, want %v", label, got, want)
+		return
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Errorf("%s[%d] = %q, want %q", label, i, got[i], want[i])
+		}
 	}
 }
 
@@ -728,7 +803,7 @@ func TestCommitMsg_NewPendingWithTypeFlag(t *testing.T) {
 	}
 }
 
-func TestCommitMsg_CompletedTakesPriorityOverNewPending(t *testing.T) {
+func TestCommitMsg_MixedCompletedAndNewPending(t *testing.T) {
 	tmpDir := createCommitMsgTestFiles(t)
 	resetCommitMsgFlags()
 	taskDir = tmpDir
@@ -753,12 +828,15 @@ func TestCommitMsg_CompletedTakesPriorityOverNewPending(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Should use completed-task message, not "added task" message
-	if !strings.Contains(output, "chore(cli): add commit-msg command (task 042)") {
-		t.Errorf("expected completed task message to take priority, got:\n%s", output)
+	// Should produce a combined message with both change types
+	if !strings.Contains(output, "complete task 042") {
+		t.Errorf("expected 'complete task 042' in mixed message, got:\n%s", output)
 	}
-	if strings.Contains(output, "added task") {
-		t.Errorf("should not contain 'added task' when completed tasks exist, got:\n%s", output)
+	if !strings.Contains(output, "add task 045") {
+		t.Errorf("expected 'add task 045' in mixed message, got:\n%s", output)
+	}
+	if !strings.Contains(output, ";") {
+		t.Errorf("expected semicolon separator in mixed message, got:\n%s", output)
 	}
 }
 
@@ -780,61 +858,8 @@ func TestCommitMsg_ModifiedPendingNotDetected(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when only modified (not new) pending file staged")
 	}
-	if !strings.Contains(err.Error(), "no completed tasks found") {
-		t.Errorf("expected 'no completed tasks found' error, got: %v", err)
-	}
-}
-
-func TestParseNewPendingFilesFromDiff(t *testing.T) {
-	tests := []struct {
-		name string
-		diff string
-		want []string
-	}{
-		{
-			name: "single new pending file",
-			diff: "--- /dev/null\n+++ b/tasks/cli/045.md\n+status: pending\n",
-			want: []string{"tasks/cli/045.md"},
-		},
-		{
-			name: "multiple new pending files",
-			diff: "--- /dev/null\n+++ b/a.md\n+status: pending\n--- /dev/null\n+++ b/b.md\n+status: pending\n",
-			want: []string{"a.md", "b.md"},
-		},
-		{
-			name: "modified file with pending status ignored",
-			diff: "--- a/tasks/cli/045.md\n+++ b/tasks/cli/045.md\n+status: pending\n",
-			want: nil,
-		},
-		{
-			name: "new file with non-pending status ignored",
-			diff: "--- /dev/null\n+++ b/a.md\n+status: completed\n",
-			want: nil,
-		},
-		{
-			name: "empty diff",
-			diff: "",
-			want: nil,
-		},
-		{
-			name: "mixed new and modified files",
-			diff: "--- /dev/null\n+++ b/new.md\n+status: pending\n--- a/old.md\n+++ b/old.md\n+status: pending\n",
-			want: []string{"new.md"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := parseNewPendingFilesFromDiff(tt.diff)
-			if len(got) != len(tt.want) {
-				t.Fatalf("parseNewPendingFilesFromDiff() = %v, want %v", got, tt.want)
-			}
-			for i := range got {
-				if got[i] != tt.want[i] {
-					t.Errorf("parseNewPendingFilesFromDiff()[%d] = %q, want %q", i, got[i], tt.want[i])
-				}
-			}
-		})
+	if !strings.Contains(err.Error(), "no task changes found") {
+		t.Errorf("expected 'no task changes found' error, got: %v", err)
 	}
 }
 
@@ -874,6 +899,268 @@ func TestBuildAddedTaskMessage(t *testing.T) {
 			got := buildAddedTaskMessage(tasks, tt.commitType)
 			if got != tt.want {
 				t.Errorf("buildAddedTaskMessage() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// Tests for mixed change type detection
+
+func TestCommitMsg_MixedCompletedAndStarted(t *testing.T) {
+	tmpDir := createCommitMsgTestFiles(t)
+	resetCommitMsgFlags()
+	taskDir = tmpDir
+
+	mockGitDiffAndRoot(t,
+		"--- a/cli/042-feature.md\n"+
+			"+++ b/cli/042-feature.md\n"+
+			"+status: completed\n"+
+			"--- a/cli/047-in-progress.md\n"+
+			"+++ b/cli/047-in-progress.md\n"+
+			"+status: in-progress\n",
+		tmpDir)
+
+	output, err := captureCommitMsgOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "complete task 042") {
+		t.Errorf("expected 'complete task 042', got:\n%s", output)
+	}
+	if !strings.Contains(output, "start task 047") {
+		t.Errorf("expected 'start task 047', got:\n%s", output)
+	}
+	if !strings.Contains(output, ";") {
+		t.Errorf("expected semicolon separator, got:\n%s", output)
+	}
+}
+
+func TestCommitMsg_ThreeChangeTypes(t *testing.T) {
+	tmpDir := createCommitMsgTestFiles(t)
+	resetCommitMsgFlags()
+	taskDir = tmpDir
+
+	mockGitDiffAndRoot(t,
+		"--- a/cli/042-feature.md\n"+
+			"+++ b/cli/042-feature.md\n"+
+			"+status: completed\n"+
+			"--- /dev/null\n"+
+			"+++ b/cli/045-new-pending.md\n"+
+			"+status: pending\n"+
+			"--- a/cli/047-in-progress.md\n"+
+			"+++ b/cli/047-in-progress.md\n"+
+			"+status: in-progress\n",
+		tmpDir)
+
+	output, err := captureCommitMsgOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "chore: complete task 042; add task 045; start task 047\n"
+	if output != expected {
+		t.Errorf("expected %q, got %q", expected, output)
+	}
+}
+
+func TestCommitMsg_MixedWithShort(t *testing.T) {
+	tmpDir := createCommitMsgTestFiles(t)
+	resetCommitMsgFlags()
+	taskDir = tmpDir
+	commitMsgShort = true
+
+	mockGitDiffAndRoot(t,
+		"--- a/cli/042-feature.md\n"+
+			"+++ b/cli/042-feature.md\n"+
+			"+status: completed\n"+
+			"--- /dev/null\n"+
+			"+++ b/cli/045-new-pending.md\n"+
+			"+status: pending\n",
+		tmpDir)
+
+	output, err := captureCommitMsgOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	trimmed := strings.TrimSpace(output)
+	if strings.Contains(trimmed, "\n") {
+		t.Errorf("--short should produce single line, got:\n%s", output)
+	}
+	if !strings.Contains(trimmed, "complete task 042") || !strings.Contains(trimmed, "add task 045") {
+		t.Errorf("expected both change types in short output, got: %s", trimmed)
+	}
+}
+
+func TestCommitMsg_MixedWithBody(t *testing.T) {
+	tmpDir := createCommitMsgTestFiles(t)
+	resetCommitMsgFlags()
+	taskDir = tmpDir
+	commitMsgBody = true
+
+	mockGitDiffAndRoot(t,
+		"--- a/cli/042-feature.md\n"+
+			"+++ b/cli/042-feature.md\n"+
+			"+status: completed\n"+
+			"--- /dev/null\n"+
+			"+++ b/cli/045-new-pending.md\n"+
+			"+status: pending\n",
+		tmpDir)
+
+	output, err := captureCommitMsgOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Subject line should contain both change types
+	lines := strings.Split(output, "\n")
+	if !strings.Contains(lines[0], "complete task 042") || !strings.Contains(lines[0], "add task 045") {
+		t.Errorf("expected both change types in subject, got: %s", lines[0])
+	}
+
+	// Body should contain category sections
+	if !strings.Contains(output, "Completed:") {
+		t.Errorf("expected 'Completed:' section in body, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Added:") {
+		t.Errorf("expected 'Added:' section in body, got:\n%s", output)
+	}
+	// Completed task has subtasks, so they should appear
+	if !strings.Contains(output, "Create command scaffolding") {
+		t.Errorf("expected completed subtasks in body, got:\n%s", output)
+	}
+}
+
+func TestCommitMsg_MixedWithTypeFlag(t *testing.T) {
+	tmpDir := createCommitMsgTestFiles(t)
+	resetCommitMsgFlags()
+	taskDir = tmpDir
+	commitMsgType = "feat"
+
+	mockGitDiffAndRoot(t,
+		"--- a/cli/042-feature.md\n"+
+			"+++ b/cli/042-feature.md\n"+
+			"+status: completed\n"+
+			"--- /dev/null\n"+
+			"+++ b/cli/045-new-pending.md\n"+
+			"+status: pending\n",
+		tmpDir)
+
+	output, err := captureCommitMsgOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.HasPrefix(output, "feat:") {
+		t.Errorf("expected 'feat:' prefix, got:\n%s", output)
+	}
+}
+
+func TestCommitMsg_MixedMultipleTasksPerCategory(t *testing.T) {
+	tmpDir := createCommitMsgTestFiles(t)
+	resetCommitMsgFlags()
+	taskDir = tmpDir
+
+	mockGitDiffAndRoot(t,
+		"--- a/cli/042-feature.md\n"+
+			"+++ b/cli/042-feature.md\n"+
+			"+status: completed\n"+
+			"--- a/cli/043-bugfix.md\n"+
+			"+++ b/cli/043-bugfix.md\n"+
+			"+status: completed\n"+
+			"--- /dev/null\n"+
+			"+++ b/cli/045-new-pending.md\n"+
+			"+status: pending\n"+
+			"--- /dev/null\n"+
+			"+++ b/cli/046-new-pending.md\n"+
+			"+status: pending\n",
+		tmpDir)
+
+	output, err := captureCommitMsgOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "chore: complete tasks 042, 043; add tasks 045, 046\n"
+	if output != expected {
+		t.Errorf("expected %q, got %q", expected, output)
+	}
+}
+
+func TestBuildMixedCommitMessage(t *testing.T) {
+	tests := []struct {
+		name    string
+		changes TaskChanges
+		short   bool
+		body    bool
+		want    string
+	}{
+		{
+			name: "completed and added",
+			changes: TaskChanges{
+				Completed: []*model.Task{{ID: "042"}},
+				Added:     []*model.Task{{ID: "045"}},
+			},
+			want: "chore: complete task 042; add task 045\n",
+		},
+		{
+			name: "all five categories",
+			changes: TaskChanges{
+				Completed: []*model.Task{{ID: "001"}},
+				Added:     []*model.Task{{ID: "002"}},
+				Started:   []*model.Task{{ID: "003"}},
+				Blocked:   []*model.Task{{ID: "004"}},
+				Cancelled: []*model.Task{{ID: "005"}},
+			},
+			want: "chore: complete task 001; add task 002; start task 003; block task 004; cancel task 005\n",
+		},
+		{
+			name: "multiple per category",
+			changes: TaskChanges{
+				Completed: []*model.Task{{ID: "001"}, {ID: "002"}},
+				Added:     []*model.Task{{ID: "003"}},
+			},
+			want: "chore: complete tasks 001, 002; add task 003\n",
+		},
+		{
+			name: "short flag",
+			changes: TaskChanges{
+				Completed: []*model.Task{{ID: "001"}},
+				Added:     []*model.Task{{ID: "002"}},
+			},
+			short: true,
+			want:  "chore: complete task 001; add task 002\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := buildMixedCommitMessage(tt.changes, "chore", tt.body, tt.short)
+			if got != tt.want {
+				t.Errorf("buildMixedCommitMessage() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestChangeSegment(t *testing.T) {
+	tests := []struct {
+		verb  string
+		tasks []*model.Task
+		want  string
+	}{
+		{"complete", []*model.Task{{ID: "042"}}, "complete task 042"},
+		{"complete", []*model.Task{{ID: "042"}, {ID: "043"}}, "complete tasks 042, 043"},
+		{"add", []*model.Task{{ID: "045"}}, "add task 045"},
+		{"start", []*model.Task{{ID: "047"}, {ID: "048"}}, "start tasks 047, 048"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			got := changeSegment(tt.verb, tt.tasks)
+			if got != tt.want {
+				t.Errorf("changeSegment() = %q, want %q", got, tt.want)
 			}
 		})
 	}
