@@ -20,6 +20,8 @@ type UpdateRequest struct {
 	Tags     *[]string // replace tags entirely
 	AddTags  []string  // add to existing tags
 	RemTags  []string  // remove from existing tags
+	AddPRs   []string  // add PR URLs
+	RemPRs   []string  // remove PR URLs
 	Body     *string
 }
 
@@ -27,6 +29,7 @@ var validStatuses = map[string]bool{
 	string(model.StatusPending):    true,
 	string(model.StatusInProgress): true,
 	string(model.StatusCompleted):  true,
+	string(model.StatusInReview):   true,
 	string(model.StatusBlocked):    true,
 	string(model.StatusCancelled):  true,
 }
@@ -114,6 +117,13 @@ func UpdateTaskFile(filePath string, req UpdateRequest) error {
 		currentTags := parseCurrentTags(lines, openIdx, closeIdx)
 		newTags := ComputeNewTags(currentTags, req.AddTags, req.RemTags)
 		lines, closeIdx = applyTagUpdates(lines, openIdx, closeIdx, currentTags, newTags)
+	}
+
+	// Apply PR updates.
+	if len(req.AddPRs) > 0 || len(req.RemPRs) > 0 {
+		currentPRs := parseCurrentListField(lines, openIdx, closeIdx, "pr")
+		newPRs := ComputeNewTags(currentPRs, req.AddPRs, req.RemPRs)
+		lines, closeIdx = applyListFieldUpdates(lines, openIdx, closeIdx, "pr", newPRs)
 	}
 
 	// Apply body update — replace everything after closing ---.
@@ -306,6 +316,96 @@ func FormatInlineTags(tags []string) string {
 		quoted[i] = `"` + t + `"`
 	}
 	return "tags: [" + strings.Join(quoted, ", ") + "]"
+}
+
+// parseCurrentListField reads an inline YAML list field (e.g. pr: ["a", "b"]) from frontmatter.
+func parseCurrentListField(lines []string, openIdx, closeIdx int, fieldName string) []string {
+	prefix := fieldName + ":"
+	for i := openIdx + 1; i < closeIdx; i++ {
+		if !strings.HasPrefix(strings.TrimSpace(lines[i]), prefix) {
+			continue
+		}
+		if strings.Contains(lines[i], "[") {
+			return parseInlineTags(strings.TrimSpace(lines[i]))
+		}
+		return parseMultilineTags(lines, i+1, closeIdx)
+	}
+	return nil
+}
+
+// applyListFieldUpdates modifies the lines slice to reflect the new list values for a named field.
+func applyListFieldUpdates(lines []string, openIdx, closeIdx int, fieldName string, newValues []string) ([]string, int) {
+	prefix := fieldName + ":"
+	lineIdx := -1
+	for i := openIdx + 1; i < closeIdx; i++ {
+		if strings.HasPrefix(strings.TrimSpace(lines[i]), prefix) {
+			lineIdx = i
+			break
+		}
+	}
+
+	if lineIdx < 0 {
+		if len(newValues) == 0 {
+			return lines, closeIdx
+		}
+		newLine := FormatInlineList(fieldName, newValues)
+		lines = insertLine(lines, closeIdx, newLine)
+		closeIdx++
+		return lines, closeIdx
+	}
+
+	// Inline format
+	if strings.Contains(lines[lineIdx], "[") {
+		if len(newValues) == 0 {
+			// Remove the field line entirely
+			lines = append(lines[:lineIdx], lines[lineIdx+1:]...)
+			closeIdx--
+		} else {
+			lines[lineIdx] = FormatInlineList(fieldName, newValues)
+		}
+		return lines, closeIdx
+	}
+
+	// Multiline format
+	removeStart := lineIdx + 1
+	removeEnd := removeStart
+	for removeEnd < closeIdx && strings.HasPrefix(strings.TrimSpace(lines[removeEnd]), "- ") {
+		removeEnd++
+	}
+
+	if len(newValues) == 0 {
+		// Remove field key line and all item lines
+		lines = append(lines[:lineIdx], lines[removeEnd:]...)
+		closeIdx -= removeEnd - lineIdx
+		return lines, closeIdx
+	}
+
+	var newItemLines []string
+	for _, v := range newValues {
+		newItemLines = append(newItemLines, "  - "+v)
+	}
+
+	before := lines[:removeStart]
+	after := lines[removeEnd:]
+	result := make([]string, 0, len(before)+len(newItemLines)+len(after))
+	result = append(result, before...)
+	result = append(result, newItemLines...)
+	result = append(result, after...)
+
+	closeIdx += len(newItemLines) - (removeEnd - removeStart)
+	return result, closeIdx
+}
+
+// FormatInlineList formats a named list field as inline YAML: field: ["a", "b"]
+func FormatInlineList(fieldName string, values []string) string {
+	if len(values) == 0 {
+		return fieldName + ": []"
+	}
+	quoted := make([]string, len(values))
+	for i, v := range values {
+		quoted[i] = `"` + v + `"`
+	}
+	return fieldName + ": [" + strings.Join(quoted, ", ") + "]"
 }
 
 func insertLine(lines []string, idx int, line string) []string {

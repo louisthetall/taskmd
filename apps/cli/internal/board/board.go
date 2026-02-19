@@ -155,6 +155,7 @@ func statusOrder() []string {
 	return []string{
 		string(model.StatusPending),
 		string(model.StatusInProgress),
+		string(model.StatusInReview),
 		string(model.StatusBlocked),
 		string(model.StatusCompleted),
 		string(model.StatusCancelled),

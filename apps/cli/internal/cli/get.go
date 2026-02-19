@@ -421,6 +421,7 @@ func outputGetText(task *model.Task, deps dependencyInfo, ctxFiles []taskcontext
 	printOptionalField(w, "Effort", string(task.Effort), r)
 	printOptionalField(w, "Type", string(task.Type), r)
 	printTags(w, task.Tags, r)
+	printPRs(w, task.PRs, r)
 	if deps.Parent != nil {
 		fmt.Fprintf(w, "%s %s\n", formatLabel("Parent:", r), formatDepEntry(*deps.Parent, r))
 	}
@@ -465,6 +466,12 @@ func printOptionalField(w io.Writer, label, value string, r *lipgloss.Renderer) 
 func printTags(w io.Writer, tags []string, r *lipgloss.Renderer) {
 	if len(tags) > 0 {
 		fmt.Fprintf(w, "%s %s\n", formatLabel("Tags:", r), strings.Join(tags, ", "))
+	}
+}
+
+func printPRs(w io.Writer, prs []string, r *lipgloss.Renderer) {
+	if len(prs) > 0 {
+		fmt.Fprintf(w, "%s %s\n", formatLabel("PRs:", r), strings.Join(prs, ", "))
 	}
 }
 
@@ -527,6 +534,7 @@ type getOutput struct {
 	Effort       string                  `json:"effort,omitempty" yaml:"effort,omitempty"`
 	Type         string                  `json:"type,omitempty" yaml:"type,omitempty"`
 	Tags         []string                `json:"tags" yaml:"tags"`
+	PRs          []string                `json:"pr,omitempty" yaml:"pr,omitempty"`
 	Parent       *depEntry               `json:"parent,omitempty" yaml:"parent,omitempty"`
 	Created      string                  `json:"created,omitempty" yaml:"created,omitempty"`
 	FilePath     string                  `json:"file_path" yaml:"file_path"`
@@ -555,6 +563,7 @@ func buildGetOutput(task *model.Task, deps dependencyInfo, ctxFiles []taskcontex
 		Effort:   string(task.Effort),
 		Type:     string(task.Type),
 		Tags:     task.Tags,
+		PRs:      task.PRs,
 		Parent:   deps.Parent,
 		Created:  created,
 		FilePath: task.FilePath,

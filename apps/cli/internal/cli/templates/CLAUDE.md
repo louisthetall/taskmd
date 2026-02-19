@@ -42,7 +42,7 @@ What this task accomplishes.
 |-------|----------|--------|
 | `id` | Yes | Zero-padded string (`"001"`, `"042"`) |
 | `title` | Yes | Brief, action-oriented description |
-| `status` | Yes | `pending`, `in-progress`, `completed`, `blocked` |
+| `status` | Yes | `pending`, `in-progress`, `completed`, `in-review`, `blocked` |
 | `priority` | No | `low`, `medium`, `high`, `critical` |
 | `effort` | No | `small`, `medium`, `large` |
 | `dependencies` | No | Array of task ID strings |
@@ -95,11 +95,18 @@ taskmd list --dir ./tasks
 
 ### Completing a Task
 
+**Solo workflow** (default):
 1. Verify all acceptance criteria are met
 2. Ensure all subtasks are checked off
 3. Add a final worklog entry summarizing what was done
 4. Update status to `completed`
 5. Run `taskmd validate` to confirm no issues
+
+**PR-review workflow** (when `workflow: pr-review` is set in `.taskmd.yaml`):
+1. Verify all acceptance criteria are met
+2. Open a pull request with your changes
+3. Update status to `in-review` and add the PR: `taskmd set <id> --status in-review --add-pr <url>`
+4. Stop working — the task completes when the PR is merged
 
 ### Task Dependencies
 
@@ -110,14 +117,15 @@ taskmd list --dir ./tasks
 ## Status Lifecycle
 
 ```
-pending --> in-progress --> completed
-  |              |
-  v              v
-blocked <--------
+pending --> in-progress --> in-review --> completed
+  |              |              |
+  v              v              v
+blocked <--------+--------------+
 ```
 
 - `pending` - Not started
 - `in-progress` - Actively being worked on
+- `in-review` - Submitted for review (PR open)
 - `completed` - All acceptance criteria met
 - `blocked` - Cannot proceed (explain in task body)
 

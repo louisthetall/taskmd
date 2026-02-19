@@ -1030,6 +1030,27 @@ func TestValidateConfig_ScopeDescriptionInErrorMessage(t *testing.T) {
 		}
 	})
 
+	t.Run("empty paths with description", func(t *testing.T) {
+		config := &ConfigData{
+			Scopes: map[string]ScopeConfig{
+				"cli/graph": {Description: "Graph visualization", Paths: []string{}},
+			},
+			TopKeys:    []string{"scopes"},
+			ConfigPath: ".taskmd.yaml",
+		}
+
+		result := v.ValidateConfig(config)
+
+		if result.Errors != 1 {
+			t.Fatalf("Expected 1 error, got %d", result.Errors)
+		}
+
+		want := "scope 'cli/graph' (Graph visualization) has empty paths array"
+		if result.Issues[0].Message != want {
+			t.Errorf("got message %q, want %q", result.Issues[0].Message, want)
+		}
+	})
+
 	t.Run("missing paths without description unchanged", func(t *testing.T) {
 		config := &ConfigData{
 			Scopes: map[string]ScopeConfig{
@@ -1050,4 +1071,89 @@ func TestValidateConfig_ScopeDescriptionInErrorMessage(t *testing.T) {
 			t.Errorf("got message %q, want %q", result.Issues[0].Message, want)
 		}
 	})
+}
+
+func TestValidate_InReviewStatus(t *testing.T) {
+	tasks := []*model.Task{
+		{
+			ID:     "001",
+			Title:  "Task in review",
+			Status: model.StatusInReview,
+		},
+	}
+
+	v := NewValidator(false)
+	result := v.Validate(tasks)
+
+	if result.Errors != 0 {
+		t.Errorf("Expected 0 errors for in-review status, got %d", result.Errors)
+		for _, issue := range result.Issues {
+			t.Logf("  Issue: %s", issue.Message)
+		}
+	}
+}
+
+func TestValidateConfig_WorkflowValid(t *testing.T) {
+	for _, wf := range []string{"solo", "pr-review"} {
+		t.Run(wf, func(t *testing.T) {
+			v := NewValidator(false)
+			config := &ConfigData{
+				Workflow:   wf,
+				TopKeys:    []string{"workflow"},
+				ConfigPath: ".taskmd.yaml",
+			}
+
+			result := v.ValidateConfig(config)
+
+			if result.Errors != 0 {
+				t.Errorf("Expected no errors for workflow=%q, got %d", wf, result.Errors)
+				for _, issue := range result.Issues {
+					t.Logf("  Issue: [%s] %s", issue.Level, issue.Message)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateConfig_WorkflowInvalid(t *testing.T) {
+	v := NewValidator(false)
+	config := &ConfigData{
+		Workflow:   "invalid",
+		TopKeys:    []string{"workflow"},
+		ConfigPath: ".taskmd.yaml",
+	}
+
+	result := v.ValidateConfig(config)
+
+	if result.Errors != 1 {
+		t.Errorf("Expected 1 error for invalid workflow, got %d", result.Errors)
+	}
+
+	found := false
+	for _, issue := range result.Issues {
+		if issue.Level == LevelError && issue.Message == "invalid workflow value: 'invalid' (valid values: solo, pr-review)" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("Expected invalid workflow error")
+	}
+}
+
+func TestValidateConfig_WorkflowIsKnownKey(t *testing.T) {
+	v := NewValidator(false)
+	config := &ConfigData{
+		TopKeys:    []string{"workflow"},
+		ConfigPath: ".taskmd.yaml",
+	}
+
+	result := v.ValidateConfig(config)
+
+	// "workflow" should be recognized, no unknown key warning
+	if result.Warnings != 0 {
+		t.Errorf("Expected no warnings for 'workflow' config key, got %d", result.Warnings)
+		for _, issue := range result.Issues {
+			t.Logf("  Issue: [%s] %s", issue.Level, issue.Message)
+		}
+	}
 }

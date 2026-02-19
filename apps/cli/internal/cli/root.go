@@ -140,6 +140,7 @@ func GetGlobalFlags() GlobalFlags {
 		NoColor:    viper.GetBool("no-color") || noColor,
 		TaskDir:    dirVal,
 		IgnoreDirs: viper.GetStringSlice("ignore"),
+		Workflow:   resolveWorkflow(),
 	}
 }
 
@@ -183,6 +184,16 @@ type GlobalFlags struct {
 	NoColor    bool
 	TaskDir    string
 	IgnoreDirs []string
+	Workflow   string
+}
+
+// resolveWorkflow returns the configured workflow mode ("solo" or "pr-review").
+// Defaults to "solo" when not set.
+func resolveWorkflow() string {
+	if w := viper.GetString("workflow"); w != "" {
+		return w
+	}
+	return "solo"
 }
 
 // ResolveScanDir returns the scan directory from positional arg or --task-dir flag.

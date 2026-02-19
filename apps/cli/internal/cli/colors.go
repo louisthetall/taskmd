@@ -51,6 +51,8 @@ func getStatusColor(status string, r *lipgloss.Renderer) lipgloss.Style {
 		return r.NewStyle().Foreground(lipgloss.Color("2")) // Green
 	case "in-progress":
 		return r.NewStyle().Foreground(lipgloss.Color("3")) // Yellow
+	case "in-review":
+		return r.NewStyle().Foreground(lipgloss.Color("5")) // Magenta
 	case "blocked":
 		return r.NewStyle().Foreground(lipgloss.Color("1")) // Red
 	default: // pending or other

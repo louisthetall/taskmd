@@ -25,9 +25,12 @@ The user's query is in `$ARGUMENTS` (a task ID like `077` or a task name/keyword
    - Check off subtasks (`- [x]`) in the task file as you complete them
    - Append worklog entries when you make key decisions, hit blockers, or complete significant subtasks
 6. **Write a final worklog entry** summarizing what was done, decisions made, and any open items
-7. **Mark the task as completed** when done: Run `taskmd set <ID> --status completed --verify`
-   - The `--verify` flag will run any verification checks defined in the task before applying the status change
-   - If verification fails, fix the issues and try again
+7. **Mark the task as done**:
+   - Check `.taskmd.yaml` for `workflow: pr-review` -- if set, use the PR-review workflow below
+   - **Solo workflow** (default): Run `taskmd set <ID> --status completed --verify`
+     - The `--verify` flag will run any verification checks defined in the task before applying the status change
+     - If verification fails, fix the issues and try again
+   - **PR-review workflow**: Open a PR, then run `taskmd set <ID> --status in-review --add-pr <PR-URL>` and stop
 
 ## Worklog Format
 

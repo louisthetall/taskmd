@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/viper"
+
 	"github.com/driangle/taskmd/apps/cli/internal/taskfile"
 )
 
@@ -117,7 +119,17 @@ func resetSetFlags() {
 	setVerify = false
 	setAddTags = nil
 	setRemoveTags = nil
+	setAddPRs = nil
+	setRemovePRs = nil
 	taskDir = "."
+
+	// Reset cobra flag Changed state to avoid test interference
+	if f := setCmd.Flags().Lookup("status"); f != nil {
+		f.Changed = false
+	}
+	if f := setCmd.Flags().Lookup("parent"); f != nil {
+		f.Changed = false
+	}
 }
 
 func captureSetOutput(t *testing.T) (string, error) {
@@ -331,7 +343,7 @@ func TestSet_MultipleFields(t *testing.T) {
 }
 
 func TestSet_AllValidStatuses(t *testing.T) {
-	statuses := []string{"pending", "in-progress", "completed", "blocked", "cancelled"}
+	statuses := []string{"pending", "in-progress", "completed", "in-review", "blocked", "cancelled"}
 	for _, status := range statuses {
 		t.Run(status, func(t *testing.T) {
 			tmpDir := createSetTestFiles(t)
@@ -1205,6 +1217,159 @@ func TestSet_NeitherPositionalNorFlag(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "task ID required") {
 		t.Errorf("Expected 'task ID required' error, got: %v", err)
+	}
+}
+
+func TestSet_InReviewStatus(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "001"
+	setStatus = "in-review"
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "status: pending -> in-review") {
+		t.Errorf("Expected status change to in-review, got: %s", output)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "001-setup.md"))
+	if !strings.Contains(string(content), "status: in-review") {
+		t.Error("Expected file to contain status: in-review")
+	}
+}
+
+func TestSet_AddPR(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "001"
+	setAddPRs = []string{"https://github.com/example/repo/pull/1"}
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "pr:") {
+		t.Errorf("Expected PR change in output, got: %s", output)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "001-setup.md"))
+	if !strings.Contains(string(content), "https://github.com/example/repo/pull/1") {
+		t.Errorf("Expected file to contain PR URL, got:\n%s", string(content))
+	}
+}
+
+func TestSet_RemovePR(t *testing.T) {
+	tmpDir := t.TempDir()
+	content := `---
+id: "040"
+title: "Task with PR"
+status: in-review
+pr: ["https://github.com/example/repo/pull/1", "https://github.com/example/repo/pull/2"]
+created: 2026-02-08
+---
+
+# Task with PR
+`
+	path := filepath.Join(tmpDir, "040-pr.md")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "040"
+	setRemovePRs = []string{"https://github.com/example/repo/pull/1"}
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "pr:") {
+		t.Errorf("Expected PR change in output, got: %s", output)
+	}
+
+	updated, _ := os.ReadFile(path)
+	fileStr := string(updated)
+	if strings.Contains(fileStr, "pull/1") {
+		t.Error("Expected PR 1 to be removed")
+	}
+	if !strings.Contains(fileStr, "pull/2") {
+		t.Error("Expected PR 2 to be preserved")
+	}
+}
+
+func TestSet_AddAndRemovePR(t *testing.T) {
+	tmpDir := t.TempDir()
+	content := `---
+id: "041"
+title: "Task with PR"
+status: in-review
+pr: ["https://github.com/example/repo/pull/1"]
+created: 2026-02-08
+---
+
+# Task with PR
+`
+	path := filepath.Join(tmpDir, "041-pr.md")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "041"
+	setAddPRs = []string{"https://github.com/example/repo/pull/2"}
+	setRemovePRs = []string{"https://github.com/example/repo/pull/1"}
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "pr:") {
+		t.Errorf("Expected PR change in output, got: %s", output)
+	}
+
+	updated, _ := os.ReadFile(path)
+	fileStr := string(updated)
+	if strings.Contains(fileStr, "pull/1") {
+		t.Error("Expected PR 1 to be removed")
+	}
+	if !strings.Contains(fileStr, "pull/2") {
+		t.Error("Expected PR 2 to be added")
+	}
+}
+
+func TestSet_DoneFlag_PRReviewWorkflow(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setDone = true
+
+	// Simulate pr-review workflow via viper
+	viper.Set("workflow", "pr-review")
+	defer viper.Set("workflow", "")
+
+	// Use positional arg to avoid flag state leakage
+	output, err := captureSetOutputWithArgs(t, []string{"001"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "status: pending -> in-review") {
+		t.Errorf("Expected --done to set status to in-review in pr-review workflow, got: %s", output)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "001-setup.md"))
+	if !strings.Contains(string(content), "status: in-review") {
+		t.Error("Expected file to contain in-review status")
 	}
 }
 

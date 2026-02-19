@@ -16,13 +16,15 @@ import (
 type SetInput struct {
 	TaskDir  string   `json:"task_dir,omitempty" jsonschema:"task directory to scan, defaults to current directory"`
 	TaskID   string   `json:"task_id" jsonschema:"required,task ID to update"`
-	Status   string   `json:"status,omitempty" jsonschema:"new status: pending, in-progress, completed, blocked, cancelled"`
+	Status   string   `json:"status,omitempty" jsonschema:"new status: pending, in-progress, completed, in-review, blocked, cancelled"`
 	Priority string   `json:"priority,omitempty" jsonschema:"new priority: low, medium, high, critical"`
 	Effort   string   `json:"effort,omitempty" jsonschema:"new effort: small, medium, large"`
 	Owner    string   `json:"owner,omitempty" jsonschema:"new owner/assignee"`
 	Tags     []string `json:"tags,omitempty" jsonschema:"replace all tags with this list"`
 	AddTags  []string `json:"add_tags,omitempty" jsonschema:"tags to add to existing tags"`
 	RemTags  []string `json:"rem_tags,omitempty" jsonschema:"tags to remove from existing tags"`
+	AddPRs   []string `json:"add_prs,omitempty" jsonschema:"PR URLs to add"`
+	RemPRs   []string `json:"rem_prs,omitempty" jsonschema:"PR URLs to remove"`
 }
 
 func registerSetTool(server *gomcp.Server) {
@@ -97,6 +99,8 @@ func buildUpdateRequest(input SetInput) taskfile.UpdateRequest {
 	}
 	req.AddTags = input.AddTags
 	req.RemTags = input.RemTags
+	req.AddPRs = input.AddPRs
+	req.RemPRs = input.RemPRs
 	return req
 }
 
@@ -107,7 +111,9 @@ func isEmptyRequest(req taskfile.UpdateRequest) bool {
 		req.Owner == nil &&
 		req.Tags == nil &&
 		len(req.AddTags) == 0 &&
-		len(req.RemTags) == 0
+		len(req.RemTags) == 0 &&
+		len(req.AddPRs) == 0 &&
+		len(req.RemPRs) == 0
 }
 
 type setOutput struct {
@@ -138,6 +144,12 @@ func buildSetOutput(input SetInput, filePath string) setOutput {
 	}
 	if len(input.RemTags) > 0 {
 		updated["rem_tags"] = strings.Join(input.RemTags, ", ")
+	}
+	if len(input.AddPRs) > 0 {
+		updated["add_prs"] = strings.Join(input.AddPRs, ", ")
+	}
+	if len(input.RemPRs) > 0 {
+		updated["rem_prs"] = strings.Join(input.RemPRs, ", ")
 	}
 	return setOutput{
 		TaskID:   input.TaskID,

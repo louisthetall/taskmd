@@ -25,7 +25,7 @@ Description and subtasks go here.
 |-------|------|----------|-----------------|
 | `id` | string | **Yes** | Unique identifier (e.g., `"001"`, `"42"`, `"cli-049"`) |
 | `title` | string | **Yes** | Brief, descriptive text |
-| `status` | enum | Recommended | `pending`, `in-progress`, `completed`, `blocked`, `cancelled` |
+| `status` | enum | Recommended | `pending`, `in-progress`, `completed`, `in-review`, `blocked`, `cancelled` |
 | `priority` | enum | No | `low`, `medium`, `high`, `critical` |
 | `effort` | enum | No | `small`, `medium`, `large` |
 | `type` | enum | No | `feature`, `bug`, `improvement`, `chore`, `docs` |
@@ -38,6 +38,7 @@ Description and subtasks go here.
 | `parent` | string | No | Single task ID (e.g., `"045"`) |
 | `created` | date | No | `YYYY-MM-DD` |
 | `verify` | array | No | List of typed verification checks (see below) |
+| `pr` | array | No | List of pull request URLs |
 | `external_id` | string | No | Identifier from an external system (e.g., `"PROJ-123"`, `"42"`) |
 
 ## Frontmatter Schema
@@ -58,16 +59,17 @@ Description and subtasks go here.
 |--------|---------|
 | `pending` | Not started (initial state) |
 | `in-progress` | Currently being worked on |
+| `in-review` | Submitted for review (PR open) |
 | `completed` | Finished and verified |
 | `blocked` | Cannot proceed due to a blocker |
 | `cancelled` | Will not be completed |
 
 ```
-pending → in-progress → completed
-   ↓            ↓            ↓
-   ↓         blocked        ↓
-   ↓            ↓           ↓
-   └──→ cancelled ←─────────┘
+pending → in-progress → in-review → completed
+   ↓            ↓            ↓            ↓
+   ↓         blocked         ↓            ↓
+   ↓            ↓            ↓            ↓
+   └──→ cancelled ←──────────┴────────────┘
 ```
 
 **`priority`** — Importance level:
@@ -188,11 +190,33 @@ verify:
     check: "Page size defaults to 20 when not specified"
 ```
 
+**`pr`** — List of pull request URLs associated with this task. Used in `pr-review` workflow mode to track open PRs. Managed via `taskmd set --add-pr <url>` and `taskmd set --remove-pr <url>`.
+
+```yaml
+pr: ["https://github.com/owner/repo/pull/42"]
+```
+
 **`external_id`** — Identifier from an external system (e.g., a GitHub issue number or Jira issue key). Used to trace synced tasks back to their source. Written by the sync engine; not typically set manually.
 
 ```yaml
 external_id: "PROJ-123"
 ```
+
+## Workflow Modes
+
+The `workflow` key in `.taskmd.yaml` controls how tasks transition to completion.
+
+| Mode | Behavior |
+|------|----------|
+| `solo` (default) | Agent sets task status directly to `completed` |
+| `pr-review` | Agent opens a PR, sets status to `in-review` with `--add-pr`, and stops. Task moves to `completed` on PR merge (via CI or manually). |
+
+```yaml
+# .taskmd.yaml
+workflow: pr-review
+```
+
+When using `--done` in `pr-review` mode, the CLI sets status to `in-review` instead of `completed`.
 
 ## File Organization
 

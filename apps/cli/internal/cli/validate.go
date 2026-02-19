@@ -227,6 +227,7 @@ func loadConfigForValidation() *validator.ConfigData {
 	config := &validator.ConfigData{
 		TopKeys:    topKeys,
 		ConfigPath: configPath,
+		Workflow:   viper.GetString("workflow"),
 	}
 
 	raw := viper.Get("scopes")

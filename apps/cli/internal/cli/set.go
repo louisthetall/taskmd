@@ -28,6 +28,8 @@ var (
 	setVerify     bool
 	setAddTags    []string
 	setRemoveTags []string
+	setAddPRs     []string
+	setRemovePRs  []string
 )
 
 var setCmd = &cobra.Command{
@@ -65,7 +67,7 @@ func init() {
 
 	for _, cmd := range []*cobra.Command{setCmd, updateCmd} {
 		cmd.Flags().StringVar(&setTaskID, "task-id", "", "task ID to update (required)")
-		cmd.Flags().StringVar(&setStatus, "status", "", "new status (pending, in-progress, completed, blocked, cancelled)")
+		cmd.Flags().StringVar(&setStatus, "status", "", "new status (pending, in-progress, completed, in-review, blocked, cancelled)")
 		cmd.Flags().StringVar(&setPriority, "priority", "", "new priority (low, medium, high, critical)")
 		cmd.Flags().StringVar(&setEffort, "effort", "", "new effort (small, medium, large)")
 		cmd.Flags().StringVar(&setType, "type", "", "work type (feature, bug, improvement, chore, docs)")
@@ -76,6 +78,8 @@ func init() {
 		cmd.Flags().BoolVar(&setVerify, "verify", false, "run verification checks before completing a task")
 		cmd.Flags().StringArrayVar(&setAddTags, "add-tag", nil, "add a tag (repeatable)")
 		cmd.Flags().StringArrayVar(&setRemoveTags, "remove-tag", nil, "remove a tag (repeatable)")
+		cmd.Flags().StringArrayVar(&setAddPRs, "add-pr", nil, "add a PR URL (repeatable)")
+		cmd.Flags().StringArrayVar(&setRemovePRs, "remove-pr", nil, "remove a PR URL (repeatable)")
 	}
 }
 
@@ -161,7 +165,12 @@ func buildSetRequest(cmd *cobra.Command) (taskfile.UpdateRequest, error) {
 	}
 
 	if setDone {
-		setStatus = string(model.StatusCompleted)
+		flags := GetGlobalFlags()
+		if flags.Workflow == "pr-review" {
+			setStatus = string(model.StatusInReview)
+		} else {
+			setStatus = string(model.StatusCompleted)
+		}
 	}
 
 	var req taskfile.UpdateRequest
@@ -182,13 +191,19 @@ func buildSetRequest(cmd *cobra.Command) (taskfile.UpdateRequest, error) {
 	if len(setRemoveTags) > 0 {
 		req.RemTags = setRemoveTags
 	}
+	if len(setAddPRs) > 0 {
+		req.AddPRs = setAddPRs
+	}
+	if len(setRemovePRs) > 0 {
+		req.RemPRs = setRemovePRs
+	}
 
 	if err := validateSetEnums(req); err != nil {
 		return taskfile.UpdateRequest{}, err
 	}
 
 	if !hasUpdates(req) {
-		return taskfile.UpdateRequest{}, fmt.Errorf("nothing to update: provide --status, --priority, --effort, --type, --owner, --parent, --done, --add-tag, or --remove-tag")
+		return taskfile.UpdateRequest{}, fmt.Errorf("nothing to update: provide --status, --priority, --effort, --type, --owner, --parent, --done, --add-tag, --remove-tag, --add-pr, or --remove-pr")
 	}
 
 	return req, nil
@@ -198,7 +213,8 @@ func hasUpdates(req taskfile.UpdateRequest) bool {
 	hasScalar := req.Status != nil || req.Priority != nil || req.Effort != nil ||
 		req.Type != nil || req.Owner != nil || req.Parent != nil
 	hasTags := len(req.AddTags) > 0 || len(req.RemTags) > 0
-	return hasScalar || hasTags
+	hasPRs := len(req.AddPRs) > 0 || len(req.RemPRs) > 0
+	return hasScalar || hasTags || hasPRs
 }
 
 type changeEntry struct {
@@ -244,6 +260,15 @@ func buildChangeLog(task *model.Task, req taskfile.UpdateRequest) []changeEntry 
 			field:    "tags",
 			oldValue: "[" + strings.Join(task.Tags, ", ") + "]",
 			newValue: "[" + strings.Join(newTags, ", ") + "]",
+		})
+	}
+
+	if len(req.AddPRs) > 0 || len(req.RemPRs) > 0 {
+		newPRs := taskfile.ComputeNewTags(task.PRs, req.AddPRs, req.RemPRs)
+		changes = append(changes, changeEntry{
+			field:    "pr",
+			oldValue: "[" + strings.Join(task.PRs, ", ") + "]",
+			newValue: "[" + strings.Join(newPRs, ", ") + "]",
 		})
 	}
 

@@ -16,7 +16,9 @@ The user's query is in `$ARGUMENTS` (a task ID like `077`).
    - Check `.taskmd.yaml` for `worklogs: false` -- if set, skip this step
    - Otherwise, find the worklog file at `tasks/<group>/.worklogs/<ID>.md` (or `tasks/.worklogs/<ID>.md`)
    - If a worklog exists, append a timestamped completion summary
-2. Run `taskmd set $ARGUMENTS --status completed --verify`
+2. **Check the workflow mode** in `.taskmd.yaml`:
+   - If `workflow: pr-review` is set, use `taskmd set $ARGUMENTS --status in-review` instead of `completed` (note: in pr-review mode, tasks are completed by merging the PR, not by setting status directly)
+   - Otherwise (default `solo` mode), run `taskmd set $ARGUMENTS --status completed --verify`
    - The `--verify` flag runs any verification checks defined in the task before applying the status change
    - If verification fails, report the failures to the user
 3. Confirm the status change to the user

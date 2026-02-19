@@ -8,7 +8,7 @@ import (
 )
 
 // validStatusValues lists all valid task status values.
-var validStatusValues = []string{"pending", "in-progress", "completed", "blocked", "cancelled"}
+var validStatusValues = []string{"pending", "in-progress", "completed", "in-review", "blocked", "cancelled"}
 
 // validPriorityValues lists all valid priority values.
 var validPriorityValues = []string{"low", "medium", "high", "critical"}

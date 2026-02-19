@@ -1,0 +1,33 @@
+# Example workflow: auto-complete taskmd tasks when PRs are merged.
+#
+# Copy this file to your project's .github/workflows/ directory and adjust as needed.
+# Prerequisites:
+#   - Go must be available in the runner (setup-go action)
+#   - The repo must use taskmd for task management
+#   - PR body or branch name must contain a task reference (e.g., "task: 042")
+
+name: Complete task on PR merge
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  complete-task:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - uses: ./.github/actions/taskmd-complete
+        with:
+          task-dir: './tasks'
+          # Matches "task: 042" or "task:042" in PR body/branch name
+          task-id-pattern: 'task[:\s]+(\S+)'

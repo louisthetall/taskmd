@@ -11,6 +11,7 @@ func TestStatus_IsResolved(t *testing.T) {
 		{StatusCancelled, true},
 		{StatusPending, false},
 		{StatusInProgress, false},
+		{StatusInReview, false},
 		{StatusBlocked, false},
 		{Status("unknown"), false},
 	}

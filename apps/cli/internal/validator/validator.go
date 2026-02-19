@@ -63,6 +63,7 @@ type ConfigData struct {
 	Scopes     map[string]ScopeConfig
 	TopKeys    []string
 	ConfigPath string
+	Workflow   string
 }
 
 // ScopeConfig holds the configuration for a single scope entry.
@@ -137,6 +138,7 @@ func (v *Validator) checkInvalidFieldValues(tasks []*model.Task, result *Validat
 		model.StatusPending:    true,
 		model.StatusInProgress: true,
 		model.StatusCompleted:  true,
+		model.StatusInReview:   true,
 		model.StatusBlocked:    true,
 		model.StatusCancelled:  true,
 		"":                     true, // Empty is allowed (will default)
@@ -169,7 +171,7 @@ func (v *Validator) checkInvalidFieldValues(tasks []*model.Task, result *Validat
 	for _, task := range tasks {
 		if !validStatuses[task.Status] {
 			result.AddIssue(LevelError, task.ID, task.FilePath,
-				fmt.Sprintf("invalid status: '%s' (valid values: pending, in-progress, completed, blocked, cancelled)", task.Status))
+				fmt.Sprintf("invalid status: '%s' (valid values: pending, in-progress, completed, in-review, blocked, cancelled)", task.Status))
 		}
 
 		if !validPriorities[task.Priority] {
@@ -349,6 +351,7 @@ func (v *Validator) ValidateConfig(config *ConfigData) *ValidationResult {
 
 	v.checkConfigScopes(config, result)
 	v.checkUnknownConfigKeys(config, result)
+	v.checkWorkflowValue(config, result)
 
 	return result
 }
@@ -382,6 +385,7 @@ var knownConfigKeys = map[string]bool{
 	"scopes":   true,
 	"sync":     true,
 	"ignore":   true,
+	"workflow": true,
 }
 
 // checkUnknownConfigKeys warns about unrecognized top-level config keys.
@@ -391,6 +395,18 @@ func (v *Validator) checkUnknownConfigKeys(config *ConfigData, result *Validatio
 			result.AddIssue(LevelWarning, "", config.ConfigPath,
 				fmt.Sprintf("unknown config key: '%s'", key))
 		}
+	}
+}
+
+// checkWorkflowValue validates the workflow config value.
+func (v *Validator) checkWorkflowValue(config *ConfigData, result *ValidationResult) {
+	if config.Workflow == "" {
+		return
+	}
+	valid := map[string]bool{"solo": true, "pr-review": true}
+	if !valid[config.Workflow] {
+		result.AddIssue(LevelError, "", config.ConfigPath,
+			fmt.Sprintf("invalid workflow value: '%s' (valid values: solo, pr-review)", config.Workflow))
 	}
 }
 

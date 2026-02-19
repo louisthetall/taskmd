@@ -12,6 +12,7 @@ const (
 	StatusPending    Status = "pending"
 	StatusInProgress Status = "in-progress"
 	StatusCompleted  Status = "completed"
+	StatusInReview   Status = "in-review"
 	StatusBlocked    Status = "blocked"
 	StatusCancelled  Status = "cancelled"
 )
@@ -102,6 +103,7 @@ type Task struct {
 	Created      time.Time    `yaml:"created" json:"created"`
 	Verify       []VerifyStep `yaml:"verify,omitempty" json:"verify,omitempty"`
 	ExternalID   string       `yaml:"external_id,omitempty" json:"external_id,omitempty"`
+	PRs          []string     `yaml:"pr,omitempty" json:"pr,omitempty"`
 
 	// Content fields
 	Body     string `json:"-"`

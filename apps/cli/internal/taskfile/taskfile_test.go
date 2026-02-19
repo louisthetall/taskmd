@@ -363,6 +363,79 @@ func TestComputeNewTags(t *testing.T) {
 	}
 }
 
+func TestUpdateTaskFile_AddPR(t *testing.T) {
+	path := createTestFile(t, noTagsTask)
+
+	err := UpdateTaskFile(path, UpdateRequest{
+		AddPRs: []string{"https://github.com/example/repo/pull/1"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if !strings.Contains(s, `pr: ["https://github.com/example/repo/pull/1"]`) {
+		t.Errorf("expected PR to be added, got:\n%s", s)
+	}
+}
+
+func TestUpdateTaskFile_RemovePR(t *testing.T) {
+	task := `---
+id: "010"
+title: "Task with PRs"
+status: in-review
+pr: ["https://github.com/example/repo/pull/1", "https://github.com/example/repo/pull/2"]
+created: 2026-02-08
+---
+
+# Task with PRs
+`
+	path := createTestFile(t, task)
+
+	err := UpdateTaskFile(path, UpdateRequest{
+		RemPRs: []string{"https://github.com/example/repo/pull/1"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if !strings.Contains(s, `pr: ["https://github.com/example/repo/pull/2"]`) {
+		t.Errorf("expected PR 1 removed and PR 2 preserved, got:\n%s", s)
+	}
+	if strings.Contains(s, "pull/1") {
+		t.Error("expected PR 1 to be removed")
+	}
+}
+
+func TestUpdateTaskFile_PRPreservesOtherFields(t *testing.T) {
+	path := createTestFile(t, inlineTagsTask)
+
+	err := UpdateTaskFile(path, UpdateRequest{
+		AddPRs: []string{"https://github.com/example/repo/pull/1"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if !strings.Contains(s, `pr: ["https://github.com/example/repo/pull/1"]`) {
+		t.Errorf("expected PR added, got:\n%s", s)
+	}
+	if !strings.Contains(s, "status: pending") {
+		t.Error("expected status preserved")
+	}
+	if !strings.Contains(s, `tags: ["infra", "setup"]`) {
+		t.Error("expected tags preserved")
+	}
+	if !strings.Contains(s, "# Setup project") {
+		t.Error("expected body preserved")
+	}
+}
+
 func TestFindFrontmatterBounds(t *testing.T) {
 	tests := []struct {
 		name      string
