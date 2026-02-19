@@ -18,7 +18,7 @@ func main() {
 }
 `
 	syntax := LookupSyntax(".go")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "main.go", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "main.go", syntax, DefaultMarkers, false)
 
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
@@ -36,7 +36,7 @@ func TestParseLines_GoBlockComment(t *testing.T) {
 func handle() {}
 `
 	syntax := LookupSyntax(".go")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "main.go", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "main.go", syntax, DefaultMarkers, false)
 
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
@@ -49,7 +49,7 @@ func TestParseLines_GoInlineBlockComment(t *testing.T) {
 	src := `x := 1 /* TODO: remove this */ + 2
 `
 	syntax := LookupSyntax(".go")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "main.go", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "main.go", syntax, DefaultMarkers, false)
 
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
@@ -65,7 +65,7 @@ def foo():
     pass
 `
 	syntax := LookupSyntax(".py")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "app.py", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "app.py", syntax, DefaultMarkers, false)
 
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
@@ -83,7 +83,7 @@ def foo():
     pass
 `
 	syntax := LookupSyntax(".py")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "app.py", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "app.py", syntax, DefaultMarkers, false)
 
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
@@ -102,7 +102,7 @@ func TestParseLines_HTML(t *testing.T) {
 </html>
 `
 	syntax := LookupSyntax(".html")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "index.html", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "index.html", syntax, DefaultMarkers, false)
 
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
@@ -120,7 +120,7 @@ func TestParseLines_MultilineBlockContinuation(t *testing.T) {
  */
 `
 	syntax := LookupSyntax(".go")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "sort.go", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "sort.go", syntax, DefaultMarkers, false)
 
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
@@ -147,7 +147,7 @@ func TestParseLines_MultipleMarkersInFile(t *testing.T) {
 // OPTIMIZE: seventh thing
 `
 	syntax := LookupSyntax(".go")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "all.go", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "all.go", syntax, DefaultMarkers, false)
 
 	if len(items) != 7 {
 		t.Fatalf("expected 7 items, got %d", len(items))
@@ -165,7 +165,7 @@ func TestParseLines_MarkerWithColon(t *testing.T) {
 	src := `// TODO: implement this
 `
 	syntax := LookupSyntax(".go")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "t.go", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "t.go", syntax, DefaultMarkers, false)
 
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
@@ -178,7 +178,7 @@ func TestParseLines_MarkerWithParens(t *testing.T) {
 	src := `// TODO(jsmith): implement auth
 `
 	syntax := LookupSyntax(".go")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "t.go", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "t.go", syntax, DefaultMarkers, false)
 
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
@@ -193,7 +193,7 @@ func TestParseLines_MarkerFilter(t *testing.T) {
 // HACK: hack this
 `
 	syntax := LookupSyntax(".go")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "t.go", syntax, []string{"TODO", "FIXME"})
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "t.go", syntax, []string{"TODO", "FIXME"}, false)
 
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items (filtered), got %d", len(items))
@@ -208,7 +208,7 @@ func TestParseLines_NoMarkers(t *testing.T) {
 func foo() {}
 `
 	syntax := LookupSyntax(".go")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "t.go", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "t.go", syntax, DefaultMarkers, false)
 
 	if len(items) != 0 {
 		t.Fatalf("expected 0 items, got %d", len(items))
@@ -217,7 +217,7 @@ func foo() {}
 
 func TestParseLines_EmptyFile(t *testing.T) {
 	syntax := LookupSyntax(".go")
-	items := parseLines(bufio.NewScanner(strings.NewReader("")), "t.go", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader("")), "t.go", syntax, DefaultMarkers, false)
 
 	if len(items) != 0 {
 		t.Fatalf("expected 0 items, got %d", len(items))
@@ -231,7 +231,7 @@ echo "hello"
 # NOTE: this is intentional
 `
 	syntax := LookupSyntax(".sh")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "run.sh", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "run.sh", syntax, DefaultMarkers, false)
 
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
@@ -246,7 +246,7 @@ func TestParseLines_CSSBlockComment(t *testing.T) {
 .container { width: 100%; }
 `
 	syntax := LookupSyntax(".css")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "style.css", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "style.css", syntax, DefaultMarkers, false)
 
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
@@ -260,7 +260,7 @@ func TestParseLines_YAMLComment(t *testing.T) {
 name: test
 `
 	syntax := LookupSyntax(".yaml")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "config.yaml", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "config.yaml", syntax, DefaultMarkers, false)
 
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
@@ -277,7 +277,7 @@ fn main() {
 }
 `
 	syntax := LookupSyntax(".rs")
-	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "main.rs", syntax, DefaultMarkers)
+	items := parseLines(bufio.NewScanner(strings.NewReader(src)), "main.rs", syntax, DefaultMarkers, false)
 
 	if len(items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(items))
@@ -303,7 +303,7 @@ func bar() {}
 	}
 
 	syntax := LookupSyntax(".go")
-	items, err := ParseFile(path, syntax, DefaultMarkers)
+	items, err := ParseFile(path, syntax, DefaultMarkers, false)
 	if err != nil {
 		t.Fatal(err)
 	}

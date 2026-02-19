@@ -19,6 +19,8 @@ func resetTodosFlags() {
 	todosInclude = nil
 	todosExclude = nil
 	todosFormat = "table"
+	todosRawText = false
+	todosRich = false
 	noColor = true
 }
 
@@ -66,7 +68,7 @@ func captureTodosTableOutput(t *testing.T, items []todos.TodoItem) string {
 	os.Stdout = w
 	os.Stderr = wErr
 
-	err := outputTodosTable(items)
+	err := outputTodosTable(items, defaultColumns, false)
 	if err != nil {
 		w.Close()
 		wErr.Close()
@@ -104,8 +106,11 @@ func TestTodosList_TableOutput(t *testing.T) {
 	if !strings.Contains(output, "FILE") || !strings.Contains(output, "LINE") {
 		t.Error("expected header with FILE and LINE")
 	}
-	if !strings.Contains(output, "MARKER") || !strings.Contains(output, "TEXT") {
-		t.Error("expected header with MARKER and TEXT")
+	if !strings.Contains(output, "TAG") || !strings.Contains(output, "TEXT") {
+		t.Error("expected header with TAG and TEXT")
+	}
+	if !strings.Contains(output, "ID") {
+		t.Error("expected header with ID")
 	}
 	if !strings.Contains(output, "TODO") {
 		t.Error("expected TODO marker in output")
@@ -199,8 +204,8 @@ func TestTodosList_YAMLOutput(t *testing.T) {
 	if !strings.Contains(output, "file:") || !strings.Contains(output, "line:") {
 		t.Error("expected YAML with file and line fields")
 	}
-	if !strings.Contains(output, "marker:") || !strings.Contains(output, "text:") {
-		t.Error("expected YAML with marker and text fields")
+	if !strings.Contains(output, "tag:") || !strings.Contains(output, "text:") {
+		t.Error("expected YAML with tag and text fields")
 	}
 }
 
@@ -548,5 +553,171 @@ func TestTodosList_NoConfigExcludeUnchangedBehavior(t *testing.T) {
 
 	if len(parsed) != 2 {
 		t.Fatalf("expected 2 items (no config excludes), got %d", len(parsed))
+	}
+}
+
+func TestTodosList_JSONOutputNewFields(t *testing.T) {
+	resetTodosFlags()
+	dir := createTodosTestDir(t)
+
+	items, err := todos.Scan(todos.ScanOptions{Dir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err = WriteJSON(os.Stdout, items)
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("WriteJSON failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	// Check that new fields are present in JSON
+	if !strings.Contains(output, `"id"`) {
+		t.Error("expected 'id' field in JSON output")
+	}
+	if !strings.Contains(output, `"column"`) {
+		t.Error("expected 'column' field in JSON output")
+	}
+	if !strings.Contains(output, `"language"`) {
+		t.Error("expected 'language' field in JSON output")
+	}
+	if !strings.Contains(output, `"tag"`) {
+		t.Error("expected 'tag' field in JSON output")
+	}
+
+	// Verify fields parse correctly
+	var parsed []todos.TodoItem
+	if err := json.Unmarshal(buf.Bytes(), &parsed); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+	for _, item := range parsed {
+		if item.ID == "" {
+			t.Error("expected non-empty ID")
+		}
+		if len(item.ID) != 12 {
+			t.Errorf("expected 12-char ID, got %d: %q", len(item.ID), item.ID)
+		}
+		if item.Language == "" {
+			t.Error("expected non-empty language")
+		}
+	}
+}
+
+func TestTodosList_RawTextFlag(t *testing.T) {
+	resetTodosFlags()
+	dir := createTodosTestDir(t)
+	todosDir = dir
+	todosFormat = "json"
+	todosRawText = true
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runTodosList(nil, nil)
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("runTodosList failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	if !strings.Contains(output, `"raw_text"`) {
+		t.Error("expected 'raw_text' field in JSON output when --raw-text is set")
+	}
+
+	var parsed []todos.TodoItem
+	if err := json.Unmarshal(buf.Bytes(), &parsed); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+	for _, item := range parsed {
+		if item.RawText == "" {
+			t.Errorf("expected non-empty raw_text for %s:%d", item.FilePath, item.Line)
+		}
+	}
+}
+
+func TestTodosList_NoRawTextByDefault(t *testing.T) {
+	resetTodosFlags()
+	dir := createTodosTestDir(t)
+	todosDir = dir
+	todosFormat = "json"
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runTodosList(nil, nil)
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("runTodosList failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	if strings.Contains(output, `"raw_text"`) {
+		t.Error("did not expect 'raw_text' in JSON output by default")
+	}
+}
+
+func TestTodosList_RichTableOutput(t *testing.T) {
+	resetTodosFlags()
+	dir := createTodosTestDir(t)
+	todosDir = dir
+
+	items, err := todos.Scan(todos.ScanOptions{Dir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	oldStdout := os.Stdout
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	rErr, wErr, _ := os.Pipe()
+	os.Stdout = w
+	os.Stderr = wErr
+
+	err = outputTodosTable(items, richColumns, true)
+	w.Close()
+	wErr.Close()
+	os.Stdout = oldStdout
+	os.Stderr = oldStderr
+
+	if err != nil {
+		t.Fatalf("outputTodosTable with rich failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	var stderrBuf bytes.Buffer
+	stderrBuf.ReadFrom(rErr)
+	output := buf.String()
+
+	if !strings.Contains(output, "SCOPE") {
+		t.Error("expected SCOPE column in rich table output")
+	}
+	if !strings.Contains(output, "AGE") {
+		t.Error("expected AGE column in rich table output")
+	}
+	if !strings.Contains(output, "AUTHOR") {
+		t.Error("expected AUTHOR column in rich table output")
 	}
 }

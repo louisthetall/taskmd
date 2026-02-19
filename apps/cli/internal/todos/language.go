@@ -37,3 +37,29 @@ var languageMap = map[string]*CommentSyntax{
 func LookupSyntax(ext string) *CommentSyntax {
 	return languageMap[ext]
 }
+
+var languageNameMap = map[string]string{
+	".go":   "go",
+	".js":   "javascript",
+	".jsx":  "javascript",
+	".ts":   "typescript",
+	".tsx":  "typescript",
+	".rs":   "rust",
+	".css":  "css",
+	".scss": "scss",
+	".py":   "python",
+	".rb":   "ruby",
+	".sh":   "shell",
+	".bash": "shell",
+	".zsh":  "shell",
+	".yaml": "yaml",
+	".yml":  "yaml",
+	".toml": "toml",
+	".html": "html",
+	".xml":  "xml",
+}
+
+// LookupLanguage returns the human-readable language name for a file extension.
+func LookupLanguage(ext string) string {
+	return languageNameMap[ext]
+}

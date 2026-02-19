@@ -2,6 +2,8 @@ package todos
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +20,7 @@ type ScanOptions struct {
 	IncludeGlobs []string
 	ExcludeGlobs []string
 	Verbose      bool
+	RawText      bool
 }
 
 // skipDirs are directories always skipped during scanning.
@@ -79,18 +82,29 @@ func shouldSkipDir(name string) error {
 	return nil
 }
 
+// computeID generates a stable fingerprint for a TODO item.
+// Uses SHA-256 of file + marker + text, truncated to 12 hex chars.
+func computeID(file, marker, text string) string {
+	h := sha256.Sum256([]byte(file + "\x00" + marker + "\x00" + text))
+	return fmt.Sprintf("%x", h[:6])
+}
+
 // parseAllFiles parses each file and returns all found items with relative paths.
 func parseAllFiles(files []string, opts ScanOptions) ([]TodoItem, error) {
 	var items []TodoItem
 	for _, path := range files {
-		syntax := LookupSyntax(filepath.Ext(path))
-		found, parseErr := ParseFile(path, syntax, opts.Markers)
+		ext := filepath.Ext(path)
+		syntax := LookupSyntax(ext)
+		found, parseErr := ParseFile(path, syntax, opts.Markers, opts.RawText)
 		if parseErr != nil {
 			continue
 		}
 		rel := relPath(opts.Dir, path)
+		lang := LookupLanguage(ext)
 		for i := range found {
 			found[i].FilePath = rel
+			found[i].Language = lang
+			found[i].ID = computeID(rel, found[i].Marker, found[i].Text)
 		}
 		items = append(items, found...)
 	}
@@ -175,6 +189,23 @@ func filterBinary(files []string) []string {
 		}
 	}
 	return result
+}
+
+// EnrichRich populates scope and blame fields on the given items.
+func EnrichRich(items []TodoItem, dir string) {
+	for i := range items {
+		items[i].Scope = DetectScope(
+			filepath.Join(dir, items[i].FilePath),
+			items[i].Line,
+			items[i].Language,
+		)
+
+		blame, _ := GetBlameInfo(dir, items[i].FilePath, items[i].Line)
+		if blame != nil {
+			items[i].Blame = blame
+			items[i].Age = CalculateAge(blame.Date)
+		}
+	}
 }
 
 func isBinary(path string) bool {

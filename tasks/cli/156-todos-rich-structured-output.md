@@ -1,7 +1,7 @@
 ---
 id: "156"
 title: "Extend todos list with rich structured output for agent consumption"
-status: pending
+status: in-progress
 priority: medium
 effort: large
 type: feature

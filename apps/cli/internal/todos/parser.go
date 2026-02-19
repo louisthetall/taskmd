@@ -8,12 +8,26 @@ import (
 	"strings"
 )
 
+// BlameInfo holds git blame metadata for a TODO item.
+type BlameInfo struct {
+	Author string `json:"author" yaml:"author"`
+	Commit string `json:"commit" yaml:"commit"`
+	Date   string `json:"date" yaml:"date"`
+}
+
 // TodoItem represents a single marker comment found in a source file.
 type TodoItem struct {
-	FilePath string `json:"file" yaml:"file"`
-	Line     int    `json:"line" yaml:"line"`
-	Marker   string `json:"marker" yaml:"marker"`
-	Text     string `json:"text" yaml:"text"`
+	ID       string     `json:"id" yaml:"id"`
+	FilePath string     `json:"file" yaml:"file"`
+	Line     int        `json:"line" yaml:"line"`
+	Column   int        `json:"column" yaml:"column"`
+	Marker   string     `json:"tag" yaml:"tag"`
+	Language string     `json:"language" yaml:"language"`
+	Text     string     `json:"text" yaml:"text"`
+	RawText  string     `json:"raw_text,omitempty" yaml:"raw_text,omitempty"`
+	Scope    string     `json:"scope,omitempty" yaml:"scope,omitempty"`
+	Blame    *BlameInfo `json:"blame,omitempty" yaml:"blame,omitempty"`
+	Age      int        `json:"age,omitempty" yaml:"age,omitempty"`
 }
 
 // allMarkersRegex matches any known marker keyword. Used to detect
@@ -36,14 +50,14 @@ func buildMarkerRegex(markers []string) *regexp.Regexp {
 }
 
 // ParseFile reads a file and extracts TODO items from comments.
-func ParseFile(path string, syntax *CommentSyntax, markers []string) ([]TodoItem, error) {
+func ParseFile(path string, syntax *CommentSyntax, markers []string, rawText bool) ([]TodoItem, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	return parseLines(bufio.NewScanner(f), path, syntax, markers), nil
+	return parseLines(bufio.NewScanner(f), path, syntax, markers, rawText), nil
 }
 
 type parserState int
@@ -60,7 +74,7 @@ type parseResult struct {
 	state   parserState
 }
 
-func parseLines(sc *bufio.Scanner, filePath string, syntax *CommentSyntax, markers []string) []TodoItem {
+func parseLines(sc *bufio.Scanner, filePath string, syntax *CommentSyntax, markers []string, rawText bool) []TodoItem {
 	re := buildMarkerRegex(markers)
 	var items []TodoItem
 	var current *TodoItem
@@ -74,9 +88,9 @@ func parseLines(sc *bufio.Scanner, filePath string, syntax *CommentSyntax, marke
 		var r parseResult
 		switch state {
 		case stateNormal:
-			r = handleNormalLine(line, lineNum, filePath, syntax, re, items, current)
+			r = handleNormalLine(line, lineNum, filePath, syntax, re, items, current, rawText)
 		case stateBlock:
-			r = handleBlockLine(line, lineNum, filePath, syntax, re, items, current)
+			r = handleBlockLine(line, lineNum, filePath, syntax, re, items, current, rawText)
 		}
 		items, current, state = r.items, r.current, r.state
 	}
@@ -99,15 +113,15 @@ func finishCurrent(items []TodoItem, current *TodoItem) []TodoItem {
 func handleNormalLine(
 	line string, lineNum int, filePath string,
 	syntax *CommentSyntax, re *regexp.Regexp,
-	items []TodoItem, current *TodoItem,
+	items []TodoItem, current *TodoItem, rawText bool,
 ) parseResult {
 	if syntax.BlockStart != "" {
-		if r, ok := tryBlockStart(line, lineNum, filePath, syntax, re, items, current); ok {
+		if r, ok := tryBlockStart(line, lineNum, filePath, syntax, re, items, current, rawText); ok {
 			return r
 		}
 	}
 
-	if r, ok := tryLineComment(line, lineNum, filePath, syntax, re, items, current); ok {
+	if r, ok := tryLineComment(line, lineNum, filePath, syntax, re, items, current, rawText); ok {
 		return r
 	}
 
@@ -117,7 +131,7 @@ func handleNormalLine(
 func tryBlockStart(
 	line string, lineNum int, filePath string,
 	syntax *CommentSyntax, re *regexp.Regexp,
-	items []TodoItem, current *TodoItem,
+	items []TodoItem, current *TodoItem, rawText bool,
 ) (parseResult, bool) {
 	idx := strings.Index(line, syntax.BlockStart)
 	if idx < 0 {
@@ -129,21 +143,27 @@ func tryBlockStart(
 	// Check if block closes on same line
 	if endIdx := strings.Index(commentText, syntax.BlockEnd); endIdx >= 0 {
 		items = finishCurrent(items, current)
-		m := matchMarker(strings.TrimSpace(commentText[:endIdx]), re, filePath, lineNum)
+		m := matchMarker(strings.TrimSpace(commentText[:endIdx]), re, filePath, lineNum, line)
+		if m != nil && rawText {
+			m.RawText = line
+		}
 		items = finishCurrent(items, m)
 		return parseResult{items, nil, stateNormal}, true
 	}
 
 	// Block continues to next line
 	items = finishCurrent(items, current)
-	m := matchMarker(strings.TrimSpace(commentText), re, filePath, lineNum)
+	m := matchMarker(strings.TrimSpace(commentText), re, filePath, lineNum, line)
+	if m != nil && rawText {
+		m.RawText = line
+	}
 	return parseResult{items, m, stateBlock}, true
 }
 
 func tryLineComment(
 	line string, lineNum int, filePath string,
 	syntax *CommentSyntax, re *regexp.Regexp,
-	items []TodoItem, current *TodoItem,
+	items []TodoItem, current *TodoItem, rawText bool,
 ) (parseResult, bool) {
 	for _, prefix := range syntax.LinePrefix {
 		idx := strings.Index(line, prefix)
@@ -152,7 +172,10 @@ func tryLineComment(
 		}
 
 		commentText := strings.TrimSpace(line[idx+len(prefix):])
-		if m := matchMarker(commentText, re, filePath, lineNum); m != nil {
+		if m := matchMarker(commentText, re, filePath, lineNum, line); m != nil {
+			if rawText {
+				m.RawText = line
+			}
 			items = finishCurrent(items, current)
 			return parseResult{items, m, stateNormal}, true
 		}
@@ -160,6 +183,9 @@ func tryLineComment(
 		// Continue the current item if the comment line doesn't start a new marker
 		if current != nil && canContinue(current.Line, lineNum, commentText) {
 			current.Text += " " + commentText
+			if rawText {
+				current.RawText += "\n" + line
+			}
 			return parseResult{items, current, stateNormal}, true
 		}
 
@@ -176,39 +202,56 @@ func canContinue(startLine, currentLine int, text string) bool {
 func handleBlockLine(
 	line string, lineNum int, filePath string,
 	syntax *CommentSyntax, re *regexp.Regexp,
-	items []TodoItem, current *TodoItem,
+	items []TodoItem, current *TodoItem, rawText bool,
 ) parseResult {
 	if endIdx := strings.Index(line, syntax.BlockEnd); endIdx >= 0 {
-		return closeBlock(line[:endIdx], lineNum, filePath, re, items, current)
+		return closeBlock(line[:endIdx], lineNum, filePath, re, items, current, line, rawText)
 	}
 
 	trimmed := stripBlockPrefix(line)
 	if trimmed == "" {
+		if current != nil && rawText {
+			current.RawText += "\n" + line
+		}
 		return parseResult{items, current, stateBlock}
 	}
 
-	if m := matchMarker(trimmed, re, filePath, lineNum); m != nil {
+	if m := matchMarker(trimmed, re, filePath, lineNum, line); m != nil {
+		if rawText {
+			m.RawText = line
+		}
 		items = finishCurrent(items, current)
 		return parseResult{items, m, stateBlock}
 	}
 	if current != nil {
 		current.Text += " " + trimmed
+		if rawText {
+			current.RawText += "\n" + line
+		}
 	}
 	return parseResult{items, current, stateBlock}
 }
 
 func closeBlock(
 	beforeEnd string, lineNum int, filePath string,
-	re *regexp.Regexp, items []TodoItem, current *TodoItem,
+	re *regexp.Regexp, items []TodoItem, current *TodoItem, sourceLine string, rawText bool,
 ) parseResult {
 	text := strings.TrimSpace(beforeEnd)
 	if current != nil && text != "" {
 		current.Text += " " + text
+		if rawText {
+			current.RawText += "\n" + sourceLine
+		}
 	} else if text != "" {
-		if m := matchMarker(text, re, filePath, lineNum); m != nil {
+		if m := matchMarker(text, re, filePath, lineNum, sourceLine); m != nil {
+			if rawText {
+				m.RawText = sourceLine
+			}
 			items = finishCurrent(items, current)
 			current = m
 		}
+	} else if current != nil && rawText {
+		current.RawText += "\n" + sourceLine
 	}
 	items = finishCurrent(items, current)
 	return parseResult{items, nil, stateNormal}
@@ -222,7 +265,8 @@ func stripBlockPrefix(line string) string {
 }
 
 // matchMarker checks if text contains a marker and returns a TodoItem if found.
-func matchMarker(text string, re *regexp.Regexp, filePath string, line int) *TodoItem {
+// sourceLine is the original unprocessed line used to compute the column offset.
+func matchMarker(text string, re *regexp.Regexp, filePath string, line int, sourceLine string) *TodoItem {
 	loc := re.FindStringIndex(text)
 	if loc == nil {
 		return nil
@@ -232,9 +276,15 @@ func matchMarker(text string, re *regexp.Regexp, filePath string, line int) *Tod
 	rest := strings.TrimSpace(text[loc[1]:])
 	rest = stripMarkerPrefix(rest)
 
+	col := strings.Index(sourceLine, marker)
+	if col < 0 {
+		col = 0
+	}
+
 	return &TodoItem{
 		FilePath: filePath,
 		Line:     line,
+		Column:   col,
 		Marker:   marker,
 		Text:     rest,
 	}

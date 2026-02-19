@@ -20,6 +20,8 @@ var (
 	todosInclude []string
 	todosExclude []string
 	todosFormat  string
+	todosRawText bool
+	todosRich    bool
 )
 
 var todosCmd = &cobra.Command{
@@ -40,13 +42,18 @@ Supports language-aware comment parsing for Go, JavaScript, TypeScript, Python, 
 Exclude patterns can also be configured in .taskmd.yaml under todos.exclude.
 CLI --exclude flags are additive with config patterns (both are applied).
 
+Table columns:
+  Default: id, file, line, tag, text
+  --rich:  id, file, line, tag, scope, age, author, text
+
 Examples:
   taskmd todos list
   taskmd todos list --dir ./src
   taskmd todos list --marker TODO --marker FIXME
   taskmd todos list --include "*.go"
   taskmd todos list --exclude "*.test.go"
-  taskmd todos list --format json`,
+  taskmd todos list --format json
+  taskmd todos list --rich`,
 	Args: cobra.NoArgs,
 	RunE: runTodosList,
 }
@@ -60,6 +67,8 @@ func init() {
 	todosListCmd.Flags().StringArrayVar(&todosInclude, "include", nil, "include only files matching glob pattern")
 	todosListCmd.Flags().StringArrayVar(&todosExclude, "exclude", nil, "exclude files matching glob pattern")
 	todosListCmd.Flags().StringVar(&todosFormat, "format", "table", "output format (table, json, yaml)")
+	todosListCmd.Flags().BoolVar(&todosRawText, "raw-text", false, "include original source line text in output")
+	todosListCmd.Flags().BoolVar(&todosRich, "rich", false, "include scope and git blame information (slower)")
 }
 
 func runTodosList(_ *cobra.Command, _ []string) error {
@@ -86,9 +95,14 @@ func runTodosList(_ *cobra.Command, _ []string) error {
 		IncludeGlobs: todosInclude,
 		ExcludeGlobs: excludeGlobs,
 		Verbose:      flags.Verbose,
+		RawText:      todosRawText,
 	})
 	if err != nil {
 		return fmt.Errorf("scan failed: %w", err)
+	}
+
+	if todosRich {
+		todos.EnrichRich(items, todosDir)
 	}
 
 	switch todosFormat {
@@ -103,7 +117,11 @@ func runTodosList(_ *cobra.Command, _ []string) error {
 		}
 		return WriteYAML(os.Stdout, items)
 	default:
-		return outputTodosTable(items)
+		cols := defaultColumns
+		if todosRich {
+			cols = richColumns
+		}
+		return outputTodosTable(items, cols, todosRich)
 	}
 }
 
@@ -132,7 +150,46 @@ func validateMarkers(markers []string) error {
 	return nil
 }
 
-func outputTodosTable(items []todos.TodoItem) error {
+// todoColumn defines a table column with its header, separator, and value extractor.
+type todoColumn struct {
+	header string
+	sep    string
+	value  func(item todos.TodoItem, r *lipgloss.Renderer) string
+}
+
+var todoColumnDefs = map[string]todoColumn{
+	"id": {"ID", "--------", func(item todos.TodoItem, r *lipgloss.Renderer) string {
+		id := item.ID
+		if len(id) > 8 {
+			id = id[:8]
+		}
+		return formatDim(id, r)
+	}},
+	"file":  {"FILE", "----------", func(item todos.TodoItem, r *lipgloss.Renderer) string { return formatDim(item.FilePath, r) }},
+	"line":  {"LINE", "----", func(item todos.TodoItem, _ *lipgloss.Renderer) string { return fmt.Sprintf("%d", item.Line) }},
+	"tag":   {"TAG", "--------", func(item todos.TodoItem, r *lipgloss.Renderer) string { return formatMarker(item.Marker, r) }},
+	"text":  {"TEXT", "----------", func(item todos.TodoItem, _ *lipgloss.Renderer) string { return item.Text }},
+	"scope": {"SCOPE", "----------", func(item todos.TodoItem, _ *lipgloss.Renderer) string { return item.Scope }},
+	"age": {"AGE", "---", func(item todos.TodoItem, _ *lipgloss.Renderer) string {
+		if item.Age > 0 {
+			return fmt.Sprintf("%dd", item.Age)
+		}
+		return ""
+	}},
+	"author": {"AUTHOR", "----------", func(item todos.TodoItem, _ *lipgloss.Renderer) string {
+		if item.Blame != nil {
+			return item.Blame.Author
+		}
+		return ""
+	}},
+}
+
+var (
+	defaultColumns = []string{"id", "file", "line", "tag", "text"}
+	richColumns    = []string{"id", "file", "line", "tag", "scope", "age", "author", "text"}
+)
+
+func outputTodosTable(items []todos.TodoItem, columns []string, rich bool) error {
 	if len(items) == 0 {
 		fmt.Println("No TODO comments found")
 		return nil
@@ -140,18 +197,35 @@ func outputTodosTable(items []todos.TodoItem) error {
 
 	r := getRenderer()
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	defer w.Flush()
 
-	fmt.Fprintln(w, "FILE\tLINE\tMARKER\tTEXT")
-	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", "----------", "----", "--------", "----------")
+	// Header
+	headers := make([]string, len(columns))
+	seps := make([]string, len(columns))
+	for i, name := range columns {
+		col := todoColumnDefs[name]
+		headers[i] = col.header
+		seps[i] = col.sep
+	}
+	fmt.Fprintln(w, strings.Join(headers, "\t"))
+	fmt.Fprintln(w, strings.Join(seps, "\t"))
 
+	// Rows
 	for _, item := range items {
-		filePart := formatDim(item.FilePath, r)
-		markerPart := formatMarker(item.Marker, r)
-		fmt.Fprintf(w, "%s\t%d\t%s\t%s\n", filePart, item.Line, markerPart, item.Text)
+		vals := make([]string, len(columns))
+		for i, name := range columns {
+			vals[i] = todoColumnDefs[name].value(item, r)
+		}
+		fmt.Fprintln(w, strings.Join(vals, "\t"))
 	}
 
+	w.Flush()
+
 	fmt.Fprintf(os.Stderr, "\nFound %d comment(s)\n", len(items))
+
+	if !rich {
+		fmt.Fprintf(os.Stderr, "Use --rich to add: scope, age, author columns\n")
+	}
+
 	return nil
 }
 

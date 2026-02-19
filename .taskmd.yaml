@@ -1,4 +1,11 @@
 dir: ./tasks
+todos:
+  exclude:
+    - "parser_test.go"
+    - "scanner_test.go"
+    - "scope_test.go"
+    - "blame_test.go"
+    - "todos_test.go"
 web:
   auto_open_browser: false
 scopes:
