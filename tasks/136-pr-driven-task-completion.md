@@ -1,7 +1,7 @@
 ---
 id: "136"
 title: "PR-driven task completion workflow"
-status: in-progress
+status: completed
 priority: high
 effort: large
 tags:
