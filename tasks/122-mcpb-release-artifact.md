@@ -1,7 +1,7 @@
 ---
 id: "122"
 title: "Add MCPB artifact to release process"
-status: pending
+status: completed
 priority: high
 effort: medium
 tags:

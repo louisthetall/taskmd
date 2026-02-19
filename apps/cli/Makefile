@@ -1,4 +1,4 @@
-.PHONY: build run clean install install-full install-dev install-dev-full test lint lint-fix tidy check web-build web-embed build-full man sync-spec
+.PHONY: build run clean install install-full install-dev install-dev-full test lint lint-fix tidy check web-build web-embed build-full man sync-spec mcpb mcpb-all
 
 # Build the binary
 build:
@@ -87,6 +87,19 @@ sync-spec:
 	cp ../../docs/taskmd_specification.md internal/cli/templates/TASKMD_SPEC.md
 	cp ../../docs/taskmd_specification.md ../../apps/docs/reference/specification.md
 	@echo "Synced spec to embedded template and docs site"
+
+# Build MCPB bundle for current platform
+mcpb: build
+	../../scripts/build-mcpb.sh ./taskmd "$$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo 0.0.0-dev)" $$(go env GOOS) $$(go env GOARCH) .
+	@echo "MCPB bundle created in current directory"
+
+# Build MCPB bundles for macOS platforms
+mcpb-all:
+	GOOS=darwin GOARCH=amd64 go build -o taskmd-darwin-amd64 ./cmd/taskmd
+	GOOS=darwin GOARCH=arm64 go build -o taskmd-darwin-arm64 ./cmd/taskmd
+	../../scripts/build-mcpb.sh ./taskmd-darwin-amd64 "$$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo 0.0.0-dev)" darwin amd64 .
+	../../scripts/build-mcpb.sh ./taskmd-darwin-arm64 "$$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo 0.0.0-dev)" darwin arm64 .
+	@echo "MCPB bundles created for darwin-amd64 and darwin-arm64"
 
 # Build for multiple platforms
 build-all:

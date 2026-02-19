@@ -342,7 +342,9 @@ This release includes pre-built binaries for:
 - macOS (amd64/Intel, arm64/Apple Silicon)
 - Windows (amd64)
 
-All binaries include the embedded web dashboard."
+All binaries include the embedded web dashboard.
+
+MCPB bundles (one-click MCP server install) are included for macOS."
 
     git tag -a "$tag" -m "$tag_msg"
     log_success "Created tag $tag"
@@ -602,6 +604,8 @@ main() {
             log_info "  • taskmd-$tag-darwin-amd64.tar.gz"
             log_info "  • taskmd-$tag-darwin-arm64.tar.gz"
             log_info "  • taskmd-$tag-windows-amd64.zip"
+            log_info "  • taskmd-v${clean_version}-darwin-arm64.mcpb"
+            log_info "  • taskmd-v${clean_version}-darwin-amd64.mcpb"
             log_info "  • checksums.txt"
         fi
 

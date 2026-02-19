@@ -1,0 +1,66 @@
+{
+  "manifest_version": "0.3",
+  "name": "taskmd",
+  "display_name": "taskmd",
+  "version": "VERSION_PLACEHOLDER",
+  "description": "Markdown-based task management for software projects. Manage tasks, dependencies, and priorities directly from your editor.",
+  "author": {
+    "name": "driangle",
+    "url": "https://github.com/driangle/taskmd"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/driangle/taskmd"
+  },
+  "homepage": "https://github.com/driangle/taskmd",
+  "license": "MIT",
+  "server": {
+    "type": "binary",
+    "entry_point": "server/taskmd",
+    "mcp_config": {
+      "command": "${__dirname}/server/taskmd",
+      "args": ["mcp"]
+    }
+  },
+  "tools": [
+    {
+      "name": "list",
+      "description": "List and filter tasks in a taskmd project"
+    },
+    {
+      "name": "get",
+      "description": "Get full details of a single task by ID, including body content and dependency information"
+    },
+    {
+      "name": "next",
+      "description": "Get ranked task recommendations based on priority, dependencies, and critical path analysis"
+    },
+    {
+      "name": "search",
+      "description": "Full-text search across task titles and bodies, returning matches with snippets"
+    },
+    {
+      "name": "context",
+      "description": "Resolve relevant file paths for a task based on its touches (scopes) and explicit context fields"
+    },
+    {
+      "name": "set",
+      "description": "Update fields on a task (status, priority, effort, owner, tags)"
+    },
+    {
+      "name": "validate",
+      "description": "Validate task files for correctness, checking required fields, enum values, dependencies, and cycles"
+    },
+    {
+      "name": "graph",
+      "description": "Get the task dependency graph as JSON with nodes, edges, and cycle detection"
+    },
+    {
+      "name": "status",
+      "description": "Get lightweight metadata for a task (no body content, no resolved dependencies)"
+    }
+  ],
+  "compatibility": {
+    "platforms": ["darwin"]
+  }
+}

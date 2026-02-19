@@ -122,10 +122,18 @@ jobs:
           # Compress Windows ARM64
           zip taskmd-${{ steps.version.outputs.tag }}-windows-arm64.zip taskmd-windows-arm64.exe
 
+      - name: Create MCPB bundles
+        run: |
+          # macOS ARM64
+          ./scripts/build-mcpb.sh dist/taskmd-darwin-arm64 ${{ steps.version.outputs.version }} darwin arm64 dist
+
+          # macOS AMD64
+          ./scripts/build-mcpb.sh dist/taskmd-darwin-amd64 ${{ steps.version.outputs.version }} darwin amd64 dist
+
       - name: Generate checksums
         working-directory: dist
         run: |
-          sha256sum taskmd-${{ steps.version.outputs.tag }}-*.tar.gz taskmd-${{ steps.version.outputs.tag }}-*.zip > checksums.txt
+          sha256sum taskmd-${{ steps.version.outputs.tag }}-*.tar.gz taskmd-${{ steps.version.outputs.tag }}-*.zip *.mcpb > checksums.txt
           cat checksums.txt
 
       - name: Create Release
@@ -138,6 +146,8 @@ jobs:
             dist/taskmd-${{ steps.version.outputs.tag }}-darwin-arm64.tar.gz
             dist/taskmd-${{ steps.version.outputs.tag }}-windows-amd64.zip
             dist/taskmd-${{ steps.version.outputs.tag }}-windows-arm64.zip
+            dist/taskmd-v${{ steps.version.outputs.version }}-darwin-arm64.mcpb
+            dist/taskmd-v${{ steps.version.outputs.version }}-darwin-amd64.mcpb
             dist/checksums.txt
           draft: false
           prerelease: false
