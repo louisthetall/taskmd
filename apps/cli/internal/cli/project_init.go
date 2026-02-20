@@ -8,17 +8,20 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
+
+	"github.com/driangle/taskmd/apps/cli/internal/template"
 )
 
 var (
-	projectInitForce   bool
-	projectInitStdout  bool
-	projectInitClaude  bool
-	projectInitGemini  bool
-	projectInitCodex   bool
-	projectInitNoSpec  bool
-	projectInitNoAgent bool
-	projectInitTaskDir string
+	projectInitForce       bool
+	projectInitStdout      bool
+	projectInitClaude      bool
+	projectInitGemini      bool
+	projectInitCodex       bool
+	projectInitNoSpec      bool
+	projectInitNoAgent     bool
+	projectInitNoTemplates bool
+	projectInitTaskDir     string
 )
 
 // projectInitRoot is the project root directory. Defaults to ".".
@@ -53,6 +56,7 @@ Examples:
   taskmd init --claude --gemini      # Multiple agents
   taskmd init --no-spec              # Skip TASKMD_SPEC.md
   taskmd init --no-agent             # Skip agent configs
+  taskmd init --no-templates         # Skip task templates
   taskmd init --force                # Overwrite existing files
   taskmd init --stdout               # Print all content to stdout`,
 	Args: cobra.NoArgs,
@@ -69,6 +73,7 @@ func init() {
 	projectInitCmd.Flags().BoolVar(&projectInitCodex, "codex", false, "initialize for Codex")
 	projectInitCmd.Flags().BoolVar(&projectInitNoSpec, "no-spec", false, "skip generating TASKMD_SPEC.md")
 	projectInitCmd.Flags().BoolVar(&projectInitNoAgent, "no-agent", false, "skip generating agent configuration files")
+	projectInitCmd.Flags().BoolVar(&projectInitNoTemplates, "no-templates", false, "skip copying built-in task templates")
 	projectInitCmd.Flags().StringVar(&projectInitTaskDir, "task-dir", "./tasks", "task directory path to create")
 }
 
@@ -79,8 +84,8 @@ type fileToWrite struct {
 }
 
 func runProjectInit(cmd *cobra.Command, _ []string) error {
-	if projectInitNoSpec && projectInitNoAgent {
-		return fmt.Errorf("--no-spec and --no-agent cannot both be set (nothing to do)")
+	if projectInitNoSpec && projectInitNoAgent && projectInitNoTemplates {
+		return fmt.Errorf("--no-spec, --no-agent, and --no-templates cannot all be set (nothing to do)")
 	}
 
 	root := projectInitRoot
@@ -147,11 +152,38 @@ func writeProjectFiles(root, taskDirAbs, taskDirPath string, rootFiles, taskDirF
 	}
 	createdPaths = append(createdPaths, tdCreated...)
 
+	// Write built-in templates to .taskmd/templates/
+	if !projectInitNoTemplates {
+		tmplCreated, err := writeBuiltinTemplates(root, quiet)
+		if err != nil {
+			return err
+		}
+		createdPaths = append(createdPaths, tmplCreated...)
+	}
+
 	if !quiet {
 		printInitSummary(createdPaths)
 	}
 
 	return nil
+}
+
+// writeBuiltinTemplates copies built-in task templates to .taskmd/templates/.
+func writeBuiltinTemplates(root string, quiet bool) ([]string, error) {
+	tmplDir := filepath.Join(root, ".taskmd", "templates")
+	if err := os.MkdirAll(tmplDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create templates directory: %w", err)
+	}
+
+	var files []fileToWrite
+	for name, content := range template.BuiltinTemplates {
+		files = append(files, fileToWrite{
+			filename: name + ".md",
+			content:  []byte(content),
+		})
+	}
+
+	return writeInitFiles(tmplDir, files, quiet)
 }
 
 // resolveInitTaskDir returns the task directory path.

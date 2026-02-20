@@ -16,6 +16,7 @@ func resetProjectInitFlags(tmpDir string) {
 	projectInitCodex = false
 	projectInitNoSpec = false
 	projectInitNoAgent = false
+	projectInitNoTemplates = false
 	projectInitTaskDir = tmpDir
 	projectInitRoot = tmpDir
 	projectInitIsTTY = func() bool { return false }
@@ -151,15 +152,16 @@ func TestProjectInit_NoAgentFlag(t *testing.T) {
 	}
 }
 
-func TestProjectInit_NoSpecAndNoAgentIsError(t *testing.T) {
+func TestProjectInit_NoSpecAndNoAgentAndNoTemplatesIsError(t *testing.T) {
 	tmpDir := t.TempDir()
 	resetProjectInitFlags(tmpDir)
 	projectInitNoSpec = true
 	projectInitNoAgent = true
+	projectInitNoTemplates = true
 
 	err := runProjectInit(projectInitCmd, []string{})
 	if err == nil {
-		t.Fatal("expected error when both --no-spec and --no-agent are set")
+		t.Fatal("expected error when all --no-* flags are set")
 	}
 
 	if !strings.Contains(err.Error(), "nothing to do") {
@@ -662,5 +664,124 @@ func TestProjectInit_Stdout_NoSideEffects(t *testing.T) {
 	specPath := filepath.Join(tmpDir, specFilename)
 	if _, err := os.Stat(specPath); err == nil {
 		t.Error("TASKMD_SPEC.md should not have been created with --stdout")
+	}
+}
+
+func TestProjectInit_CreatesTemplates(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitClaude = true
+
+	err := runProjectInit(projectInitCmd, []string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	tmplDir := filepath.Join(tmpDir, ".taskmd", "templates")
+	info, err := os.Stat(tmplDir)
+	if err != nil {
+		t.Fatalf("expected .taskmd/templates/ to be created: %v", err)
+	}
+	if !info.IsDir() {
+		t.Error("expected .taskmd/templates/ to be a directory")
+	}
+
+	// Check that built-in template files exist
+	for _, name := range []string{"feature.md", "bug.md", "chore.md"} {
+		path := filepath.Join(tmplDir, name)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			t.Errorf("expected template %s to be created", name)
+		}
+	}
+}
+
+func TestProjectInit_NoTemplatesFlag(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitClaude = true
+	projectInitNoTemplates = true
+
+	err := runProjectInit(projectInitCmd, []string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	tmplDir := filepath.Join(tmpDir, ".taskmd", "templates")
+	if _, err := os.Stat(tmplDir); err == nil {
+		t.Error(".taskmd/templates/ should not have been created with --no-templates")
+	}
+}
+
+func TestProjectInit_TemplatesNotOverwrittenWithoutForce(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitClaude = true
+
+	// Create an existing template
+	tmplDir := filepath.Join(tmpDir, ".taskmd", "templates")
+	os.MkdirAll(tmplDir, 0755)
+	os.WriteFile(filepath.Join(tmplDir, "feature.md"), []byte("custom content"), 0644)
+
+	// Suppress stderr
+	oldStderr := os.Stderr
+	_, w, _ := os.Pipe()
+	os.Stderr = w
+
+	err := runProjectInit(projectInitCmd, []string{})
+
+	w.Close()
+	os.Stderr = oldStderr
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Custom template should be unchanged
+	content, _ := os.ReadFile(filepath.Join(tmplDir, "feature.md"))
+	if string(content) != "custom content" {
+		t.Error("existing template should not have been overwritten without --force")
+	}
+}
+
+func TestProjectInit_TemplatesOverwrittenWithForce(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitClaude = true
+	projectInitForce = true
+
+	// Create an existing template
+	tmplDir := filepath.Join(tmpDir, ".taskmd", "templates")
+	os.MkdirAll(tmplDir, 0755)
+	os.WriteFile(filepath.Join(tmplDir, "feature.md"), []byte("custom content"), 0644)
+
+	err := runProjectInit(projectInitCmd, []string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Template should be overwritten with built-in content
+	content, _ := os.ReadFile(filepath.Join(tmplDir, "feature.md"))
+	if string(content) == "custom content" {
+		t.Error("template should have been overwritten with --force")
+	}
+	if !strings.Contains(string(content), "_template:") {
+		t.Error("overwritten template should contain built-in template content")
+	}
+}
+
+func TestProjectInit_NoSpecNoAgentStillCreatesTemplates(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitNoSpec = true
+	projectInitNoAgent = true
+
+	err := runProjectInit(projectInitCmd, []string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	tmplDir := filepath.Join(tmpDir, ".taskmd", "templates")
+	if _, err := os.Stat(tmplDir); os.IsNotExist(err) {
+		t.Error("expected .taskmd/templates/ to be created even with --no-spec and --no-agent")
 	}
 }

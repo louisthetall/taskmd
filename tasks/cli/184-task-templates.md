@@ -1,7 +1,7 @@
 ---
 id: "184"
 title: "Add task templates support"
-status: pending
+status: completed
 priority: medium
 effort: medium
 type: feature

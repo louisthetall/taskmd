@@ -14,6 +14,7 @@ import (
 	"github.com/driangle/taskmd/apps/cli/internal/scanner"
 	"github.com/driangle/taskmd/apps/cli/internal/slug"
 	"github.com/driangle/taskmd/apps/cli/internal/taskfile"
+	"github.com/driangle/taskmd/apps/cli/internal/template"
 )
 
 var (
@@ -27,6 +28,7 @@ var (
 	addGroup     string
 	addFormat    string
 	addEdit      bool
+	addTemplate  string
 )
 
 var addCmd = &cobra.Command{
@@ -37,11 +39,16 @@ var addCmd = &cobra.Command{
 The title is used to generate both the task title and the filename slug.
 A sequential ID is automatically assigned based on existing tasks.
 
+Use --template to start from a reusable template (bug, feature, chore, or custom).
+CLI flags override template values when explicitly provided.
+
 Examples:
   taskmd add "Fix the login bug"
   taskmd add "Implement OAuth" --priority high --tags backend,auth
   taskmd add "Design mockups" --group design --effort large
-  taskmd add "Quick fix" --edit`,
+  taskmd add "Quick fix" --edit
+  taskmd add "Login fails on Safari" --template bug
+  taskmd add "Dark mode support" --template feature --priority high`,
 	Args: cobra.ExactArgs(1),
 	RunE: runAdd,
 }
@@ -59,6 +66,7 @@ func init() {
 	addCmd.Flags().StringVar(&addGroup, "group", "", "subdirectory to create the task in")
 	addCmd.Flags().StringVar(&addFormat, "format", "plain", "output format (plain, json)")
 	addCmd.Flags().BoolVar(&addEdit, "edit", false, "open the new task in $EDITOR")
+	addCmd.Flags().StringVar(&addTemplate, "template", "", "use a task template (e.g. bug, feature, chore)")
 
 	_ = addCmd.RegisterFlagCompletionFunc("priority", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return validPriorityValues, cobra.ShellCompDirectiveNoFileComp
@@ -79,7 +87,7 @@ type addResult struct {
 	Priority string `json:"priority"`
 }
 
-func runAdd(_ *cobra.Command, args []string) error {
+func runAdd(cmd *cobra.Command, args []string) error {
 	title := args[0]
 
 	if err := validateAddEnums(); err != nil {
@@ -92,29 +100,22 @@ func runAdd(_ *cobra.Command, args []string) error {
 	flags := GetGlobalFlags()
 	scanDir := ResolveScanDir(nil)
 
-	taskScanner := scanner.NewScanner(scanDir, flags.Verbose, flags.IgnoreDirs)
-	result, err := taskScanner.Scan()
+	id, err := resolveNextID(scanDir, flags)
 	if err != nil {
-		return fmt.Errorf("scan failed: %w", err)
+		return err
 	}
-
-	ids := make([]string, len(result.Tasks))
-	for i, task := range result.Tasks {
-		ids[i] = task.ID
-	}
-	nextResult := nextid.Calculate(ids)
-	id := nextResult.NextID
 
 	outputDir := scanDir
 	if addGroup != "" {
 		outputDir = filepath.Join(scanDir, addGroup)
 	}
 
-	s := slug.Slugify(title)
-	filename := fmt.Sprintf("%s-%s.md", id, s)
-	filePath := filepath.Join(outputDir, filename)
+	filePath := filepath.Join(outputDir, fmt.Sprintf("%s-%s.md", id, slug.Slugify(title)))
 
-	content := buildTaskFileContent(id, title)
+	content, err := resolveTaskContent(cmd, id, title)
+	if err != nil {
+		return err
+	}
 
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
@@ -132,6 +133,87 @@ func runAdd(_ *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func resolveNextID(scanDir string, flags GlobalFlags) (string, error) {
+	taskScanner := scanner.NewScanner(scanDir, flags.Verbose, flags.IgnoreDirs)
+	result, err := taskScanner.Scan()
+	if err != nil {
+		return "", fmt.Errorf("scan failed: %w", err)
+	}
+	ids := make([]string, len(result.Tasks))
+	for i, task := range result.Tasks {
+		ids[i] = task.ID
+	}
+	return nextid.Calculate(ids).NextID, nil
+}
+
+func resolveTaskContent(cmd *cobra.Command, id, title string) (string, error) {
+	if addTemplate != "" {
+		return buildFromTemplate(cmd, id, title)
+	}
+	return buildTaskFileContent(id, title), nil
+}
+
+// buildFromTemplate resolves a template, renders it with variables, and applies CLI flag overrides.
+func buildFromTemplate(cmd *cobra.Command, id, title string) (string, error) {
+	projectRoot := resolveProjectRoot()
+	userHome, _ := os.UserHomeDir()
+
+	tmpl, ok := template.Resolve(addTemplate, projectRoot, userHome)
+	if !ok {
+		available := template.Discover(projectRoot, userHome)
+		names := make([]string, len(available))
+		for i, t := range available {
+			names[i] = t.Name
+		}
+		return "", fmt.Errorf("template %q not found (available: %s)", addTemplate, strings.Join(names, ", "))
+	}
+
+	vars := map[string]string{
+		"id":    id,
+		"title": title,
+		"date":  time.Now().Format("2006-01-02"),
+	}
+
+	content := template.RenderTask(tmpl, vars)
+
+	// Apply CLI flag overrides (only for explicitly-set flags)
+	overrides := buildTemplateOverrides(cmd)
+	content = template.ApplyOverrides(content, overrides)
+
+	return content, nil
+}
+
+// buildTemplateOverrides collects frontmatter overrides from explicitly-set CLI flags.
+func buildTemplateOverrides(cmd *cobra.Command) map[string]string {
+	overrides := make(map[string]string)
+
+	if cmd.Flags().Changed("status") {
+		overrides["status"] = addStatus
+	}
+	if cmd.Flags().Changed("priority") {
+		overrides["priority"] = addPriority
+	}
+	if cmd.Flags().Changed("effort") {
+		overrides["effort"] = addEffort
+	}
+	if cmd.Flags().Changed("owner") {
+		overrides["owner"] = addOwner
+	}
+	if cmd.Flags().Changed("parent") {
+		overrides["parent"] = fmt.Sprintf("%q", addParent)
+	}
+	if cmd.Flags().Changed("tags") {
+		tags := parseTags()
+		overrides["tags"] = taskfile.FormatInlineTags(tags)[len("tags: "):]
+	}
+	if cmd.Flags().Changed("depends-on") {
+		deps := parseDependsOn()
+		overrides["dependencies"] = formatDependencies(deps)[len("dependencies: "):]
+	}
+
+	return overrides
 }
 
 func validateAddEnums() error {
