@@ -1,7 +1,7 @@
 ---
 id: "173"
 title: "Build e2e test suite for CLI"
-status: pending
+status: completed
 priority: medium
 effort: large
 type: improvement
@@ -19,19 +19,19 @@ Create an end-to-end test suite that invokes the compiled `taskmd` binary as a s
 
 ## Tasks
 
-- [ ] Create test package at `apps/cli/e2e_test.go` or `apps/cli/internal/e2e/`
-- [ ] Implement `TestMain` to build the binary once before all tests
-- [ ] Implement test helpers: `run()`, `mustRun()`, `writeTask()`
-- [ ] Isolate tests with `t.TempDir()` and overridden `HOME` env var
-- [ ] Test full workflows: add -> list -> set -> next chains
-- [ ] Test JSON and YAML output parseability across commands
-- [ ] Test flag wiring (flags actually affect behavior end-to-end)
-- [ ] Test `.taskmd.yaml` config loading and precedence
-- [ ] Test stdin/pipe behavior (e.g. `taskmd validate --stdin`)
-- [ ] Test dependency resolution across commands (graph, next)
-- [ ] Test error cases: unknown commands, malformed task files, missing args
-- [ ] Test exit codes for success and failure scenarios
-- [ ] Add `make e2e` target to run e2e tests separately from unit tests
+- [x] Create test package at `apps/cli/e2e_test.go` or `apps/cli/internal/e2e/`
+- [x] Implement `TestMain` to build the binary once before all tests
+- [x] Implement test helpers: `run()`, `mustRun()`, `writeTask()`
+- [x] Isolate tests with `t.TempDir()` and overridden `HOME` env var
+- [x] Test full workflows: add -> list -> set -> next chains
+- [x] Test JSON and YAML output parseability across commands
+- [x] Test flag wiring (flags actually affect behavior end-to-end)
+- [x] Test `.taskmd.yaml` config loading and precedence
+- [x] Test stdin/pipe behavior (e.g. `taskmd validate --stdin`)
+- [x] Test dependency resolution across commands (graph, next)
+- [x] Test error cases: unknown commands, malformed task files, missing args
+- [x] Test exit codes for success and failure scenarios
+- [x] Add `make e2e` target to run e2e tests separately from unit tests
 
 ## Sub-tasks
 
