@@ -135,6 +135,7 @@ taskmd list ./tasks/cli
 | `web` | Web dashboard commands |
 | `init` | Initialize a project with agent configuration and spec files |
 | `mcp` | Start MCP server for LLM tool integration |
+| `todos` | Find TODO/FIXME comments in source code |
 | `completion` | Generate shell completion scripts |
 
 ---
@@ -297,6 +298,12 @@ taskmd next --filter tag=cli
 
 # Next small task (quick win)
 taskmd next --filter effort=small --limit 1
+
+# Show only quick wins (effort: small)
+taskmd next --quick-wins
+
+# Show only critical path tasks
+taskmd next --critical --limit 1
 ```
 
 **Output formats:**
@@ -358,6 +365,11 @@ taskmd graph --exclude-status completed --exclude-status blocked
 
 # Show only pending tasks
 taskmd graph --exclude-status completed --exclude-status in-progress
+
+# Filter by task attributes (AND logic with multiple flags)
+taskmd graph --filter priority=high
+taskmd graph --filter priority=high --filter effort=small
+taskmd graph --filter tag=cli --exclude-status completed
 ```
 
 **Focus on specific tasks:**
@@ -568,6 +580,10 @@ taskmd snapshot --format json > public/api/tasks.json
 
 ### web - Web Dashboard
 
+Commands for the taskmd web dashboard.
+
+#### web start
+
 Start the web interface server.
 
 **Basic usage:**
@@ -581,20 +597,21 @@ taskmd web start --open
 # Custom port
 taskmd web start --port 3000
 
+# Read-only mode (disables editing)
+taskmd web start --readonly
+
 # Development mode (CORS for Vite)
 taskmd web start --dev
 ```
 
-**Full command:**
-```bash
-taskmd web start [flags]
-```
-
 **Flags:**
-- `--port int` - Server port (default 8080)
-- `--open` - Open browser automatically
-- `--dev` - Enable dev mode with CORS
-- `-d, --task-dir string` - Task directory to scan
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--port` | `8080` | Server port |
+| `--open` | `false` | Open browser automatically |
+| `--dev` | `false` | Enable dev mode with CORS |
+| `--readonly` | `false` | Start in read-only mode (disables editing) |
 
 **Examples:**
 ```bash
@@ -607,11 +624,418 @@ taskmd web start --port 3000 --open
 # Specific tasks directory
 taskmd web start --task-dir ./my-tasks --open
 
+# Read-only mode for demos or shared displays
+taskmd web start --readonly --open
+
 # Development with Vite
 taskmd web start --dev --port 8080
 ```
 
+#### web export
+
+Export the dashboard as a self-contained static site. The exported site can be deployed to GitHub Pages, Netlify, S3, or any static file host.
+
+```bash
+# Export to default directory (./taskmd-export)
+taskmd web export
+
+# Export to a specific directory
+taskmd web export -o ./public
+
+# Set base path for URLs (e.g., for GitHub Pages subpath)
+taskmd web export --base-path /demo/
+
+# Export with custom task directory
+taskmd web export --task-dir ./tasks -o ./site
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-o`, `--output` | `./taskmd-export` | Output directory |
+| `--base-path` | `/` | Base path for URLs (e.g., `/demo/`) |
+
 See [Web User Guide](web-guide.md) for detailed web interface documentation.
+
+### add - Create a New Task
+
+Create a new task markdown file with proper frontmatter. The title is used to generate both the task title and the filename slug. A sequential ID is automatically assigned based on existing tasks.
+
+**Basic usage:**
+```bash
+# Create a task with just a title
+taskmd add "Fix the login bug"
+
+# Set priority and tags
+taskmd add "Implement OAuth" --priority high --tags backend,auth
+
+# Create in a subdirectory group
+taskmd add "Design mockups" --group design --effort large
+
+# Open in $EDITOR after creation
+taskmd add "Quick fix" --edit
+
+# With dependencies
+taskmd add "Deploy to staging" --depends-on 041,042
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--priority` | `medium` | Task priority (`low`, `medium`, `high`, `critical`) |
+| `--effort` | | Task effort (`small`, `medium`, `large`) |
+| `--tags` | | Comma-separated tags |
+| `--status` | `pending` | Task status (`pending`, `in-progress`, `completed`, `blocked`, `cancelled`) |
+| `--owner` | | Task owner/assignee |
+| `--depends-on` | | Comma-separated dependency task IDs |
+| `--parent` | | Parent task ID |
+| `--group` | | Subdirectory to create the task in |
+| `--format` | `plain` | Output format (`plain`, `json`) |
+| `--edit` | `false` | Open the new task in `$EDITOR` |
+
+**Examples:**
+```bash
+# Create a high-priority task with tags
+taskmd add "Implement OAuth" --priority high --tags backend,auth
+
+# Create in a specific group
+taskmd add "Design mockups" --group design --effort large
+
+# JSON output for scripting
+taskmd add "Automated task" --format json
+
+# Open in editor immediately
+taskmd add "Draft specification" --edit
+```
+
+### search - Full-Text Search
+
+Perform case-insensitive full-text search across all task titles and markdown body content. Results show where the match was found and a context snippet.
+
+**Basic usage:**
+```bash
+# Search for a keyword
+taskmd search "authentication"
+
+# JSON output
+taskmd search deploy --format json
+
+# Search in specific directory
+taskmd search "bug fix" --task-dir ./tasks
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
+
+### verify - Run Verification Checks
+
+Run the acceptance checks defined in a task's `verify` field. Each verify step has a type:
+
+- **bash** -- runs a shell command, reports pass/fail based on exit code
+- **assert** -- displays a check for the agent to evaluate (not executed)
+
+**Basic usage:**
+```bash
+# Verify a task
+taskmd verify --task-id 042
+
+# JSON output
+taskmd verify --task-id 042 --format json
+
+# Preview checks without executing
+taskmd verify --task-id 042 --dry-run
+
+# Custom timeout (seconds) per command
+taskmd verify --task-id 042 --timeout 120
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--task-id` | *(required)* | Task ID to verify |
+| `--format` | `table` | Output format (`table`, `json`) |
+| `--dry-run` | `false` | List checks without executing |
+| `--timeout` | `60` | Per-command timeout in seconds |
+
+**Exit codes:**
+- `0` - All executable checks passed
+- `1` - One or more executable checks failed
+
+### status - Lightweight Task Metadata
+
+Display only the frontmatter metadata of a task, without body content, resolved dependency info, context files, or worklog data. Use this when you just need to quickly check a task's status, priority, or other metadata.
+
+Matching uses the same logic as `get` (ID, title, file path, fuzzy).
+
+**Basic usage:**
+```bash
+# Look up by task ID
+taskmd status 042
+
+# Look up by title
+taskmd status "Setup project"
+
+# JSON output
+taskmd status 042 --format json
+
+# Strict lookup (no fuzzy matching)
+taskmd status sho --exact
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `text` | Output format (`text`, `json`, `yaml`) |
+| `--exact` | `false` | Disable fuzzy matching, exact only |
+| `--threshold` | `0.6` | Fuzzy match sensitivity (0.0-1.0) |
+
+### context - Show File Context
+
+Resolve all relevant files for a task into a structured output. Files come from two sources:
+
+1. **Scope files** -- resolved from the task's `touches` field via scope definitions in `.taskmd.yaml`
+2. **Explicit files** -- listed directly in the task's `context` field
+
+**Basic usage:**
+```bash
+# Show context for a task
+taskmd context --task-id 042
+
+# JSON output
+taskmd context --task-id 042 --format json
+
+# Include file contents and task body
+taskmd context --task-id 042 --include-content --resolve
+
+# Include files from dependency tasks
+taskmd context --task-id 042 --include-deps
+
+# Limit number of files
+taskmd context --task-id 042 --max-files 20
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--task-id` | *(required)* | Task ID to build context for |
+| `--format` | `text` | Output format (`text`, `json`, `yaml`) |
+| `--resolve` | `false` | Expand directory paths to individual files |
+| `--include-content` | `false` | Inline file contents and task body |
+| `--include-deps` | `false` | Include files from direct dependency tasks |
+| `--max-files` | `0` | Cap number of files (0 = unlimited) |
+
+### worklog - View or Add Worklog Entries
+
+View or add timestamped worklog entries for a task. Worklog files are stored at `tasks/<group>/.worklogs/<ID>.md`.
+
+**Basic usage:**
+```bash
+# View worklog entries
+taskmd worklog --task-id 015
+
+# Add a new entry
+taskmd worklog --task-id 015 --add "Started implementation"
+
+# JSON output
+taskmd worklog --task-id 015 --format json
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--task-id` | *(required)* | Task ID |
+| `--add` | | Append a new worklog entry with the given text |
+| `--format` | `text` | Output format (`text`, `json`, `yaml`) |
+
+### import - Import Tasks from External Sources
+
+Fetch tasks from an external source (GitHub Issues, Jira, etc.) and create local markdown task files. This is a one-time onboarding tool for populating your `tasks/` directory.
+
+When run without `--source`, an interactive wizard guides you through setup.
+
+**Basic usage:**
+```bash
+# Interactive wizard
+taskmd import
+
+# GitHub: import from a repository
+taskmd import --source github --repo owner/repo
+
+# GitHub: with auth token and filters
+taskmd import --source github --project owner/repo --token-env GITHUB_TOKEN
+
+# GitHub: filter by labels and assignee
+taskmd import --source github --repo owner/repo --labels bug,critical --assignee alice
+
+# Jira: import from a project
+taskmd import --source jira --project PROJ --url https://company.atlassian.net
+
+# Preview without writing files
+taskmd import --source github --repo owner/repo --dry-run
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--source` | | Source name (`github`, `jira`, etc.). Omit for interactive wizard |
+| `--project` | | Project identifier (owner/repo for GitHub, project key for Jira) |
+| `--token-env` | | Environment variable name for auth token |
+| `--user-env` | | Environment variable name for username (Jira) |
+| `--base-url` | | API base URL (for Jira or GitHub Enterprise) |
+| `--output-dir` | `./tasks` | Target directory for imported task files |
+| `--filter` | | Source-specific filters as key:value pairs |
+| `--dry-run` | `false` | Preview import without writing files |
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
+
+**GitHub-specific flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--repo` | Alias for `--project` (owner/repo) |
+| `--labels` | Filter by labels (comma-separated) |
+| `--milestone` | Filter by milestone |
+| `--assignee` | Filter by assignee |
+
+**Jira-specific flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--url` | Alias for `--base-url` (Jira instance URL) |
+| `--jql` | Jira Query Language filter |
+
+### spec - Generate Specification File
+
+Generate the taskmd specification document in your project directory. The specification describes the task file format, including frontmatter fields, valid values, file naming conventions, and directory structure.
+
+**Basic usage:**
+```bash
+# Write TASKMD_SPEC.md to current directory
+taskmd spec
+
+# Print spec to stdout
+taskmd spec --stdout
+
+# Write to a specific directory
+taskmd spec --dir ./docs
+
+# Overwrite existing file
+taskmd spec --force
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--force` | `false` | Overwrite existing `TASKMD_SPEC.md` |
+| `--stdout` | `false` | Print spec to stdout instead of writing a file |
+
+### commit-msg - Generate Commit Messages
+
+Generate a conventional commit message derived from task metadata.
+
+When `--task-id` is provided, the message is generated from that task. When no `--task-id` is provided, the command inspects staged changes (`git diff --cached`) to find task files whose status changed to `completed` and generates a message from those tasks automatically.
+
+**Basic usage:**
+```bash
+# Generate message for a specific task
+taskmd commit-msg --task-id 042
+
+# Use a custom commit type
+taskmd commit-msg --task-id 042 --type feat
+
+# Include completed subtasks as bullet points
+taskmd commit-msg --task-id 042 --body
+
+# Subject line only
+taskmd commit-msg --task-id 042 --short
+
+# Auto-detect completed tasks from staged changes
+taskmd commit-msg
+
+# Use with git commit
+git commit -m "$(taskmd commit-msg --task-id 042)"
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--task-id` | | Task ID to generate the message for (omit to auto-detect) |
+| `--type` | `chore` | Commit type prefix (`feat`, `fix`, `chore`, `docs`, `test`, `refactor`) |
+| `--body` | `false` | Include completed subtasks as bullet points |
+| `--short` | `false` | Subject line only (no body) |
+
+### todos - Find TODO/FIXME Comments
+
+Scan source code files recursively for marker comments (TODO, FIXME, HACK, XXX, NOTE, BUG, OPTIMIZE) and display them with file path, line number, marker type, and comment text.
+
+Respects `.gitignore` and skips common non-source directories (`node_modules`, `.git`, `vendor`, etc.). Supports language-aware comment parsing for Go, JavaScript, TypeScript, Python, Ruby, Shell, CSS, HTML, Rust, YAML, and TOML.
+
+**Basic usage:**
+```bash
+# List all TODO/FIXME comments
+taskmd todos list
+
+# Scan a specific directory
+taskmd todos list --dir ./src
+
+# Filter by marker type
+taskmd todos list --marker TODO --marker FIXME
+
+# Include only specific file patterns
+taskmd todos list --include "*.go"
+
+# Exclude specific file patterns
+taskmd todos list --exclude "*.test.go"
+
+# JSON output
+taskmd todos list --format json
+
+# Rich output with scope and git blame info
+taskmd todos list --rich
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--dir` | `.` | Directory to scan for source code |
+| `--marker` | *(all)* | Filter by marker type (repeatable) |
+| `--include` | | Include only files matching glob pattern (repeatable) |
+| `--exclude` | | Exclude files matching glob pattern (repeatable) |
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
+| `--rich` | `false` | Include scope and git blame information (slower) |
+| `--raw-text` | `false` | Include original source line text in output |
+
+Exclude patterns can also be configured in `.taskmd.yaml` under `todos.exclude`. CLI `--exclude` flags are additive with config patterns.
+
+### completion - Generate Shell Completions
+
+Generate shell completion scripts for bash, zsh, fish, or PowerShell.
+
+```bash
+# Bash
+source <(taskmd completion bash)
+
+# Zsh
+taskmd completion zsh > "${fpath[1]}/_taskmd"
+
+# Fish
+taskmd completion fish | source
+
+# PowerShell
+taskmd completion powershell | Out-String | Invoke-Expression
+```
 
 ### get - View Task Details
 
@@ -646,6 +1070,7 @@ taskmd get 037-task
 | `--format string` | `text` | Output format (`text`, `json`, `yaml`) |
 | `--exact` | `false` | Disable fuzzy matching, exact match only |
 | `--threshold float` | `0.6` | Fuzzy match sensitivity (0.0–1.0) |
+| `--context` | `false` | Include context files in output |
 
 **Output formats:**
 ```bash

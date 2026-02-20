@@ -1,7 +1,7 @@
 ---
 id: "171"
 title: "Document missing CLI flags and commands"
-status: pending
+status: completed
 priority: medium
 effort: medium
 type: docs
@@ -21,30 +21,30 @@ Fill documentation gaps for CLI commands and flags that exist in the CLI but are
 
 ### VitePress CLI guide (`apps/docs/guide/cli.md`)
 
-- [ ] Add `todos` / `todos list` command section with all flags (`--dir`, `--marker`, `--include`, `--exclude`, `--rich`, `--raw-text`, `--format`)
-- [ ] Add `todos` to Quick Reference table
-- [ ] Add `next --quick-wins` and `next --critical` flags to `next` command section
-- [ ] Add `web export` subcommand section with flags (`--output`, `--base-path`)
-- [ ] Add `web start --readonly` flag
+- [x] Add `todos` / `todos list` command section with all flags (`--dir`, `--marker`, `--include`, `--exclude`, `--rich`, `--raw-text`, `--format`)
+- [x] Add `todos` to Quick Reference table
+- [x] Add `next --quick-wins` and `next --critical` flags to `next` command section
+- [x] Add `web export` subcommand section with flags (`--output`, `--base-path`)
+- [x] Add `web start --readonly` flag
 
 ### Standalone CLI guide (`docs/guides/cli-guide.md`)
 
-- [ ] Add `add` command section
-- [ ] Add `search` command section
-- [ ] Add `verify` command section
-- [ ] Add `status` command section
-- [ ] Add `context` command section
-- [ ] Add `worklog` command section
-- [ ] Add `import` command section
-- [ ] Add `spec` command section
-- [ ] Add `commit-msg` command section
-- [ ] Add `todos` / `todos list` command section
-- [ ] Add `completion` to Quick Reference table
-- [ ] Add `web export` subcommand section
-- [ ] Add `next --quick-wins` and `next --critical` flags
-- [ ] Add `web start --readonly` flag
-- [ ] Add `get --context` flag
-- [ ] Add `graph --filter` flag
+- [x] Add `add` command section
+- [x] Add `search` command section
+- [x] Add `verify` command section
+- [x] Add `status` command section
+- [x] Add `context` command section
+- [x] Add `worklog` command section
+- [x] Add `import` command section
+- [x] Add `spec` command section
+- [x] Add `commit-msg` command section
+- [x] Add `todos` / `todos list` command section
+- [x] Add `completion` to Quick Reference table
+- [x] Add `web export` subcommand section
+- [x] Add `next --quick-wins` and `next --critical` flags
+- [x] Add `web start --readonly` flag
+- [x] Add `get --context` flag
+- [x] Add `graph --filter` flag
 
 ## Acceptance Criteria
 

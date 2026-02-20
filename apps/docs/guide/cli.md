@@ -35,6 +35,7 @@ Complete reference for using taskmd from the command line.
 | `init` | Initialize a project with agent configuration and spec files |
 | `commit-msg` | Generate conventional commit messages from task metadata |
 | `mcp` | Start MCP server over stdio |
+| `todos` | Find TODO/FIXME comments in source code |
 | `completion` | Generate shell completion scripts |
 
 ---
@@ -166,6 +167,12 @@ taskmd next --filter priority=high
 
 # Next small task (quick win)
 taskmd next --filter effort=small --limit 1
+
+# Show only quick wins (effort: small)
+taskmd next --quick-wins
+
+# Show only critical path tasks
+taskmd next --critical --limit 1
 
 # JSON for automation
 taskmd next --format json
@@ -898,6 +905,10 @@ See [Configuration](/reference/configuration#sync-configuration) for how to set 
 
 ### web - Web Dashboard
 
+Commands for the taskmd web dashboard.
+
+#### web start
+
 Start the web interface server.
 
 ```bash
@@ -910,11 +921,91 @@ taskmd web start --open
 # Custom port
 taskmd web start --port 3000
 
+# Read-only mode (disables editing)
+taskmd web start --readonly
+
 # Specific tasks directory
 taskmd web start --task-dir ./my-tasks --open
 ```
 
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--port` | `8080` | Server port |
+| `--open` | `false` | Open browser on start |
+| `--dev` | `false` | Enable dev mode (CORS for Vite dev server) |
+| `--readonly` | `false` | Start in read-only mode (disables editing) |
+
+#### web export
+
+Export the dashboard as a self-contained static site. The exported site can be deployed to GitHub Pages, Netlify, S3, or any static file host.
+
+```bash
+# Export to default directory (./taskmd-export)
+taskmd web export
+
+# Export to a specific directory
+taskmd web export -o ./public
+
+# Set base path for URLs (e.g., for GitHub Pages subpath)
+taskmd web export --base-path /demo/
+
+# Export with custom task directory
+taskmd web export --task-dir ./tasks -o ./site
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-o`, `--output` | `./taskmd-export` | Output directory |
+| `--base-path` | `/` | Base path for URLs (e.g., `/demo/`) |
+
 See the [Web Interface Guide](./web) for detailed web UI documentation.
+
+### todos - Find TODO/FIXME Comments
+
+Scan source code files recursively for marker comments (TODO, FIXME, HACK, XXX, NOTE, BUG, OPTIMIZE) and display them with file path, line number, marker type, and comment text.
+
+Respects `.gitignore` and skips common non-source directories (`node_modules`, `.git`, `vendor`, etc.). Supports language-aware comment parsing for Go, JavaScript, TypeScript, Python, Ruby, Shell, CSS, HTML, Rust, YAML, and TOML.
+
+```bash
+# List all TODO/FIXME comments
+taskmd todos list
+
+# Scan a specific directory
+taskmd todos list --dir ./src
+
+# Filter by marker type
+taskmd todos list --marker TODO --marker FIXME
+
+# Include only specific file patterns
+taskmd todos list --include "*.go"
+
+# Exclude specific file patterns
+taskmd todos list --exclude "*.test.go"
+
+# JSON output
+taskmd todos list --format json
+
+# Rich output with scope and git blame info
+taskmd todos list --rich
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--dir` | `.` | Directory to scan for source code |
+| `--marker` | *(all)* | Filter by marker type (repeatable) |
+| `--include` | | Include only files matching glob pattern (repeatable) |
+| `--exclude` | | Exclude files matching glob pattern (repeatable) |
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
+| `--rich` | `false` | Include scope and git blame information (slower) |
+| `--raw-text` | `false` | Include original source line text in output |
+
+Exclude patterns can also be configured in `.taskmd.yaml` under `todos.exclude`. CLI `--exclude` flags are additive with config patterns.
 
 ## Global Flags
 
