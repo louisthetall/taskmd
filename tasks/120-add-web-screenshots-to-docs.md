@@ -1,7 +1,7 @@
 ---
 id: "120"
 title: "Add web interface screenshots to documentation"
-status: pending
+status: in-progress
 priority: medium
 effort: medium
 tags: [documentation, web]
@@ -27,16 +27,16 @@ Work through the screenshots **one at a time**. For each screenshot:
 
 ## Tasks
 
-- [ ] Create `apps/docs/public/images/web/` directory
-- [ ] **Tasks View** — Filtered table showing search bar, status/priority filters, and sortable columns. Place under `## Views > ### Tasks View` in `guide/web.md`
-- [ ] **Board View (by status)** — Kanban board with Pending/In-Progress/Completed columns and task cards. Place under `### Board View` in `guide/web.md`
-- [ ] **Graph View** — Interactive dependency graph with colored nodes (yellow=pending, blue=in-progress, green=completed). Place under `### Graph View` in `guide/web.md`
-- [ ] **Stats View** — Dashboard showing metric cards and breakdown sections (by status, priority, effort, tags). Place under `### Stats View` in `guide/web.md`
-- [ ] **Task Detail Page** — Single task showing metadata (status badge, priority, effort, dependencies, tags) and rendered markdown body. Place under `### Tasks View` after the table screenshot in `guide/web.md`
-- [ ] **Next View** — Recommendation cards with scores and reasons. Place in a new `### Next View` section or under an existing relevant heading in `guide/web.md`
-- [ ] **Tracks View** — Parallel work tracks with task cards grouped by scope. Place in a new `### Tracks View` section in `guide/web.md`
-- [ ] **Validate View** — Validation results with errors/warnings grouped by file. Place in a new `### Validate View` section in `guide/web.md`
-- [ ] **Quick Start hero screenshot** — The Tasks view on first launch. Place at step 9 of `getting-started/index.md` where `taskmd web` is introduced
+- [x] Create `apps/docs/public/images/web/` directory
+- [x] **Tasks View** — Filtered table showing search bar, status/priority filters, and sortable columns. Place under `## Views > ### Tasks View` in `guide/web.md`
+- [x] **Board View (by status)** — Kanban board with Pending/In-Progress/Completed columns and task cards. Place under `### Board View` in `guide/web.md`
+- [x] **Graph View** — Interactive dependency graph with colored nodes (yellow=pending, blue=in-progress, green=completed). Place under `### Graph View` in `guide/web.md`
+- [x] **Stats View** — Dashboard showing metric cards and breakdown sections (by status, priority, effort, tags). Place under `### Stats View` in `guide/web.md`
+- [x] **Task Detail Page** — Single task showing metadata (status badge, priority, effort, dependencies, tags) and rendered markdown body. Place under `### Tasks View` after the table screenshot in `guide/web.md`
+- [x] **Next View** — Recommendation cards with scores and reasons. Place in a new `### Next View` section or under an existing relevant heading in `guide/web.md`
+- [x] **Tracks View** — Parallel work tracks with task cards grouped by scope. Place in a new `### Tracks View` section in `guide/web.md`
+- [x] **Validate View** — Validation results with errors/warnings grouped by file. Place in a new `### Validate View` section in `guide/web.md`
+- [x] **Quick Start hero screenshot** — The Tasks view on first launch. Place at step 9 of `getting-started/index.md` where `taskmd web` is introduced
 
 ## Acceptance Criteria
 

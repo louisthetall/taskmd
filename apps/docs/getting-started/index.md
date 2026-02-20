@@ -143,6 +143,8 @@ taskmd web start --open
 
 This opens a web dashboard with task list, board, graph, and statistics views.
 
+![Tasks view on first launch](/images/web/tasks.view.png)
+
 ## Next Steps
 
 - [Installation](./installation) - All installation methods

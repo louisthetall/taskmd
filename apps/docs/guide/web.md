@@ -40,6 +40,8 @@ No page refresh needed.
 
 The main task list in a sortable, filterable table.
 
+![Tasks view showing the filterable, sortable task table](/images/web/tasks.view.png)
+
 **Features:**
 - **Sortable columns** - click headers to sort (ID, Title, Status, Priority, Effort)
 - **Search** - real-time filtering across ID, title, and tags
@@ -47,11 +49,17 @@ The main task list in a sortable, filterable table.
 - **Clickable tasks** - click ID or title to view full details
 - **Dependency counts** - see how many dependencies each task has
 
+Click a task to open its detail page, showing full metadata and rendered markdown body.
+
+![Task detail page showing metadata, status badge, and rendered markdown content](/images/web/task.detail.png)
+
 ### Board View (Kanban)
 
 **URL:** `/board`
 
 Visual board with tasks organized in columns.
+
+![Board view showing tasks organized in Kanban columns by status](/images/web/board.view.png)
 
 **Group by options:**
 
@@ -69,6 +77,8 @@ Visual board with tasks organized in columns.
 
 Interactive dependency visualization using Mermaid diagrams.
 
+![Graph view showing interactive dependency graph with color-coded task nodes](/images/web/graph.view.png)
+
 - Nodes represent tasks, arrows show dependencies
 - Color-coded by status (yellow=pending, blue=in-progress, green=completed, red=blocked)
 - Useful for understanding dependencies, finding critical paths, and spotting blockers
@@ -77,12 +87,47 @@ Interactive dependency visualization using Mermaid diagrams.
 
 **URL:** `/stats`
 
-Project metrics and analytics:
+Project metrics and analytics.
+
+![Stats view showing project metrics, completion rates, and breakdown charts](/images/web/stats.view.png)
 
 - **Overview** - total tasks, completion rate, status breakdown
 - **Priority breakdown** - tasks by priority level
 - **Effort breakdown** - tasks by effort estimate
 - **Dependency analysis** - critical path length, max depth, average dependencies
+
+### Next View
+
+**URL:** `/next`
+
+AI-powered task recommendations showing which tasks to work on next.
+
+![Next view showing recommended tasks with scores and reasoning](/images/web/next.view.png)
+
+- Ranked task cards with priority scores
+- Explains why each task is recommended (unblocked dependencies, priority, effort)
+
+### Tracks View
+
+**URL:** `/tracks`
+
+Parallel work tracks showing tasks grouped by scope.
+
+![Tracks view showing parallel work tracks with grouped task cards](/images/web/tracks.view.png)
+
+- Tasks organized into independent work streams
+- Helps identify parallelizable work
+
+### Validate View
+
+**URL:** `/validate`
+
+Validation results for task files, showing errors and warnings.
+
+![Validate view showing validation results with errors and warnings grouped by file](/images/web/validate.view.png)
+
+- Errors and warnings grouped by file
+- Helps catch formatting issues, missing fields, and broken dependencies
 
 ## Common Workflows
 
