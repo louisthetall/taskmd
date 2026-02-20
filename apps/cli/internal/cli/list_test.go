@@ -370,36 +370,13 @@ func TestListCommand_ColorAlignmentMatchesPlain(t *testing.T) {
 	// Strip ANSI codes and compare visible widths per line
 	for i := range plainLines {
 		plainLen := len(strings.TrimRight(plainLines[i], " "))
-		strippedColor := stripANSI(colorLines[i])
+		strippedColor := StripANSI(colorLines[i])
 		colorLen := len(strings.TrimRight(strippedColor, " "))
 		if plainLen != colorLen {
 			t.Errorf("Line %d visible width mismatch: plain=%d, color(stripped)=%d\n  plain: %q\n  color: %q",
 				i, plainLen, colorLen, plainLines[i], strippedColor)
 		}
 	}
-}
-
-// stripANSI removes ANSI escape sequences from a string.
-func stripANSI(s string) string {
-	var result strings.Builder
-	i := 0
-	for i < len(s) {
-		if s[i] == '\x1b' && i+1 < len(s) && s[i+1] == '[' {
-			// Skip until we find the terminating letter
-			j := i + 2
-			for j < len(s) && !((s[j] >= 'A' && s[j] <= 'Z') || (s[j] >= 'a' && s[j] <= 'z')) {
-				j++
-			}
-			if j < len(s) {
-				j++ // skip the terminator
-			}
-			i = j
-		} else {
-			result.WriteByte(s[i])
-			i++
-		}
-	}
-	return result.String()
 }
 
 // splitTableColumns splits a table-formatted line into columns.

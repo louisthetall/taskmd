@@ -176,62 +176,28 @@ func outputTable(tasks []*model.Task, columnsStr string) error {
 		return nil
 	}
 
-	// Parse columns
 	columns := strings.Split(columnsStr, ",")
 	for i, col := range columns {
 		columns[i] = strings.TrimSpace(col)
 	}
 
 	r := getRenderer()
+	tw := NewTableWriter()
+	tw.AddHeader(columns)
+	tw.AddSeparator()
 
-	// Compute max visible width per column (header vs data)
-	colWidths := make([]int, len(columns))
-	for i, col := range columns {
-		colWidths[i] = len(col)
-	}
 	for _, task := range tasks {
+		plain := make([]string, len(columns))
+		colored := make([]string, len(columns))
 		for i, col := range columns {
-			value := getColumnValue(task, col)
-			if len(value) > colWidths[i] {
-				colWidths[i] = len(value)
-			}
+			plain[i] = getColumnValue(task, col)
+			colored[i] = colorizeColumn(task, col, r)
 		}
+		tw.AddRow(plain, colored)
 	}
 
-	const colGap = "  "
-
-	// Write header
-	printPaddedRow(os.Stdout, columns, colWidths, colGap)
-
-	// Write separator
-	separators := make([]string, len(columns))
-	for i, width := range colWidths {
-		separators[i] = strings.Repeat("-", width)
-	}
-	printPaddedRow(os.Stdout, separators, colWidths, colGap)
-
-	// Write rows — pad using plain-text widths so ANSI codes don't break alignment
-	for _, task := range tasks {
-		cells := make([]string, len(columns))
-		for i, col := range columns {
-			plain := getColumnValue(task, col)
-			colored := colorizeColumn(task, col, r)
-			padding := colWidths[i] - len(plain)
-			cells[i] = colored + strings.Repeat(" ", padding)
-		}
-		fmt.Fprintln(os.Stdout, strings.Join(cells, colGap))
-	}
-
+	tw.Flush(os.Stdout)
 	return nil
-}
-
-// printPaddedRow writes a row of plain-text values padded to colWidths.
-func printPaddedRow(w *os.File, values []string, colWidths []int, gap string) {
-	padded := make([]string, len(values))
-	for i, v := range values {
-		padded[i] = v + strings.Repeat(" ", colWidths[i]-len(v))
-	}
-	fmt.Fprintln(w, strings.Join(padded, gap))
 }
 
 // colorizeColumn returns the column value with color formatting applied.

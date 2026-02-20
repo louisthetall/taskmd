@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"text/tabwriter"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
 	"github.com/driangle/taskmd/apps/cli/internal/metrics"
@@ -93,83 +93,95 @@ func outputStatsJSON(m *metrics.Metrics) error {
 
 // outputStatsTable outputs metrics in a human-readable table format
 //
-//nolint:gocognit,funlen // TODO: refactor to reduce complexity
+//nolint:funlen // stats display has many sections by nature
 func outputStatsTable(m *metrics.Metrics) error {
 	r := getRenderer()
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	defer w.Flush()
-
-	fmt.Fprintln(w, formatLabel("TASK STATISTICS", r))
-	fmt.Fprintln(w, strings.Repeat("=", 50))
-	fmt.Fprintln(w)
+	fmt.Println(formatLabel("TASK STATISTICS", r))
+	fmt.Println(strings.Repeat("=", 50))
+	fmt.Println()
 
 	// Overall stats
-	fmt.Fprintf(w, "Total Tasks:\t%d\n", m.TotalTasks)
-	fmt.Fprintf(w, "Blocked Tasks:\t%d\n", m.BlockedTasksCount)
-	fmt.Fprintf(w, "Critical Path Length:\t%d\n", m.CriticalPathLength)
-	fmt.Fprintf(w, "Max Dependency Depth:\t%d\n", m.MaxDependencyDepth)
-	fmt.Fprintf(w, "Avg Dependencies/Task:\t%.2f\n", m.AvgDependenciesPerTask)
-	fmt.Fprintln(w)
+	tw := NewTableWriter()
+	tw.AddRow([]string{"Total Tasks:", fmt.Sprintf("%d", m.TotalTasks)}, []string{"Total Tasks:", fmt.Sprintf("%d", m.TotalTasks)})
+	tw.AddRow([]string{"Blocked Tasks:", fmt.Sprintf("%d", m.BlockedTasksCount)}, []string{"Blocked Tasks:", fmt.Sprintf("%d", m.BlockedTasksCount)})
+	tw.AddRow([]string{"Critical Path Length:", fmt.Sprintf("%d", m.CriticalPathLength)}, []string{"Critical Path Length:", fmt.Sprintf("%d", m.CriticalPathLength)})
+	tw.AddRow([]string{"Max Dependency Depth:", fmt.Sprintf("%d", m.MaxDependencyDepth)}, []string{"Max Dependency Depth:", fmt.Sprintf("%d", m.MaxDependencyDepth)})
+	tw.AddRow([]string{"Avg Dependencies/Task:", fmt.Sprintf("%.2f", m.AvgDependenciesPerTask)}, []string{"Avg Dependencies/Task:", fmt.Sprintf("%.2f", m.AvgDependenciesPerTask)})
+	tw.Flush(os.Stdout)
+	fmt.Println()
 
 	// Tasks by status
-	fmt.Fprintln(w, formatLabel("BY STATUS:", r))
-	if len(m.TasksByStatus) > 0 {
-		// Order: pending, in-progress, completed, blocked, cancelled
-		statusOrder := []model.Status{
-			model.StatusPending,
-			model.StatusInProgress,
-			model.StatusCompleted,
-			model.StatusBlocked,
-			model.StatusCancelled,
-		}
-		for _, status := range statusOrder {
-			if count, ok := m.TasksByStatus[status]; ok && count > 0 {
-				fmt.Fprintf(w, "  %s:\t%d\n", formatStatus(string(status), r), count)
-			}
-		}
-	} else {
-		fmt.Fprintln(w, "  (none)")
-	}
-	fmt.Fprintln(w)
+	fmt.Println(formatLabel("BY STATUS:", r))
+	printStatsBreakdownByStatus(m, r)
+	fmt.Println()
 
 	// Tasks by priority
-	fmt.Fprintln(w, formatLabel("BY PRIORITY:", r))
-	if len(m.TasksByPriority) > 0 {
-		// Order: critical, high, medium, low
-		priorityOrder := []model.Priority{
-			model.PriorityCritical,
-			model.PriorityHigh,
-			model.PriorityMedium,
-			model.PriorityLow,
-		}
-		for _, priority := range priorityOrder {
-			if count, ok := m.TasksByPriority[priority]; ok && count > 0 {
-				fmt.Fprintf(w, "  %s:\t%d\n", formatPriority(string(priority), r), count)
-			}
-		}
-	} else {
-		fmt.Fprintln(w, "  (none)")
-	}
-	fmt.Fprintln(w)
+	fmt.Println(formatLabel("BY PRIORITY:", r))
+	printStatsBreakdownByPriority(m, r)
+	fmt.Println()
 
 	// Tasks by effort
-	fmt.Fprintln(w, formatLabel("BY EFFORT:", r))
-	if len(m.TasksByEffort) > 0 {
-		// Order: small, medium, large
-		effortOrder := []model.Effort{
-			model.EffortSmall,
-			model.EffortMedium,
-			model.EffortLarge,
-		}
-		for _, effort := range effortOrder {
-			if count, ok := m.TasksByEffort[effort]; ok && count > 0 {
-				fmt.Fprintf(w, "  %s:\t%d\n", formatEffort(string(effort), r), count)
-			}
-		}
-	} else {
-		fmt.Fprintln(w, "  (none)")
-	}
+	fmt.Println(formatLabel("BY EFFORT:", r))
+	printStatsBreakdownByEffort(m, r)
 
 	return nil
+}
+
+func printStatsBreakdownByStatus(m *metrics.Metrics, r *lipgloss.Renderer) {
+	if len(m.TasksByStatus) == 0 {
+		fmt.Println("  (none)")
+		return
+	}
+	tw := NewTableWriter()
+	for _, status := range []model.Status{
+		model.StatusPending, model.StatusInProgress, model.StatusCompleted,
+		model.StatusBlocked, model.StatusCancelled,
+	} {
+		if count, ok := m.TasksByStatus[status]; ok && count > 0 {
+			label := fmt.Sprintf("  %s:", string(status))
+			colorLabel := fmt.Sprintf("  %s:", formatStatus(string(status), r))
+			val := fmt.Sprintf("%d", count)
+			tw.AddRow([]string{label, val}, []string{colorLabel, val})
+		}
+	}
+	tw.Flush(os.Stdout)
+}
+
+func printStatsBreakdownByPriority(m *metrics.Metrics, r *lipgloss.Renderer) {
+	if len(m.TasksByPriority) == 0 {
+		fmt.Println("  (none)")
+		return
+	}
+	tw := NewTableWriter()
+	for _, priority := range []model.Priority{
+		model.PriorityCritical, model.PriorityHigh, model.PriorityMedium, model.PriorityLow,
+	} {
+		if count, ok := m.TasksByPriority[priority]; ok && count > 0 {
+			label := fmt.Sprintf("  %s:", string(priority))
+			colorLabel := fmt.Sprintf("  %s:", formatPriority(string(priority), r))
+			val := fmt.Sprintf("%d", count)
+			tw.AddRow([]string{label, val}, []string{colorLabel, val})
+		}
+	}
+	tw.Flush(os.Stdout)
+}
+
+func printStatsBreakdownByEffort(m *metrics.Metrics, r *lipgloss.Renderer) {
+	if len(m.TasksByEffort) == 0 {
+		fmt.Println("  (none)")
+		return
+	}
+	tw := NewTableWriter()
+	for _, effort := range []model.Effort{
+		model.EffortSmall, model.EffortMedium, model.EffortLarge,
+	} {
+		if count, ok := m.TasksByEffort[effort]; ok && count > 0 {
+			label := fmt.Sprintf("  %s:", string(effort))
+			colorLabel := fmt.Sprintf("  %s:", formatEffort(string(effort), r))
+			val := fmt.Sprintf("%d", count)
+			tw.AddRow([]string{label, val}, []string{colorLabel, val})
+		}
+	}
+	tw.Flush(os.Stdout)
 }

@@ -5,7 +5,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
@@ -150,38 +149,67 @@ func validateMarkers(markers []string) error {
 	return nil
 }
 
-// todoColumn defines a table column with its header, separator, and value extractor.
+// todoColumn defines a table column with its header and value extractors.
 type todoColumn struct {
 	header string
-	sep    string
-	value  func(item todos.TodoItem, r *lipgloss.Renderer) string
+	plain  func(item todos.TodoItem) string
+	color  func(item todos.TodoItem, r *lipgloss.Renderer) string
 }
 
 var todoColumnDefs = map[string]todoColumn{
-	"id": {"ID", "--------", func(item todos.TodoItem, r *lipgloss.Renderer) string {
-		id := item.ID
-		if len(id) > 8 {
-			id = id[:8]
-		}
-		return formatDim(id, r)
-	}},
-	"file":  {"FILE", "----------", func(item todos.TodoItem, r *lipgloss.Renderer) string { return formatDim(item.FilePath, r) }},
-	"line":  {"LINE", "----", func(item todos.TodoItem, _ *lipgloss.Renderer) string { return fmt.Sprintf("%d", item.Line) }},
-	"tag":   {"TAG", "--------", func(item todos.TodoItem, r *lipgloss.Renderer) string { return formatMarker(item.Marker, r) }},
-	"text":  {"TEXT", "----------", func(item todos.TodoItem, _ *lipgloss.Renderer) string { return item.Text }},
-	"scope": {"SCOPE", "----------", func(item todos.TodoItem, _ *lipgloss.Renderer) string { return item.Scope }},
-	"age": {"AGE", "---", func(item todos.TodoItem, _ *lipgloss.Renderer) string {
-		if item.Age > 0 {
-			return fmt.Sprintf("%dd", item.Age)
-		}
-		return ""
-	}},
-	"author": {"AUTHOR", "----------", func(item todos.TodoItem, _ *lipgloss.Renderer) string {
-		if item.Blame != nil {
-			return item.Blame.Author
-		}
-		return ""
-	}},
+	"id": {"ID",
+		func(item todos.TodoItem) string { return truncateID(item.ID) },
+		func(item todos.TodoItem, r *lipgloss.Renderer) string { return formatDim(truncateID(item.ID), r) },
+	},
+	"file": {"FILE",
+		func(item todos.TodoItem) string { return item.FilePath },
+		func(item todos.TodoItem, r *lipgloss.Renderer) string { return formatDim(item.FilePath, r) },
+	},
+	"line": {"LINE",
+		func(item todos.TodoItem) string { return fmt.Sprintf("%d", item.Line) },
+		func(item todos.TodoItem, _ *lipgloss.Renderer) string { return fmt.Sprintf("%d", item.Line) },
+	},
+	"tag": {"TAG",
+		func(item todos.TodoItem) string { return item.Marker },
+		func(item todos.TodoItem, r *lipgloss.Renderer) string { return formatMarker(item.Marker, r) },
+	},
+	"text": {"TEXT",
+		func(item todos.TodoItem) string { return item.Text },
+		func(item todos.TodoItem, _ *lipgloss.Renderer) string { return item.Text },
+	},
+	"scope": {"SCOPE",
+		func(item todos.TodoItem) string { return item.Scope },
+		func(item todos.TodoItem, _ *lipgloss.Renderer) string { return item.Scope },
+	},
+	"age": {"AGE",
+		func(item todos.TodoItem) string { return formatAge(item.Age) },
+		func(item todos.TodoItem, _ *lipgloss.Renderer) string { return formatAge(item.Age) },
+	},
+	"author": {"AUTHOR",
+		func(item todos.TodoItem) string { return blameAuthor(item) },
+		func(item todos.TodoItem, _ *lipgloss.Renderer) string { return blameAuthor(item) },
+	},
+}
+
+func truncateID(id string) string {
+	if len(id) > 8 {
+		return id[:8]
+	}
+	return id
+}
+
+func formatAge(age int) string {
+	if age > 0 {
+		return fmt.Sprintf("%dd", age)
+	}
+	return ""
+}
+
+func blameAuthor(item todos.TodoItem) string {
+	if item.Blame != nil {
+		return item.Blame.Author
+	}
+	return ""
 }
 
 var (
@@ -196,29 +224,27 @@ func outputTodosTable(items []todos.TodoItem, columns []string, rich bool) error
 	}
 
 	r := getRenderer()
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	tw := NewTableWriter()
 
-	// Header
 	headers := make([]string, len(columns))
-	seps := make([]string, len(columns))
 	for i, name := range columns {
-		col := todoColumnDefs[name]
-		headers[i] = col.header
-		seps[i] = col.sep
+		headers[i] = todoColumnDefs[name].header
 	}
-	fmt.Fprintln(w, strings.Join(headers, "\t"))
-	fmt.Fprintln(w, strings.Join(seps, "\t"))
+	tw.AddHeader(headers)
+	tw.AddSeparator()
 
-	// Rows
 	for _, item := range items {
-		vals := make([]string, len(columns))
+		plain := make([]string, len(columns))
+		colored := make([]string, len(columns))
 		for i, name := range columns {
-			vals[i] = todoColumnDefs[name].value(item, r)
+			col := todoColumnDefs[name]
+			plain[i] = col.plain(item)
+			colored[i] = col.color(item, r)
 		}
-		fmt.Fprintln(w, strings.Join(vals, "\t"))
+		tw.AddRow(plain, colored)
 	}
 
-	w.Flush()
+	tw.Flush(os.Stdout)
 
 	fmt.Fprintf(os.Stderr, "\nFound %d comment(s)\n", len(items))
 

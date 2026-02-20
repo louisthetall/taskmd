@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -129,23 +128,25 @@ func outputNextTable(recs []Recommendation) error {
 	}
 	fmt.Println()
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	defer w.Flush()
-
-	fmt.Fprintln(w, "#\tID\tTitle\tPriority\tFile\tReason")
-	fmt.Fprintln(w, "-\t--\t-----\t--------\t----\t------")
+	tw := NewTableWriter()
+	tw.AddHeader([]string{"#", "ID", "Title", "Priority", "File", "Reason"})
+	tw.AddSeparator()
 
 	for _, rec := range recs {
+		rank := fmt.Sprintf("%d", rec.Rank)
 		reason := strings.Join(rec.Reasons, ", ")
-		fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n",
-			rec.Rank,
+		plain := []string{rank, rec.ID, rec.Title, rec.Priority, rec.FilePath, reason}
+		colored := []string{
+			rank,
 			formatTaskID(rec.ID, r),
 			rec.Title,
 			formatPriority(rec.Priority, r),
 			formatDim(rec.FilePath, r),
 			reason,
-		)
+		}
+		tw.AddRow(plain, colored)
 	}
 
+	tw.Flush(os.Stdout)
 	return nil
 }

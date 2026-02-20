@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -123,9 +122,8 @@ func outputTracksTable(result *tracks.Result) error {
 		return nil
 	}
 
-	// Print warnings.
-	for _, w := range result.Warnings {
-		fmt.Println(formatWarning("Warning: "+w, r))
+	for _, warn := range result.Warnings {
+		fmt.Println(formatWarning("Warning: "+warn, r))
 	}
 	if len(result.Warnings) > 0 {
 		fmt.Println()
@@ -136,32 +134,28 @@ func outputTracksTable(result *tracks.Result) error {
 		header := fmt.Sprintf("Track %d (%s):", track.ID, scopeLabel)
 		fmt.Println(formatLabel(header, r))
 
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		tw := NewTableWriter()
 		for i, task := range track.Tasks {
-			fmt.Fprintf(w, "  %d.\t%s\t%s\t%s\n",
-				i+1,
-				formatTaskID(task.ID, r),
-				task.Title,
-				formatPriority(task.Priority, r),
-			)
+			num := fmt.Sprintf("  %d.", i+1)
+			plain := []string{num, task.ID, task.Title, task.Priority}
+			colored := []string{num, formatTaskID(task.ID, r), task.Title, formatPriority(task.Priority, r)}
+			tw.AddRow(plain, colored)
 		}
-		w.Flush()
+		tw.Flush(os.Stdout)
 		fmt.Println()
 	}
 
 	if len(result.Flexible) > 0 {
 		fmt.Println(formatLabel("Flexible (no declared overlaps):", r))
 
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		tw := NewTableWriter()
 		for i, task := range result.Flexible {
-			fmt.Fprintf(w, "  %d.\t%s\t%s\t%s\n",
-				i+1,
-				formatTaskID(task.ID, r),
-				task.Title,
-				formatPriority(task.Priority, r),
-			)
+			num := fmt.Sprintf("  %d.", i+1)
+			plain := []string{num, task.ID, task.Title, task.Priority}
+			colored := []string{num, formatTaskID(task.ID, r), task.Title, formatPriority(task.Priority, r)}
+			tw.AddRow(plain, colored)
 		}
-		w.Flush()
+		tw.Flush(os.Stdout)
 	}
 
 	return nil

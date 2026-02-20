@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -129,15 +128,15 @@ func outputTagsTable(tagInfos []TagInfo) error {
 		return nil
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	defer w.Flush()
-
-	fmt.Fprintln(w, "TAG\tCOUNT")
-	fmt.Fprintf(w, "%s\t%s\n", "----------", "----------")
+	tw := NewTableWriter()
+	tw.AddHeader([]string{"TAG", "COUNT"})
+	tw.AddSeparator()
 
 	for _, ti := range tagInfos {
-		fmt.Fprintf(w, "%s\t%d\n", ti.Tag, ti.Count)
+		count := fmt.Sprintf("%d", ti.Count)
+		tw.AddRow([]string{ti.Tag, count}, []string{ti.Tag, count})
 	}
 
+	tw.Flush(os.Stdout)
 	return nil
 }

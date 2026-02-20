@@ -1,7 +1,7 @@
 ---
 id: "131"
 title: "Fix table column alignment with color across all commands"
-status: in-progress
+status: completed
 priority: low
 effort: small
 tags: [cli, output, ux]

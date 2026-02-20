@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
@@ -75,25 +74,24 @@ func runSearch(cmd *cobra.Command, args []string) error {
 
 func outputSearchTable(results []search.Result, query string) error {
 	r := getRenderer()
+	tw := NewTableWriter()
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	defer w.Flush()
-
-	fmt.Fprintln(w, "ID\tTITLE\tSTATUS\tMATCH\tSNIPPET")
-	fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-		"----------", "----------", "----------", "----------", "----------")
+	tw.AddHeader([]string{"ID", "TITLE", "STATUS", "MATCH", "SNIPPET"})
+	tw.AddSeparator()
 
 	for _, res := range results {
-		snippet := highlightMatch(res.Snippet, query, r)
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+		plain := []string{res.ID, res.Title, res.Status, res.MatchLocation, res.Snippet}
+		colored := []string{
 			formatTaskID(res.ID, r),
 			res.Title,
 			formatStatus(res.Status, r),
 			res.MatchLocation,
-			snippet,
-		)
+			highlightMatch(res.Snippet, query, r),
+		}
+		tw.AddRow(plain, colored)
 	}
 
+	tw.Flush(os.Stdout)
 	return nil
 }
 
