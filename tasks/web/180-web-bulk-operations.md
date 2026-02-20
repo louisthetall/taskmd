@@ -2,7 +2,7 @@
 id: "180"
 title: "Add bulk operations to web UI"
 status: pending
-priority: medium
+priority: low
 effort: medium
 type: feature
 tags:

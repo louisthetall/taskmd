@@ -2,7 +2,7 @@
 id: "179"
 title: "Add worklog editing in web UI"
 status: pending
-priority: medium
+priority: low
 effort: medium
 type: feature
 tags:

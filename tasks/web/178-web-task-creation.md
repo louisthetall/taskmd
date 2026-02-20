@@ -2,7 +2,7 @@
 id: "178"
 title: "Add task creation dialog to web UI"
 status: pending
-priority: high
+priority: low
 effort: medium
 type: feature
 tags:
