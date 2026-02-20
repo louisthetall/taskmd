@@ -388,6 +388,7 @@ Since tasks are plain markdown files, any AI assistant with file access can read
 
 You now have a working taskmd project with tasks, dependencies, and multiple interfaces. Here are some things to explore:
 
+- **[Best Practices](/guide/best-practices)** -- recommended workflows, project organization, and tips
 - **[Core Concepts](/getting-started/concepts)** -- understand statuses, priorities, dependencies, and file organization
 - **[CLI Guide](/guide/cli)** -- full command reference with advanced usage
 - **[Web Interface](/guide/web)** -- detailed web dashboard documentation

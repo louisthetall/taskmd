@@ -33,6 +33,7 @@ export default defineConfig({
       {
         text: 'User Guide',
         items: [
+          { text: 'Best Practices', link: '/guide/best-practices' },
           { text: 'CLI Guide', link: '/guide/cli' },
           { text: 'Web Interface', link: '/guide/web' },
           { text: 'Claude Code Plugin', link: '/guide/claude-code-plugin' },

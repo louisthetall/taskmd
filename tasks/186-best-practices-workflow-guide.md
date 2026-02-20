@@ -1,7 +1,7 @@
 ---
 id: "186"
 title: "Write a best practices and workflow guide"
-status: pending
+status: completed
 priority: medium
 effort: medium
 type: docs
@@ -19,17 +19,17 @@ Create a guide covering recommended workflows, project organization patterns, an
 
 ## Tasks
 
-- [ ] Write a section on task file organization (flat vs grouped directories, naming conventions)
-- [ ] Document recommended workflows for solo developers vs teams
-- [ ] Cover the `solo` vs `pr-review` workflow modes with examples
-- [ ] Write guidance on using dependencies effectively (when to use them, avoiding over-linking)
-- [ ] Document scope and touches best practices for parallel work tracks
-- [ ] Write tips for integrating taskmd into CI/CD (pre-commit hooks, validation in pipelines)
-- [ ] Cover worklog best practices (when to write entries, what to include)
-- [ ] Add a section on using taskmd with AI coding assistants (prompt tips, MCP setup)
-- [ ] Document common pitfalls and how to avoid them
-- [ ] Add examples from real projects showing different organizational styles
-- [ ] Add the guide to the docs site navigation
+- [x] Write a section on task file organization (flat vs grouped directories, naming conventions)
+- [x] Document recommended workflows for solo developers vs teams
+- [x] Cover the `solo` vs `pr-review` workflow modes with examples
+- [x] Write guidance on using dependencies effectively (when to use them, avoiding over-linking)
+- [x] Document scope and touches best practices for parallel work tracks
+- [x] Write tips for integrating taskmd into CI/CD (pre-commit hooks, validation in pipelines)
+- [x] Cover worklog best practices (when to write entries, what to include)
+- [x] Add a section on using taskmd with AI coding assistants (prompt tips, MCP setup)
+- [x] Document common pitfalls and how to avoid them
+- [x] Add examples from real projects showing different organizational styles
+- [x] Add the guide to the docs site navigation
 
 ## Acceptance Criteria
 
