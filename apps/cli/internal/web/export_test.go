@@ -283,7 +283,7 @@ func TestExport_IndexHTML_BasePath(t *testing.T) {
 	}
 }
 
-func TestExport_IndexHTML_NoBasePathForRoot(t *testing.T) {
+func TestExport_IndexHTML_BasePathRoot(t *testing.T) {
 	taskDir := createTestTaskDir(t)
 	outDir := filepath.Join(t.TempDir(), "export")
 
@@ -302,8 +302,8 @@ func TestExport_IndexHTML_NoBasePathForRoot(t *testing.T) {
 		t.Fatalf("failed to read index.html: %v", err)
 	}
 
-	if strings.Contains(string(data), "<base") {
-		t.Error("expected no <base> tag when base-path is /")
+	if !strings.Contains(string(data), `<base href="/">`) {
+		t.Error("expected <base href=\"/\"> tag for root base-path")
 	}
 }
 
@@ -465,5 +465,24 @@ func TestPatchIndexHTML_BasePathTrailingSlash(t *testing.T) {
 
 	if !strings.Contains(result, `<base href="/demo/">`) {
 		t.Error("expected base-path to get trailing slash")
+	}
+}
+
+func TestPatchIndexHTML_AlwaysHasBaseTag(t *testing.T) {
+	input := `<head></head>`
+	result := patchIndexHTML(input, "/")
+
+	if !strings.Contains(result, `<base href="/">`) {
+		t.Error("expected <base href=\"/\"> even for root base-path")
+	}
+}
+
+func TestFetchInterceptor_QueryParamsStripped(t *testing.T) {
+	script := fetchInterceptorScript()
+
+	// The interceptor should split path and query, so /api/next?limit=5
+	// becomes a fetch for ./api/next.json, not ./api/next?limit=5.json
+	if !strings.Contains(script, "qi = full.indexOf('?')") {
+		t.Error("expected fetch interceptor to parse query params separately")
 	}
 }

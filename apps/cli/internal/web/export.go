@@ -268,15 +268,15 @@ func patchIndexHTML(html string, basePath string) string {
 	html = strings.ReplaceAll(html, `="/assets/`, `="./assets/`)
 	html = strings.ReplaceAll(html, `="/favicon`, `="./favicon`)
 
-	// Inject base path if not /
-	if basePath != "/" {
-		// Ensure trailing slash
-		if !strings.HasSuffix(basePath, "/") {
-			basePath += "/"
-		}
-		baseTag := fmt.Sprintf(`<base href="%s">`, basePath)
-		html = strings.Replace(html, "<head>", "<head>\n    "+baseTag, 1)
+	// Ensure trailing slash on basePath
+	if !strings.HasSuffix(basePath, "/") {
+		basePath += "/"
 	}
+
+	// Always inject <base href> so relative paths resolve from root,
+	// even when served from subdirectory SPA fallbacks like /board/index.html.
+	baseTag := fmt.Sprintf(`<base href="%s">`, basePath)
+	html = strings.Replace(html, "<head>", "<head>\n    "+baseTag, 1)
 
 	// Inject fetch interceptor and EventSource stub before </head>
 	html = strings.Replace(html, "</head>", fetchInterceptorScript()+"</head>", 1)
@@ -293,12 +293,11 @@ func fetchInterceptorScript() string {
   window.fetch = function(input, init) {
     var url = (typeof input === 'string') ? input : input.url;
     if (url.indexOf('/api/') !== 0 && url.indexOf('./api/') !== 0) return origFetch.apply(this, arguments);
-    var p = url.replace(/^\.\//, '/');
+    var full = url.replace(/^\.\//, '/');
+    var qi = full.indexOf('?'); var p = qi >= 0 ? full.substring(0, qi) : full; var q = qi >= 0 ? full.substring(qi) : '';
     if (p.indexOf('/api/search') === 0) return Promise.resolve(json('[]'));
     if (p === '/api/events') return new Promise(function() {});
-    var bm = p.match(/^\/api\/board\?groupBy=(\w+)/);
-    if (bm) return redir('board/' + bm[1], init);
-    if (p === '/api/board') return redir('board/status', init);
+    if (p === '/api/board') { var bm = q.match(/groupBy=(\w+)/); return redir('board/' + (bm ? bm[1] : 'status'), init); }
     var wm = p.match(/^\/api\/tasks\/([^/?]+)\/worklog/);
     if (wm) return redir('tasks/' + wm[1] + '/worklog', init);
     var tm = p.match(/^\/api\/tasks\/([^/?]+)$/);
