@@ -386,6 +386,7 @@ var knownConfigKeys = map[string]bool{
 	"sync":     true,
 	"ignore":   true,
 	"workflow": true,
+	"todos":    true,
 }
 
 // checkUnknownConfigKeys warns about unrecognized top-level config keys.
