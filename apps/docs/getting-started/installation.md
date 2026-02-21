@@ -34,6 +34,32 @@ Available platforms:
 - **macOS**: AMD64 (Intel), ARM64 (Apple Silicon)
 - **Windows**: AMD64
 
+## Docker (Web Dashboard)
+
+Run the web dashboard in a container — no Go or Node.js required:
+
+```bash
+docker run --rm -p 8080:8080 -v ./tasks:/tasks:ro ghcr.io/driangle/taskmd
+```
+
+Open [http://localhost:8080](http://localhost:8080) to view the dashboard.
+
+**Custom port:**
+```bash
+docker run --rm -p 3000:3000 -e TASKMD_WEB_PORT=3000 -v ./tasks:/tasks:ro ghcr.io/driangle/taskmd
+```
+
+**With docker-compose:**
+```yaml
+services:
+  taskmd:
+    image: ghcr.io/driangle/taskmd
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./tasks:/tasks:ro
+```
+
 ## Install with Go
 
 Requires Go 1.22 or later:

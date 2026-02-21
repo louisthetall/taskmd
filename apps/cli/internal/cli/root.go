@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -115,6 +116,7 @@ func initConfig() {
 
 	// Read in environment variables that match
 	viper.SetEnvPrefix("TASKMD")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	viper.AutomaticEnv()
 
 	// If a config file is found, read it in

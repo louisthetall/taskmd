@@ -1,7 +1,7 @@
 ---
 id: "183"
 title: "Add Docker image for taskmd web server"
-status: pending
+status: completed
 priority: low
 effort: medium
 type: feature
@@ -20,17 +20,17 @@ Provide an official Docker image so users can run the taskmd web server in a con
 
 ## Tasks
 
-- [ ] Create a multi-stage Dockerfile (build Go binary + embed web assets, then copy to minimal runtime image)
-- [ ] Use a minimal base image (e.g., `alpine` or `distroless`)
-- [ ] Configure the entrypoint to run `taskmd web start`
-- [ ] Expose port 4545 by default
-- [ ] Support mounting the tasks directory as a volume
-- [ ] Support passing config via environment variables or mounted `.taskmd.yaml`
-- [ ] Add a `.dockerignore` file to keep the image small
-- [ ] Add a `docker-compose.yml` example for quick setup
-- [ ] Set up GitHub Actions to build and push the image on release
-- [ ] Document usage in the docs site (installation page)
-- [ ] Add tests to verify the image builds and the server starts
+- [x] Create a multi-stage Dockerfile (build Go binary + embed web assets, then copy to minimal runtime image)
+- [x] Use a minimal base image (e.g., `alpine` or `distroless`)
+- [x] Configure the entrypoint to run `taskmd web start`
+- [x] Expose port 8080 by default
+- [x] Support mounting the tasks directory as a volume
+- [x] Support passing config via environment variables or mounted `.taskmd.yaml`
+- [x] Add a `.dockerignore` file to keep the image small
+- [x] Add a `docker-compose.yml` example for quick setup
+- [x] Set up GitHub Actions to build and push the image on release
+- [x] Document usage in the docs site (installation page)
+- [x] Add tests to verify the image builds and the server starts
 
 ## Acceptance Criteria
 

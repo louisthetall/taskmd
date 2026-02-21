@@ -55,6 +55,11 @@ cd taskmd/apps/cli
 make build-full
 ```
 
+**Option 5: Docker (web dashboard only)**
+```bash
+docker run --rm -p 8080:8080 -v ./tasks:/tasks:ro ghcr.io/driangle/taskmd
+```
+
 ### 30-Second Setup
 
 1. **Create a tasks directory**:

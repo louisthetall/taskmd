@@ -1,0 +1,14 @@
+services:
+  taskmd:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./tasks:/tasks:ro
+    # environment:
+    #   TASKMD_WEB_PORT: "8080"
+    #   TASKMD_WEB_READONLY: "true"
+    # To use a config file inside the container:
+    # volumes:
+    #   - ./tasks:/tasks:ro
+    #   - ./.taskmd.yaml:/home/taskmd/.taskmd.yaml:ro

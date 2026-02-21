@@ -61,6 +61,7 @@ func init() {
 	// Bind flags to viper for config file support
 	viper.BindPFlag("web.port", webStartCmd.Flags().Lookup("port"))
 	viper.BindPFlag("web.auto_open_browser", webStartCmd.Flags().Lookup("open"))
+	viper.BindPFlag("web.readonly", webStartCmd.Flags().Lookup("readonly"))
 }
 
 func runWebStart(cmd *cobra.Command, _ []string) error {
@@ -84,7 +85,7 @@ func runWebStart(cmd *cobra.Command, _ []string) error {
 		ScanDir:  absDir,
 		Dev:      webDev,
 		Verbose:  flags.Verbose,
-		ReadOnly: webReadOnly,
+		ReadOnly: viper.GetBool("web.readonly"),
 		Version:  FullVersion(),
 	})
 
