@@ -1,7 +1,7 @@
 ---
 id: "192"
 title: "Improve test coverage for Tier 1 (core) packages"
-status: pending
+status: in-progress
 priority: high
 effort: large
 type: chore
