@@ -19,6 +19,7 @@ var (
 	listFilters []string
 	listSort    string
 	listColumns string
+	listLimit   int
 )
 
 // listCmd represents the list command
@@ -42,7 +43,8 @@ Examples:
   taskmd list --filter status=pending --filter priority=high
   taskmd list --sort priority
   taskmd list --columns id,title,deps
-  taskmd list --format json`,
+  taskmd list --format json
+  taskmd list --sort priority --limit 5`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runList,
 }
@@ -54,6 +56,7 @@ func init() {
 	listCmd.Flags().StringArrayVar(&listFilters, "filter", []string{}, "filter tasks (can specify multiple times for AND conditions, e.g., --filter status=pending --filter priority=high)")
 	listCmd.Flags().StringVar(&listSort, "sort", "", "sort by field (id, title, status, priority, effort, created)")
 	listCmd.Flags().StringVar(&listColumns, "columns", "id,title,status,priority,file", "comma-separated list of columns to display")
+	listCmd.Flags().IntVar(&listLimit, "limit", 0, "maximum number of tasks to display (0 = unlimited)")
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -99,6 +102,11 @@ func runList(cmd *cobra.Command, args []string) error {
 		if err := sortTasks(tasks, listSort); err != nil {
 			return fmt.Errorf("sort error: %w", err)
 		}
+	}
+
+	// Apply limit (after sorting)
+	if listLimit > 0 && listLimit < len(tasks) {
+		tasks = tasks[:listLimit]
 	}
 
 	// Output in requested format

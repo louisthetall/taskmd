@@ -97,6 +97,7 @@ func resetListFlags() {
 	listFilters = []string{}
 	listSort = ""
 	listColumns = "id,title,status,priority,file"
+	listLimit = 0
 	noColor = true
 }
 
@@ -384,4 +385,121 @@ func TestListCommand_ColorAlignmentMatchesPlain(t *testing.T) {
 func splitTableColumns(line string) []string {
 	parts := strings.Fields(line)
 	return parts
+}
+
+func TestListCommand_LimitFlag(t *testing.T) {
+	tasks := []*model.Task{
+		{ID: "001", Title: "A", Status: model.StatusPending, Priority: model.PriorityLow, FilePath: "a.md"},
+		{ID: "002", Title: "B", Status: model.StatusPending, Priority: model.PriorityHigh, FilePath: "b.md"},
+		{ID: "003", Title: "C", Status: model.StatusPending, Priority: model.PriorityCritical, FilePath: "c.md"},
+		{ID: "004", Title: "D", Status: model.StatusPending, Priority: model.PriorityMedium, FilePath: "d.md"},
+		{ID: "005", Title: "E", Status: model.StatusPending, Priority: model.PriorityLow, FilePath: "e.md"},
+	}
+
+	tests := []struct {
+		name          string
+		limit         int
+		sort          string
+		expectedCount int
+		firstID       string
+	}{
+		{"no limit", 0, "", 5, "001"},
+		{"limit less than total", 3, "", 3, "001"},
+		{"limit equal to total", 5, "", 5, "001"},
+		{"limit greater than total", 10, "", 5, "001"},
+		{"limit 1", 1, "", 1, "001"},
+		{"limit with sort by priority", 2, "priority", 2, "003"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetListFlags()
+			listLimit = tt.limit
+
+			tasksCopy := make([]*model.Task, len(tasks))
+			copy(tasksCopy, tasks)
+
+			if tt.sort != "" {
+				if err := sortTasks(tasksCopy, tt.sort); err != nil {
+					t.Fatalf("sortTasks() error: %v", err)
+				}
+			}
+
+			if listLimit > 0 && listLimit < len(tasksCopy) {
+				tasksCopy = tasksCopy[:listLimit]
+			}
+
+			if len(tasksCopy) != tt.expectedCount {
+				t.Errorf("got %d tasks, want %d", len(tasksCopy), tt.expectedCount)
+			}
+			if tasksCopy[0].ID != tt.firstID {
+				t.Errorf("first task ID = %s, want %s", tasksCopy[0].ID, tt.firstID)
+			}
+		})
+	}
+}
+
+func TestListCommand_LimitTableOutput(t *testing.T) {
+	resetListFlags()
+
+	tasks := []*model.Task{
+		{ID: "001", Title: "First", Status: model.StatusPending, Priority: model.PriorityHigh, FilePath: "a.md"},
+		{ID: "002", Title: "Second", Status: model.StatusPending, Priority: model.PriorityLow, FilePath: "b.md"},
+		{ID: "003", Title: "Third", Status: model.StatusPending, Priority: model.PriorityMedium, FilePath: "c.md"},
+	}
+
+	// Apply limit before outputting
+	limited := tasks[:2]
+
+	output := captureListTableOutput(t, limited, "id,title,status")
+
+	if !strings.Contains(output, "001") {
+		t.Error("Expected task 001 in output")
+	}
+	if !strings.Contains(output, "002") {
+		t.Error("Expected task 002 in output")
+	}
+	if strings.Contains(output, "003") {
+		t.Error("Task 003 should not appear in limited output")
+	}
+}
+
+func TestListCommand_LimitJSONOutput(t *testing.T) {
+	resetListFlags()
+
+	tasks := []*model.Task{
+		{ID: "001", Title: "First", Status: model.StatusPending},
+		{ID: "002", Title: "Second", Status: model.StatusPending},
+		{ID: "003", Title: "Third", Status: model.StatusPending},
+	}
+
+	limited := tasks[:2]
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := outputJSON(limited)
+	if err != nil {
+		w.Close()
+		os.Stdout = oldStdout
+		t.Fatalf("outputJSON failed: %v", err)
+	}
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	if !strings.Contains(output, "001") {
+		t.Error("Expected task 001 in JSON output")
+	}
+	if !strings.Contains(output, "002") {
+		t.Error("Expected task 002 in JSON output")
+	}
+	if strings.Contains(output, "003") {
+		t.Error("Task 003 should not appear in limited JSON output")
+	}
 }
