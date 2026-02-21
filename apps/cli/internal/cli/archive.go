@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -12,6 +14,10 @@ import (
 	"github.com/driangle/taskmd/apps/cli/internal/model"
 	"github.com/driangle/taskmd/apps/cli/internal/scanner"
 )
+
+// archiveStdin is the reader for interactive confirmation prompts.
+// Override in tests to simulate user input.
+var archiveStdin io.Reader = os.Stdin
 
 var (
 	archiveIDs          []string
@@ -26,22 +32,25 @@ var (
 )
 
 var archiveCmd = &cobra.Command{
-	Use:   "archive",
+	Use:   "archive [task-id]",
 	Short: "Archive or delete completed/cancelled tasks",
 	Long: `Archive moves task files into an archive/ subdirectory, keeping your
 main task list clean while preserving history. Use --delete to permanently
 remove tasks instead of archiving them.
 
-Tasks are selected by ID, status, or tag. Multiple filters use AND logic.
+Tasks are selected by positional argument, ID flag, status, or tag.
+Multiple filters use AND logic.
 
 Examples:
+  taskmd archive 042
+  taskmd archive 042 -y
   taskmd archive --all-completed
   taskmd archive --all-cancelled --dry-run
   taskmd archive --id 042 --id 043
   taskmd archive --status completed --tag backend
   taskmd archive --all-completed --delete
   taskmd archive --all-completed -y`,
-	Args: cobra.NoArgs,
+	Args: cobra.MaximumNArgs(1),
 	RunE: runArchive,
 }
 
@@ -59,7 +68,11 @@ func init() {
 	archiveCmd.Flags().BoolVarP(&archiveForce, "force", "f", false, "skip confirmation for delete")
 }
 
-func runArchive(_ *cobra.Command, _ []string) error {
+func runArchive(_ *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		archiveIDs = append(archiveIDs, args[0])
+	}
+
 	if err := validateArchiveFlags(); err != nil {
 		return err
 	}
@@ -97,14 +110,31 @@ func runArchive(_ *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	if !archiveYes && !(archiveDelete && archiveForce) {
-		return fmt.Errorf("use --yes (-y) to confirm, or --dry-run to preview")
+	if err := confirmArchive(action); err != nil {
+		return err
 	}
 
 	if archiveDelete {
 		return executeDelete(selected)
 	}
 	return executeArchive(selected, absScanDir)
+}
+
+func confirmArchive(action string) error {
+	if archiveYes || (archiveDelete && archiveForce) {
+		return nil
+	}
+
+	fmt.Printf("\n%s these tasks? [y/N]: ", action)
+
+	scanner := bufio.NewScanner(archiveStdin)
+	if scanner.Scan() {
+		response := strings.TrimSpace(scanner.Text())
+		if strings.EqualFold(response, "y") {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s cancelled", strings.ToLower(action))
 }
 
 func validateArchiveFlags() error {

@@ -113,17 +113,18 @@ func resetArchiveFlags() {
 	archiveYes = false
 	archiveDelete = false
 	archiveForce = false
+	archiveStdin = os.Stdin
 	taskDir = "."
 }
 
-func captureArchiveOutput(t *testing.T) (string, error) {
+func captureArchiveOutput(t *testing.T, args ...string) (string, error) {
 	t.Helper()
 
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	err := runArchive(archiveCmd, nil)
+	err := runArchive(archiveCmd, args)
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -445,43 +446,79 @@ func TestArchive_ConflictingDestination(t *testing.T) {
 	}
 }
 
-func TestArchive_RequiresConfirmation(t *testing.T) {
+func TestArchive_RequiresConfirmation_Declined(t *testing.T) {
 	tmpDir := createArchiveTestFiles(t)
 	resetArchiveFlags()
 	taskDir = tmpDir
 	archiveAllCompleted = true
-	// Neither --yes nor --dry-run
+	archiveStdin = strings.NewReader("n\n")
 
 	_, err := captureArchiveOutput(t)
 	if err == nil {
-		t.Fatal("expected error when no confirmation flag")
+		t.Fatal("expected error when user declines")
 	}
-	if !strings.Contains(err.Error(), "--yes") {
-		t.Errorf("expected confirmation hint in error, got: %v", err)
+	if !strings.Contains(err.Error(), "archive cancelled") {
+		t.Errorf("expected 'archive cancelled' error, got: %v", err)
 	}
 
 	// Files should not have moved
 	if _, err := os.Stat(filepath.Join(tmpDir, "001-setup.md")); err != nil {
-		t.Error("expected file to remain without confirmation")
+		t.Error("expected file to remain when user declines")
 	}
 }
 
-func TestArchive_DeleteRequiresForce(t *testing.T) {
+func TestArchive_RequiresConfirmation_Accepted(t *testing.T) {
+	tmpDir := createArchiveTestFiles(t)
+	resetArchiveFlags()
+	taskDir = tmpDir
+	archiveAllCompleted = true
+	archiveStdin = strings.NewReader("y\n")
+
+	output, err := captureArchiveOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "Archived 2 task(s)") {
+		t.Errorf("expected archive confirmation, got: %s", output)
+	}
+}
+
+func TestArchive_RequiresConfirmation_EmptyInput(t *testing.T) {
+	tmpDir := createArchiveTestFiles(t)
+	resetArchiveFlags()
+	taskDir = tmpDir
+	archiveAllCompleted = true
+	archiveStdin = strings.NewReader("\n")
+
+	_, err := captureArchiveOutput(t)
+	if err == nil {
+		t.Fatal("expected error when user presses enter without input")
+	}
+	if !strings.Contains(err.Error(), "archive cancelled") {
+		t.Errorf("expected 'archive cancelled' error, got: %v", err)
+	}
+}
+
+func TestArchive_DeleteRequiresForceOrConfirmation(t *testing.T) {
 	tmpDir := createArchiveTestFiles(t)
 	resetArchiveFlags()
 	taskDir = tmpDir
 	archiveIDs = []string{"001"}
 	archiveDelete = true
-	// No --force or --yes
+	archiveStdin = strings.NewReader("n\n")
 
 	_, err := captureArchiveOutput(t)
 	if err == nil {
-		t.Fatal("expected error when delete without force/yes")
+		t.Fatal("expected error when delete declined")
+	}
+	if !strings.Contains(err.Error(), "delete cancelled") {
+		t.Errorf("expected 'delete cancelled' error, got: %v", err)
 	}
 
 	// File should not have been deleted
 	if _, err := os.Stat(filepath.Join(tmpDir, "001-setup.md")); err != nil {
-		t.Error("expected file to remain without force flag")
+		t.Error("expected file to remain when user declines")
 	}
 }
 
@@ -602,5 +639,91 @@ func TestArchive_IDWithStatusFilter(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "no tasks match") {
 		t.Errorf("expected 'no tasks match' error, got: %v", err)
+	}
+}
+
+func TestArchive_PositionalArg(t *testing.T) {
+	tmpDir := createArchiveTestFiles(t)
+	resetArchiveFlags()
+	taskDir = tmpDir
+	archiveYes = true
+
+	output, err := captureArchiveOutput(t, "001")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "Archived 1 task(s)") {
+		t.Errorf("expected archive confirmation, got: %s", output)
+	}
+
+	if _, err := os.Stat(filepath.Join(tmpDir, "archive", "001-setup.md")); err != nil {
+		t.Error("expected 001 in archive")
+	}
+}
+
+func TestArchive_PositionalArgWithInteractiveConfirm(t *testing.T) {
+	tmpDir := createArchiveTestFiles(t)
+	resetArchiveFlags()
+	taskDir = tmpDir
+	archiveStdin = strings.NewReader("y\n")
+
+	output, err := captureArchiveOutput(t, "001")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "Archived 1 task(s)") {
+		t.Errorf("expected archive confirmation, got: %s", output)
+	}
+}
+
+func TestArchive_PositionalArgWithYesFlag(t *testing.T) {
+	tmpDir := createArchiveTestFiles(t)
+	resetArchiveFlags()
+	taskDir = tmpDir
+	archiveYes = true
+
+	output, err := captureArchiveOutput(t, "001")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "Archived 1 task(s)") {
+		t.Errorf("expected archive confirmation, got: %s", output)
+	}
+}
+
+func TestArchive_PositionalArgBackwardCompatible(t *testing.T) {
+	tmpDir := createArchiveTestFiles(t)
+	resetArchiveFlags()
+	taskDir = tmpDir
+	archiveIDs = []string{"001"} // --id flag still works
+	archiveYes = true
+
+	output, err := captureArchiveOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "Archived 1 task(s)") {
+		t.Errorf("expected archive confirmation, got: %s", output)
+	}
+}
+
+func TestArchive_InteractiveConfirm_CaseInsensitive(t *testing.T) {
+	tmpDir := createArchiveTestFiles(t)
+	resetArchiveFlags()
+	taskDir = tmpDir
+	archiveAllCompleted = true
+	archiveStdin = strings.NewReader("Y\n")
+
+	output, err := captureArchiveOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "Archived 2 task(s)") {
+		t.Errorf("expected archive confirmation, got: %s", output)
 	}
 }

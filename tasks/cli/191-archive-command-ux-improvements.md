@@ -1,7 +1,7 @@
 ---
 id: "191"
 title: "Improve archive command UX: positional task ID and interactive confirmation"
-status: pending
+status: completed
 priority: medium
 effort: small
 type: improvement
@@ -28,15 +28,15 @@ Currently the archive command requires `--id <task-id>` for single-task archivin
 
 ## Tasks
 
-- [ ] Change `Args` from `cobra.NoArgs` to `cobra.MaximumNArgs(1)`
-- [ ] Update `Use` field to `archive [task-id]` and add positional arg to help/examples
-- [ ] In `runArchive`, resolve task ID from positional arg and append to `archiveIDs`
-- [ ] Replace the error-based confirmation (`"use --yes (-y) to confirm"`) with an interactive `y/N` prompt using `fmt.Scanln` or `bufio.Scanner`
+- [x] Change `Args` from `cobra.NoArgs` to `cobra.MaximumNArgs(1)`
+- [x] Update `Use` field to `archive [task-id]` and add positional arg to help/examples
+- [x] In `runArchive`, resolve task ID from positional arg and append to `archiveIDs`
+- [x] Replace the error-based confirmation (`"use --yes (-y) to confirm"`) with an interactive `y/N` prompt using `fmt.Scanln` or `bufio.Scanner`
   - Show task list preview, then ask "Proceed? [y/N]:"
   - Only skip prompt when `--yes`/`-y` flag is set
   - For `--delete`, keep the extra confirmation (or use `--force`)
-- [ ] Update tests to cover positional arg and interactive confirmation flow
-- [ ] Update command examples in help text
+- [x] Update tests to cover positional arg and interactive confirmation flow
+- [x] Update command examples in help text
 
 ## Acceptance Criteria
 
