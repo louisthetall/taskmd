@@ -1,7 +1,7 @@
 ---
 id: "192"
 title: "Improve test coverage for Tier 1 (core) packages"
-status: in-progress
+status: completed
 priority: high
 effort: large
 type: chore
@@ -29,11 +29,11 @@ Current coverage analysis (2026-02-21) identified these Tier 1 gaps:
 
 ## Tasks
 
-- [ ] Add tests for `validate.go`: `runValidate`, `outputValidationText`, `outputValidationJSON`, `printIssue`, `validateConfig`, `loadConfigForValidation`, `collectArchivedIDs`, `mergeValidationResults`
-- [ ] Add tests for `stats.go`: `runStats`, `outputStatsJSON`, `outputStatsTable`, `printStatsBreakdownByStatus`, `printStatsBreakdownByPriority`, `printStatsBreakdownByEffort`
-- [ ] Add tests for `snapshot.go`, `snapshot_analysis.go`, `snapshot_output.go`: `runSnapshot`, `taskToSnapshot`, `groupSnapshots`, `calculateTopologicalOrder`, all output formatters
-- [ ] Add tests for `model/task.go`: `ValidateVerifySteps`, `IsValid`, `GetGroup`
-- [ ] Add tests for `board` package: `statusOrder`, `priorityOrder`, `effortOrder`, `sortedKeys`, additional `GroupTasks` scenarios
+- [x] Add tests for `validate.go`: `runValidate`, `outputValidationText`, `outputValidationJSON`, `printIssue`, `validateConfig`, `loadConfigForValidation`, `collectArchivedIDs`, `mergeValidationResults`
+- [x] Add tests for `stats.go`: `runStats`, `outputStatsJSON`, `outputStatsTable`, `printStatsBreakdownByStatus`, `printStatsBreakdownByPriority`, `printStatsBreakdownByEffort`
+- [x] Add tests for `snapshot.go`, `snapshot_analysis.go`, `snapshot_output.go`: `runSnapshot`, `taskToSnapshot`, `groupSnapshots`, `calculateTopologicalOrder`, all output formatters
+- [x] Add tests for `model/task.go`: `ValidateVerifySteps`, `IsValid`, `GetGroup` (already at 100%)
+- [x] Add tests for `board` package: `statusOrder`, `priorityOrder`, `effortOrder`, `sortedKeys`, additional `GroupTasks` scenarios (already at 96%)
 
 ## Acceptance Criteria
 

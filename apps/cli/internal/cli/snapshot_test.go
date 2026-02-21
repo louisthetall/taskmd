@@ -516,3 +516,103 @@ func TestRunSnapshot_InvalidFormat(t *testing.T) {
 		t.Errorf("expected 'unsupported format' error, got: %v", err)
 	}
 }
+
+func TestRunSnapshot_MarkdownGroupedByStatus(t *testing.T) {
+	tmpDir := createSnapshotTestFiles(t)
+	resetSnapshotFlags()
+	snapshotFormat = "md"
+	snapshotGroupBy = "status"
+
+	output, err := captureSnapshotOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runSnapshot failed: %v", err)
+	}
+
+	// Should have group headings (capitalized status values)
+	if !strings.Contains(output, "## Completed") {
+		t.Errorf("expected '## Completed' heading in grouped markdown, got:\n%s", output)
+	}
+	if !strings.Contains(output, "## Pending") {
+		t.Errorf("expected '## Pending' heading in grouped markdown, got:\n%s", output)
+	}
+
+	// Should still contain task entries
+	if !strings.Contains(output, "### [001]") {
+		t.Errorf("expected task 001 entry in output, got:\n%s", output)
+	}
+}
+
+func TestOutputSnapshotMarkdown_Grouped(t *testing.T) {
+	snapshots := []TaskSnapshot{
+		{ID: "001", Title: "Done Task", Status: "completed", Priority: "high"},
+		{ID: "002", Title: "Pending Task", Status: "pending", Priority: "medium"},
+		{ID: "003", Title: "Another Pending", Status: "pending", Priority: "low"},
+	}
+
+	outPath := filepath.Join(t.TempDir(), "out.md")
+	f, err := os.Create(outPath)
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	err = outputSnapshotMarkdown(snapshots, f, "status")
+	f.Close()
+	if err != nil {
+		t.Fatalf("outputSnapshotMarkdown failed: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("failed to read output: %v", err)
+	}
+	output := string(data)
+
+	if !strings.Contains(output, "## Completed") {
+		t.Errorf("expected '## Completed' heading, got:\n%s", output)
+	}
+	if !strings.Contains(output, "## Pending") {
+		t.Errorf("expected '## Pending' heading, got:\n%s", output)
+	}
+	if !strings.Contains(output, "### [001] Done Task") {
+		t.Errorf("expected task 001 entry, got:\n%s", output)
+	}
+	if !strings.Contains(output, "### [002] Pending Task") {
+		t.Errorf("expected task 002 entry, got:\n%s", output)
+	}
+}
+
+func TestOutputSnapshotMarkdown_Ungrouped(t *testing.T) {
+	snapshots := []TaskSnapshot{
+		{ID: "001", Title: "Task A", Status: "pending"},
+		{ID: "002", Title: "Task B", Status: "completed"},
+	}
+
+	outPath := filepath.Join(t.TempDir(), "out.md")
+	f, err := os.Create(outPath)
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	err = outputSnapshotMarkdown(snapshots, f, "")
+	f.Close()
+	if err != nil {
+		t.Fatalf("outputSnapshotMarkdown failed: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("failed to read output: %v", err)
+	}
+	output := string(data)
+
+	// Should NOT have level-2 group headings (but will have ### task headings)
+	for _, line := range strings.Split(output, "\n") {
+		if strings.HasPrefix(line, "## ") {
+			t.Errorf("expected no group headings in ungrouped output, found: %s", line)
+		}
+	}
+	// Should have task entries
+	if !strings.Contains(output, "### [001] Task A") {
+		t.Errorf("expected task 001 entry, got:\n%s", output)
+	}
+}

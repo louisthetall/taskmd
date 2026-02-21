@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/driangle/taskmd/apps/cli/internal/model"
+	"github.com/driangle/taskmd/apps/cli/internal/scanner"
 	"github.com/driangle/taskmd/apps/cli/internal/validator"
 )
 
@@ -421,5 +423,383 @@ func TestRunValidate_InvalidFormat(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "unsupported format") {
 		t.Errorf("expected 'unsupported format' error, got: %v", err)
+	}
+}
+
+func TestRunValidate_StrictMode_NoWarnings(t *testing.T) {
+	// Valid tasks with ALL optional fields filled — strict mode should produce no warnings
+	tmpDir := t.TempDir()
+
+	task := `---
+id: "001"
+title: "Complete Task"
+status: pending
+priority: high
+effort: small
+group: "backend"
+tags: ["test"]
+created: 2026-02-08
+---
+
+A fully specified task with body content.
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "001-complete.md"), []byte(task), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	resetValidateFlags()
+	validateStrict = true
+	validateFormat = "json"
+
+	output, err := captureValidateOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runValidate failed: %v", err)
+	}
+
+	var parsed validator.ValidationResult
+	if err := json.Unmarshal([]byte(output), &parsed); err != nil {
+		t.Fatalf("failed to parse JSON: %v\noutput: %s", err, output)
+	}
+
+	if parsed.Warnings != 0 {
+		t.Errorf("expected 0 warnings for fully specified task in strict mode, got %d", parsed.Warnings)
+		for _, issue := range parsed.Issues {
+			if issue.Level == validator.LevelWarning {
+				t.Logf("  warning: %s", issue.Message)
+			}
+		}
+	}
+}
+
+func TestRunValidate_StrictMode_WithWarnings_Text(t *testing.T) {
+	// Test strict validation with text output (warnings are displayed, but os.Exit(2) is called).
+	// We test the strict path indirectly by validating through the validator directly.
+	v := validator.NewValidator(true)
+	tasks := []*model.Task{
+		{ID: "001", Title: "Minimal", Status: "pending"},
+	}
+
+	result := v.Validate(tasks)
+
+	if result.Warnings == 0 {
+		t.Error("expected strict warnings for task missing optional fields")
+	}
+
+	expectedWarnings := []string{"no priority", "no effort", "no group", "no tags", "no description"}
+	warningMsgs := make([]string, 0)
+	for _, issue := range result.Issues {
+		if issue.Level == validator.LevelWarning {
+			warningMsgs = append(warningMsgs, issue.Message)
+		}
+	}
+	for _, expected := range expectedWarnings {
+		found := false
+		for _, msg := range warningMsgs {
+			if strings.Contains(msg, expected) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected warning containing %q, got warnings: %v", expected, warningMsgs)
+		}
+	}
+}
+
+func TestRunValidate_InvalidTasks(t *testing.T) {
+	// Test validation errors through the validator directly (runValidate calls os.Exit on errors).
+	v := validator.NewValidator(false)
+	tasks := []*model.Task{
+		{ID: "001", Title: "Bad Task", Status: "banana", Priority: "mega", Effort: "tiny"},
+	}
+
+	result := v.Validate(tasks)
+
+	if result.Errors == 0 {
+		t.Error("expected errors for invalid field values")
+	}
+
+	errorMessages := make([]string, 0)
+	for _, issue := range result.Issues {
+		if issue.Level == validator.LevelError {
+			errorMessages = append(errorMessages, issue.Message)
+		}
+	}
+	if len(errorMessages) < 3 {
+		t.Errorf("expected at least 3 errors (status, priority, effort), got %d: %v", len(errorMessages), errorMessages)
+	}
+}
+
+func TestRunValidate_WithArchive(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Active task that depends on an archived task
+	activeTask := `---
+id: "010"
+title: "Active Task"
+status: pending
+dependencies: ["050"]
+---
+
+Depends on archived task.
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "010-active.md"), []byte(activeTask), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	// Archived task in archive directory
+	archiveDir := filepath.Join(tmpDir, "archive")
+	if err := os.MkdirAll(archiveDir, 0755); err != nil {
+		t.Fatalf("failed to create archive dir: %v", err)
+	}
+	archivedTask := `---
+id: "050"
+title: "Archived Task"
+status: completed
+---
+
+Done.
+`
+	if err := os.WriteFile(filepath.Join(archiveDir, "050-archived.md"), []byte(archivedTask), 0644); err != nil {
+		t.Fatalf("failed to create archived file: %v", err)
+	}
+
+	resetValidateFlags()
+	validateFormat = "json"
+
+	output, err := captureValidateOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runValidate failed: %v", err)
+	}
+
+	var parsed validator.ValidationResult
+	if err := json.Unmarshal([]byte(output), &parsed); err != nil {
+		t.Fatalf("failed to parse JSON: %v\noutput: %s", err, output)
+	}
+
+	// Should NOT have a missing dependency error since "050" is in archive
+	for _, issue := range parsed.Issues {
+		if strings.Contains(issue.Message, "non-existent task: '050'") {
+			t.Error("archived task ID should not trigger missing dependency error")
+		}
+	}
+}
+
+func TestCollectArchivedIDs(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create archive directory with task files
+	archiveDir := filepath.Join(tmpDir, "archive")
+	if err := os.MkdirAll(archiveDir, 0755); err != nil {
+		t.Fatalf("failed to create archive dir: %v", err)
+	}
+
+	tasks := map[string]string{
+		"050-done.md": `---
+id: "050"
+title: "Archived 050"
+status: completed
+---
+Done.
+`,
+		"051-done.md": `---
+id: "051"
+title: "Archived 051"
+status: completed
+---
+Done.
+`,
+	}
+	for name, content := range tasks {
+		if err := os.WriteFile(filepath.Join(archiveDir, name), []byte(content), 0644); err != nil {
+			t.Fatalf("failed to create test file: %v", err)
+		}
+	}
+
+	s := scanner.NewScanner(tmpDir, false, nil)
+	ids := collectArchivedIDs(s)
+
+	if len(ids) != 2 {
+		t.Fatalf("expected 2 archived IDs, got %d", len(ids))
+	}
+	if !ids["050"] {
+		t.Error("expected archived ID '050'")
+	}
+	if !ids["051"] {
+		t.Error("expected archived ID '051'")
+	}
+}
+
+func TestCollectArchivedIDs_NoArchive(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	s := scanner.NewScanner(tmpDir, false, nil)
+	ids := collectArchivedIDs(s)
+
+	if ids != nil {
+		t.Errorf("expected nil for no archive, got %v", ids)
+	}
+}
+
+func TestRunValidate_WithConfig_Scopes(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a task with a touches field
+	task := `---
+id: "001"
+title: "Task with touches"
+status: pending
+touches: ["cli/graph", "undefined-scope"]
+---
+
+A task that touches scopes.
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "001-task.md"), []byte(task), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	// Create a .taskmd.yaml config with scopes
+	config := `scopes:
+  cli/graph:
+    description: "Graph visualization"
+    paths:
+      - "apps/cli/internal/graph/"
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, ".taskmd.yaml"), []byte(config), 0644); err != nil {
+		t.Fatalf("failed to create config file: %v", err)
+	}
+
+	// Use validateConfig directly with mock config data to avoid viper global state
+	v := validator.NewValidator(false)
+	tasks := []*model.Task{
+		{ID: "001", Title: "Task with touches", Touches: []string{"cli/graph", "undefined-scope"}},
+	}
+	validationResult := v.Validate(tasks)
+
+	configData := &validator.ConfigData{
+		Scopes: map[string]validator.ScopeConfig{
+			"cli/graph": {Description: "Graph visualization", Paths: []string{"apps/cli/internal/graph/"}},
+		},
+		TopKeys:    []string{"scopes"},
+		ConfigPath: filepath.Join(tmpDir, ".taskmd.yaml"),
+	}
+
+	validateConfig(v, validationResult, tasks)
+	// Reset and test with actual config data
+	validationResult2 := v.Validate(tasks)
+	mergeValidationResults(validationResult2, v.ValidateConfig(configData))
+
+	knownScopes := map[string]bool{"cli/graph": true}
+	mergeValidationResults(validationResult2, v.ValidateTouchesAgainstScopes(tasks, knownScopes))
+
+	// Should have a warning about "undefined-scope"
+	foundUndefinedWarning := false
+	for _, issue := range validationResult2.Issues {
+		if strings.Contains(issue.Message, "undefined-scope") {
+			foundUndefinedWarning = true
+			break
+		}
+	}
+	if !foundUndefinedWarning {
+		t.Error("expected warning about undefined scope 'undefined-scope'")
+	}
+}
+
+func TestValidateConfig_WithScopes(t *testing.T) {
+	v := validator.NewValidator(false)
+	tasks := []*model.Task{
+		{ID: "001", Title: "Test Task", Touches: []string{"cli/graph", "bad-scope"}},
+	}
+	validationResult := &validator.ValidationResult{
+		Issues:    make([]validator.ValidationIssue, 0),
+		TaskCount: 1,
+	}
+
+	configData := &validator.ConfigData{
+		Scopes: map[string]validator.ScopeConfig{
+			"cli/graph": {Description: "Graph", Paths: []string{"apps/cli/internal/graph/"}},
+		},
+		TopKeys:    []string{"scopes"},
+		ConfigPath: ".taskmd.yaml",
+	}
+
+	// Merge config validation
+	mergeValidationResults(validationResult, v.ValidateConfig(configData))
+
+	// Merge touches validation
+	knownScopes := make(map[string]bool, len(configData.Scopes))
+	for name := range configData.Scopes {
+		knownScopes[name] = true
+	}
+	mergeValidationResults(validationResult, v.ValidateTouchesAgainstScopes(tasks, knownScopes))
+
+	// Should warn about "bad-scope"
+	found := false
+	for _, issue := range validationResult.Issues {
+		if strings.Contains(issue.Message, "bad-scope") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected warning about 'bad-scope' touches referencing undefined scope")
+	}
+}
+
+func TestParseScopeEntries_NonMapEntry(t *testing.T) {
+	// Test with a scope value that is not a map (e.g., a string)
+	scopeMap := map[string]any{
+		"simple": "not-a-map",
+	}
+
+	scopes := parseScopeEntries(scopeMap)
+
+	sc, ok := scopes["simple"]
+	if !ok {
+		t.Fatal("expected scope 'simple' to exist")
+	}
+	if sc.Paths != nil {
+		t.Errorf("expected nil paths for non-map entry, got %v", sc.Paths)
+	}
+}
+
+func TestParseScopeEntries_MissingPaths(t *testing.T) {
+	// Scope entry with no paths key at all
+	scopeMap := map[string]any{
+		"no-paths": map[string]any{
+			"description": "Has description but no paths",
+		},
+	}
+
+	scopes := parseScopeEntries(scopeMap)
+
+	sc, ok := scopes["no-paths"]
+	if !ok {
+		t.Fatal("expected scope 'no-paths' to exist")
+	}
+	if sc.Description != "Has description but no paths" {
+		t.Errorf("Description = %q, want %q", sc.Description, "Has description but no paths")
+	}
+	if sc.Paths != nil {
+		t.Errorf("expected nil paths, got %v", sc.Paths)
+	}
+}
+
+func TestParseScopeEntries_NonSlicePaths(t *testing.T) {
+	// Scope entry with paths that is not a slice
+	scopeMap := map[string]any{
+		"bad-paths": map[string]any{
+			"paths": "not-a-slice",
+		},
+	}
+
+	scopes := parseScopeEntries(scopeMap)
+
+	sc, ok := scopes["bad-paths"]
+	if !ok {
+		t.Fatal("expected scope 'bad-paths' to exist")
+	}
+	if sc.Paths != nil {
+		t.Errorf("expected nil paths for non-slice paths, got %v", sc.Paths)
 	}
 }
