@@ -11,6 +11,7 @@ type Result struct {
 	ID            string `json:"id" yaml:"id"`
 	Title         string `json:"title" yaml:"title"`
 	Status        string `json:"status" yaml:"status"`
+	Priority      string `json:"priority" yaml:"priority"`
 	FilePath      string `json:"file_path" yaml:"file_path"`
 	MatchLocation string `json:"match_location" yaml:"match_location"`
 	Snippet       string `json:"snippet" yaml:"snippet"`
@@ -36,6 +37,7 @@ func Search(tasks []*model.Task, query string) []Result {
 			ID:            task.ID,
 			Title:         task.Title,
 			Status:        string(task.Status),
+			Priority:      string(task.Priority),
 			FilePath:      task.FilePath,
 			MatchLocation: location,
 			Snippet:       snippet,

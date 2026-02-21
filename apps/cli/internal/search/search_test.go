@@ -123,6 +123,21 @@ func TestSearch_StatusField(t *testing.T) {
 	}
 }
 
+func TestSearch_PriorityField(t *testing.T) {
+	tasks := []*model.Task{
+		{ID: "001", Title: "Auth task", Status: model.StatusPending, Priority: model.PriorityHigh, Body: "auth work"},
+		{ID: "002", Title: "Deploy task", Status: model.StatusPending, Priority: model.PriorityLow, Body: "deploy work"},
+	}
+
+	results := Search(tasks, "auth")
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Priority != "high" {
+		t.Errorf("expected priority 'high', got %s", results[0].Priority)
+	}
+}
+
 func TestExtractBodySnippet_Short(t *testing.T) {
 	snippet := ExtractBodySnippet("small body with keyword here", "keyword")
 

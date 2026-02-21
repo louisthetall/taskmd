@@ -116,8 +116,8 @@ func TestSearch_MatchInTitle(t *testing.T) {
 	resetSearchFlags()
 
 	tasks := []*model.Task{
-		{ID: "001", Title: "Implement authentication system", Status: model.StatusPending, Body: "Some body text"},
-		{ID: "002", Title: "Set up deployment", Status: model.StatusInProgress, Body: "Other content"},
+		{ID: "001", Title: "Implement authentication system", Status: model.StatusPending, Priority: model.PriorityHigh, Body: "Some body text"},
+		{ID: "002", Title: "Set up deployment", Status: model.StatusInProgress, Priority: model.PriorityMedium, Body: "Other content"},
 	}
 
 	results := search.Search(tasks, "authentication")
@@ -137,8 +137,8 @@ func TestSearch_MatchInBody(t *testing.T) {
 	resetSearchFlags()
 
 	tasks := []*model.Task{
-		{ID: "001", Title: "Task one", Status: model.StatusPending, Body: "Contains the keyword deployment here"},
-		{ID: "002", Title: "Task two", Status: model.StatusPending, Body: "Nothing relevant"},
+		{ID: "001", Title: "Task one", Status: model.StatusPending, Priority: model.PriorityMedium, Body: "Contains the keyword deployment here"},
+		{ID: "002", Title: "Task two", Status: model.StatusPending, Priority: model.PriorityLow, Body: "Nothing relevant"},
 	}
 
 	results := search.Search(tasks, "deployment")
@@ -158,7 +158,7 @@ func TestSearch_CaseInsensitive(t *testing.T) {
 	resetSearchFlags()
 
 	tasks := []*model.Task{
-		{ID: "001", Title: "AUTHENTICATION Module", Status: model.StatusPending},
+		{ID: "001", Title: "AUTHENTICATION Module", Status: model.StatusPending, Priority: model.PriorityHigh},
 	}
 
 	results := search.Search(tasks, "authentication")
@@ -175,9 +175,9 @@ func TestSearch_MultipleResults(t *testing.T) {
 	resetSearchFlags()
 
 	tasks := []*model.Task{
-		{ID: "001", Title: "Add authentication", Status: model.StatusPending, Body: "JWT auth"},
-		{ID: "002", Title: "Deploy service", Status: model.StatusInProgress, Body: "Deploy the authentication service"},
-		{ID: "003", Title: "Write docs", Status: model.StatusCompleted, Body: "No match here"},
+		{ID: "001", Title: "Add authentication", Status: model.StatusPending, Priority: model.PriorityHigh, Body: "JWT auth"},
+		{ID: "002", Title: "Deploy service", Status: model.StatusInProgress, Priority: model.PriorityMedium, Body: "Deploy the authentication service"},
+		{ID: "003", Title: "Write docs", Status: model.StatusCompleted, Priority: model.PriorityLow, Body: "No match here"},
 	}
 
 	results := search.Search(tasks, "authentication")
@@ -191,7 +191,7 @@ func TestSearch_MatchInTitleAndBody(t *testing.T) {
 	resetSearchFlags()
 
 	tasks := []*model.Task{
-		{ID: "001", Title: "Authentication system", Status: model.StatusPending, Body: "Implement authentication with JWT"},
+		{ID: "001", Title: "Authentication system", Status: model.StatusPending, Priority: model.PriorityHigh, Body: "Implement authentication with JWT"},
 	}
 
 	results := search.Search(tasks, "authentication")
@@ -208,7 +208,7 @@ func TestSearch_NoResults(t *testing.T) {
 	resetSearchFlags()
 
 	tasks := []*model.Task{
-		{ID: "001", Title: "Some task", Status: model.StatusPending, Body: "Nothing here"},
+		{ID: "001", Title: "Some task", Status: model.StatusPending, Priority: model.PriorityMedium, Body: "Nothing here"},
 	}
 
 	results := search.Search(tasks, "zzzznonexistent")
@@ -222,7 +222,7 @@ func TestSearch_JSONFormat(t *testing.T) {
 	resetSearchFlags()
 
 	tasks := []*model.Task{
-		{ID: "001", Title: "Auth system", Status: model.StatusPending, FilePath: "tasks/001.md", Body: "JWT authentication"},
+		{ID: "001", Title: "Auth system", Status: model.StatusPending, Priority: model.PriorityHigh, FilePath: "tasks/001.md", Body: "JWT authentication"},
 	}
 
 	output, err := captureSearchOutput(t, tasks, "authentication", "json")
@@ -247,13 +247,16 @@ func TestSearch_JSONFormat(t *testing.T) {
 	if parsed[0].Snippet == "" {
 		t.Error("expected non-empty snippet")
 	}
+	if parsed[0].Priority != "high" {
+		t.Errorf("expected priority 'high', got %s", parsed[0].Priority)
+	}
 }
 
 func TestSearch_YAMLFormat(t *testing.T) {
 	resetSearchFlags()
 
 	tasks := []*model.Task{
-		{ID: "001", Title: "Auth system", Status: model.StatusPending, FilePath: "tasks/001.md", Body: "JWT authentication logic"},
+		{ID: "001", Title: "Auth system", Status: model.StatusPending, Priority: model.PriorityMedium, FilePath: "tasks/001.md", Body: "JWT authentication logic"},
 	}
 
 	output, err := captureSearchOutput(t, tasks, "authentication", "yaml")
@@ -269,6 +272,9 @@ func TestSearch_YAMLFormat(t *testing.T) {
 	}
 	if !strings.Contains(output, "snippet:") {
 		t.Error("expected YAML output to contain 'snippet:'")
+	}
+	if !strings.Contains(output, "priority:") {
+		t.Error("expected YAML output to contain 'priority:'")
 	}
 }
 
@@ -298,7 +304,7 @@ func TestSearch_TableOutput(t *testing.T) {
 	resetSearchFlags()
 
 	tasks := []*model.Task{
-		{ID: "001", Title: "Auth system", Status: model.StatusPending, FilePath: "tasks/001.md", Body: "Implement authentication"},
+		{ID: "001", Title: "Auth system", Status: model.StatusPending, Priority: model.PriorityHigh, FilePath: "tasks/001.md", Body: "Implement authentication"},
 	}
 
 	output, err := captureSearchOutput(t, tasks, "authentication", "table")
@@ -309,19 +315,25 @@ func TestSearch_TableOutput(t *testing.T) {
 	if !strings.Contains(output, "ID") || !strings.Contains(output, "TITLE") {
 		t.Error("expected table header with ID and TITLE")
 	}
+	if !strings.Contains(output, "PRIORITY") {
+		t.Error("expected table header with PRIORITY")
+	}
 	if !strings.Contains(output, "001") {
 		t.Error("expected task ID 001 in output")
 	}
 	if !strings.Contains(output, "Auth system") {
 		t.Error("expected task title in output")
 	}
+	if !strings.Contains(output, "high") {
+		t.Error("expected priority 'high' in output")
+	}
 }
 
 func TestSearchTasks_Unit(t *testing.T) {
 	tasks := []*model.Task{
-		{ID: "001", Title: "Alpha feature", Status: model.StatusPending, Body: "Build the alpha feature with tests"},
-		{ID: "002", Title: "Beta release", Status: model.StatusInProgress, Body: "Prepare the beta release notes"},
-		{ID: "003", Title: "Gamma fix", Status: model.StatusCompleted, Body: "Fix the alpha regression"},
+		{ID: "001", Title: "Alpha feature", Status: model.StatusPending, Priority: model.PriorityHigh, Body: "Build the alpha feature with tests"},
+		{ID: "002", Title: "Beta release", Status: model.StatusInProgress, Priority: model.PriorityMedium, Body: "Prepare the beta release notes"},
+		{ID: "003", Title: "Gamma fix", Status: model.StatusCompleted, Priority: model.PriorityLow, Body: "Fix the alpha regression"},
 	}
 
 	tests := []struct {

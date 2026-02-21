@@ -76,15 +76,16 @@ func outputSearchTable(results []search.Result, query string) error {
 	r := getRenderer()
 	tw := NewTableWriter()
 
-	tw.AddHeader([]string{"ID", "TITLE", "STATUS", "MATCH", "SNIPPET"})
+	tw.AddHeader([]string{"ID", "TITLE", "STATUS", "PRIORITY", "MATCH", "SNIPPET"})
 	tw.AddSeparator()
 
 	for _, res := range results {
-		plain := []string{res.ID, res.Title, res.Status, res.MatchLocation, res.Snippet}
+		plain := []string{res.ID, res.Title, res.Status, res.Priority, res.MatchLocation, res.Snippet}
 		colored := []string{
 			formatTaskID(res.ID, r),
 			res.Title,
 			formatStatus(res.Status, r),
+			formatPriority(res.Priority, r),
 			res.MatchLocation,
 			highlightMatch(res.Snippet, query, r),
 		}
