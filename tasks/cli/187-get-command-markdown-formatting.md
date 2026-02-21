@@ -1,7 +1,7 @@
 ---
 id: "187"
 title: "Format markdown content in get command output"
-status: in-progress
+status: completed
 priority: medium
 effort: medium
 type: improvement
@@ -19,7 +19,7 @@ A `--raw-markdown` flag should be added to bypass formatting and print the origi
 
 ## Tasks
 
-- [ ] Implement a markdown-to-terminal renderer that handles:
+- [x] Implement a markdown-to-terminal renderer that handles:
   - `# Headings` → bold (and optionally colored)
   - `**bold**` → bold ANSI
   - `*italic*` → italic or dimmed ANSI
@@ -28,11 +28,11 @@ A `--raw-markdown` flag should be added to bypass formatting and print the origi
   - `- [ ] / - [x]` checkboxes → rendered with visual indicators
   - `- list items` → preserved with proper indentation
   - `[links](url)` → show text with URL in parentheses or dimmed
-- [ ] Integrate the renderer into the `get` command's default output path
-- [ ] Add `--raw-markdown` flag to `get` command that prints unformatted markdown
-- [ ] Ensure formatted output degrades gracefully when piped (no ANSI codes) or when `--no-color` is set
-- [ ] Add tests for the markdown renderer covering each supported construct
-- [ ] Add tests for the `--raw-markdown` flag
+- [x] Integrate the renderer into the `get` command's default output path
+- [x] Add `--raw-markdown` flag to `get` command that prints unformatted markdown
+- [x] Ensure formatted output degrades gracefully when piped (no ANSI codes) or when `--no-color` is set
+- [x] Add tests for the markdown renderer covering each supported construct
+- [x] Add tests for the `--raw-markdown` flag
 
 ## Acceptance Criteria
 
