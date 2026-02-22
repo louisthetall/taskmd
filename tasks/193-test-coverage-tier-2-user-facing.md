@@ -1,7 +1,7 @@
 ---
 id: "193"
 title: "Improve test coverage for Tier 2 (user-facing) packages"
-status: in-progress
+status: completed
 priority: medium
 effort: large
 type: chore

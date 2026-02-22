@@ -365,6 +365,33 @@ func TestExport_NoEmbeddedAssets(t *testing.T) {
 	}
 }
 
+func TestExport_MissingIndexHTML(t *testing.T) {
+	taskDir := createTestTaskDir(t)
+	outDir := filepath.Join(t.TempDir(), "export")
+
+	// FS with static/dist/ directory but no index.html
+	missingIndexFS := fstest.MapFS{
+		"static/dist/assets/app.js": &fstest.MapFile{
+			Data: []byte(`console.log("app")`),
+		},
+	}
+
+	err := ExportWithFS(ExportConfig{
+		OutputDir: outDir,
+		ScanDir:   taskDir,
+		BasePath:  "/",
+		Version:   "test",
+	}, missingIndexFS)
+
+	if err == nil {
+		t.Fatal("expected error when index.html is missing")
+	}
+
+	if !strings.Contains(err.Error(), "no embedded web assets") {
+		t.Errorf("expected 'no embedded web assets' error, got: %v", err)
+	}
+}
+
 func TestExport_CustomOutput(t *testing.T) {
 	taskDir := createTestTaskDir(t)
 	outDir := filepath.Join(t.TempDir(), "custom-dir", "nested")
@@ -566,6 +593,54 @@ Completed initial implementation.
 	}
 	if len(entries2) != 0 {
 		t.Errorf("expected empty worklog for task 002, got %d entries", len(entries2))
+	}
+}
+
+func TestExport_WithoutEmbeddedAssets(t *testing.T) {
+	// Export() uses StaticFiles() which returns an empty FS in test builds.
+	taskDir := createTestTaskDir(t)
+	outDir := filepath.Join(t.TempDir(), "export")
+
+	err := Export(ExportConfig{
+		OutputDir: outDir,
+		ScanDir:   taskDir,
+		BasePath:  "/",
+		Version:   "test",
+	})
+
+	if err == nil {
+		t.Fatal("expected error from Export() without embedded assets")
+	}
+	if !strings.Contains(err.Error(), "no embedded web assets") {
+		t.Errorf("expected 'no embedded web assets' error, got: %v", err)
+	}
+}
+
+func TestWriteJSONFile_MarshalError(t *testing.T) {
+	dir := t.TempDir()
+
+	// Channels cannot be marshaled to JSON
+	err := writeJSONFile(dir, "bad.json", make(chan int))
+	if err == nil {
+		t.Fatal("expected error when marshaling unmarshalable value")
+	}
+	if !strings.Contains(err.Error(), "failed to marshal") {
+		t.Errorf("expected 'failed to marshal' error, got: %v", err)
+	}
+}
+
+func TestWriteJSONFile_InvalidDir(t *testing.T) {
+	// Create a file where a directory is expected
+	tmp := t.TempDir()
+	blocker := filepath.Join(tmp, "notadir")
+	os.WriteFile(blocker, []byte("x"), 0644)
+
+	err := writeJSONFile(filepath.Join(blocker, "sub"), "test.json", "data")
+	if err == nil {
+		t.Fatal("expected error when directory path is a file")
+	}
+	if !strings.Contains(err.Error(), "failed to create directory") {
+		t.Errorf("expected 'failed to create directory' error, got: %v", err)
 	}
 }
 

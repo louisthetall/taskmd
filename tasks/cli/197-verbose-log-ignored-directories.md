@@ -1,5 +1,5 @@
 ---
-id: "194"
+id: "197"
 title: "Log debug message when directories are skipped via ignore config"
 status: pending
 priority: low

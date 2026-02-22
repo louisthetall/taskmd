@@ -1,8 +1,11 @@
 package web
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -199,5 +202,64 @@ func TestMountFallback_APIReturns404(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for /api/ path, got %d", rec.Code)
+	}
+}
+
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	old := os.Stdout
+	os.Stdout = w
+
+	fn()
+
+	w.Close()
+	os.Stdout = old
+
+	data, err2 := io.ReadAll(r)
+	if err2 != nil {
+		t.Fatalf("failed to read pipe: %v", err2)
+	}
+	return string(data)
+}
+
+func TestPrintBanner_Default(t *testing.T) {
+	dir := createTestTaskDir(t)
+	s := NewServer(Config{Port: 8080, ScanDir: dir})
+
+	output := captureStdout(t, func() {
+		s.printBanner()
+	})
+
+	if !strings.Contains(output, "http://localhost:8080") {
+		t.Errorf("expected banner to show port 8080, got %q", output)
+	}
+	if !strings.Contains(output, fmt.Sprintf("Watching %s", dir)) {
+		t.Errorf("expected banner to show scan dir, got %q", output)
+	}
+	if strings.Contains(output, "Read-only") {
+		t.Error("unexpected read-only message in default mode")
+	}
+	if strings.Contains(output, "Dev mode") {
+		t.Error("unexpected dev mode message in default mode")
+	}
+}
+
+func TestPrintBanner_ReadOnlyAndDev(t *testing.T) {
+	dir := createTestTaskDir(t)
+	s := NewServer(Config{Port: 3000, ScanDir: dir, ReadOnly: true, Dev: true})
+
+	output := captureStdout(t, func() {
+		s.printBanner()
+	})
+
+	if !strings.Contains(output, "Read-only mode") {
+		t.Error("expected read-only message in banner")
+	}
+	if !strings.Contains(output, "Dev mode") {
+		t.Error("expected dev mode message in banner")
 	}
 }
