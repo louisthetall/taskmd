@@ -1,7 +1,7 @@
 ---
 id: "194"
 title: "Improve test coverage for Tier 3 (niche/low-risk) packages"
-status: pending
+status: completed
 priority: low
 effort: medium
 type: chore

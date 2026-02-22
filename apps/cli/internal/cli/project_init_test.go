@@ -769,6 +769,30 @@ func TestProjectInit_TemplatesOverwrittenWithForce(t *testing.T) {
 	}
 }
 
+func TestProjectInit_EnsureTaskDir_PathIsFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a file where the task directory should be
+	filePath := filepath.Join(tmpDir, "tasks")
+	if err := os.WriteFile(filePath, []byte("not a directory"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	resetProjectInitFlags(tmpDir)
+	projectInitRoot = tmpDir
+	projectInitTaskDir = filePath
+	projectInitClaude = true
+
+	err := runProjectInit(projectInitCmd, []string{})
+	if err == nil {
+		t.Fatal("expected error when task-dir path is a file")
+	}
+
+	if !strings.Contains(err.Error(), "not a directory") {
+		t.Errorf("expected 'not a directory' error, got: %v", err)
+	}
+}
+
 func TestProjectInit_NoSpecNoAgentStillCreatesTemplates(t *testing.T) {
 	tmpDir := t.TempDir()
 	resetProjectInitFlags(tmpDir)
