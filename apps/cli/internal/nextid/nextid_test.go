@@ -327,3 +327,90 @@ func TestGenerateRandom_Uniqueness(t *testing.T) {
 		seen[id] = struct{}{}
 	}
 }
+
+func TestGenerateUUID_Format(t *testing.T) {
+	id, err := GenerateUUID(nil, 8)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(id) != 8 {
+		t.Errorf("length = %d, want 8", len(id))
+	}
+	if !regexp.MustCompile(`^[0-9a-f]+$`).MatchString(id) {
+		t.Errorf("id %q contains non-hex characters", id)
+	}
+}
+
+func TestGenerateUUID_DefaultLength(t *testing.T) {
+	id, err := GenerateUUID(nil, 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(id) != 8 {
+		t.Errorf("default length = %d, want 8", len(id))
+	}
+}
+
+func TestGenerateUUID_RespectsLength(t *testing.T) {
+	for _, length := range []int{4, 8, 12, 16} {
+		id, err := GenerateUUID(nil, length)
+		if err != nil {
+			t.Fatalf("unexpected error for length %d: %v", length, err)
+		}
+		if len(id) != length {
+			t.Errorf("length = %d, want %d", len(id), length)
+		}
+		if !regexp.MustCompile(`^[0-9a-f]+$`).MatchString(id) {
+			t.Errorf("id %q contains non-hex characters", id)
+		}
+	}
+}
+
+func TestGenerateUUID_CollisionAvoidance(t *testing.T) {
+	existing := []string{"abcd1234", "deadbeef", "cafebabe"}
+	for range 50 {
+		id, err := GenerateUUID(existing, 8)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		for _, ex := range existing {
+			if id == ex {
+				t.Errorf("generated id %q collides with existing", id)
+			}
+		}
+	}
+}
+
+func TestGenerateUUID_Uniqueness(t *testing.T) {
+	seen := make(map[string]struct{})
+	for range 100 {
+		id, err := GenerateUUID(nil, 8)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if _, exists := seen[id]; exists {
+			t.Errorf("duplicate id %q", id)
+		}
+		seen[id] = struct{}{}
+	}
+}
+
+func TestGenerateUUID_HexOnly(t *testing.T) {
+	// Verify UUID IDs use hex charset (0-9, a-f), not base-36 (0-9, a-z)
+	seen := make(map[byte]bool)
+	for range 200 {
+		id, err := GenerateUUID(nil, 16)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		for i := range len(id) {
+			seen[id[i]] = true
+		}
+	}
+	// Should never contain g-z
+	for c := byte('g'); c <= byte('z'); c++ {
+		if seen[c] {
+			t.Errorf("UUID ID contains non-hex character %q", string(c))
+		}
+	}
+}

@@ -170,6 +170,39 @@ func GenerateRandom(existingIDs []string, length int) (string, error) {
 	return "", fmt.Errorf("failed to generate unique ID after 100 attempts")
 }
 
+// GenerateUUID produces a random hex ID (from UUID v4 space) of the given length.
+// Default length is 8 when length <= 0. It retries on collision with existingIDs (max 100 attempts).
+func GenerateUUID(existingIDs []string, length int) (string, error) {
+	if length <= 0 {
+		length = 8
+	}
+
+	existing := make(map[string]struct{}, len(existingIDs))
+	for _, id := range existingIDs {
+		existing[id] = struct{}{}
+	}
+
+	const charset = "0123456789abcdef"
+	charsetLen := big.NewInt(int64(len(charset)))
+
+	for attempt := 0; attempt < 100; attempt++ {
+		buf := make([]byte, length)
+		for i := range buf {
+			idx, err := rand.Int(rand.Reader, charsetLen)
+			if err != nil {
+				return "", fmt.Errorf("crypto/rand failed: %w", err)
+			}
+			buf[i] = charset[idx.Int64()]
+		}
+		id := string(buf)
+		if _, taken := existing[id]; !taken {
+			return id, nil
+		}
+	}
+
+	return "", fmt.Errorf("failed to generate unique UUID ID after 100 attempts")
+}
+
 // formatID assembles a prefix with a zero-padded number.
 func formatID(prefix string, number int, padding int) string {
 	return fmt.Sprintf("%s%0*d", prefix, padding, number)

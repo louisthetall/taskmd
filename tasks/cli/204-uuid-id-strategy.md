@@ -1,7 +1,7 @@
 ---
 id: "204"
 title: "Support uuid ID strategy"
-status: pending
+status: in-progress
 priority: medium
 effort: medium
 type: feature
@@ -19,13 +19,13 @@ Add `uuid` as a fourth ID strategy option alongside `sequential`, `prefixed`, an
 
 ## Tasks
 
-- [ ] Add `"uuid"` to `validIDStrategies` in `validator/validator.go`
-- [ ] Add `GenerateUUID()` function to `nextid` package using `crypto/rand` (RFC 4122 v4 format, or a shortened variant configurable via `length`)
-- [ ] Update `resolveNextID()` in `cli/add.go` to dispatch to UUID generation when strategy is `uuid`
-- [ ] Update `runNextID()` in `cli/nextid.go` to support `uuid` strategy
-- [ ] Update `splitFilenameID()` in `parser/markdown.go` to recognize UUID-formatted ID segments (8-4-4-4-12 hex pattern or truncated UUID)
-- [ ] Update `docs/taskmd_specification.md` ID Generation section to document `uuid` strategy and run `make sync-spec`
-- [ ] Add tests for UUID generation (format, uniqueness) and parser recognition
+- [x] Add `"uuid"` to `validIDStrategies` in `validator/validator.go`
+- [x] Add `GenerateUUID()` function to `nextid` package using `crypto/rand` (RFC 4122 v4 format, or a shortened variant configurable via `length`)
+- [x] Update `resolveNextID()` in `cli/add.go` to dispatch to UUID generation when strategy is `uuid`
+- [x] Update `runNextID()` in `cli/nextid.go` to support `uuid` strategy
+- [x] Update `splitFilenameID()` in `parser/markdown.go` to recognize UUID-formatted ID segments (8-4-4-4-12 hex pattern or truncated UUID)
+- [x] Update `docs/taskmd_specification.md` ID Generation section to document `uuid` strategy and run `make sync-spec`
+- [x] Add tests for UUID generation (format, uniqueness) and parser recognition
 
 ## Acceptance Criteria
 

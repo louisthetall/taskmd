@@ -98,6 +98,15 @@ func outputNextIDJSON(ids []string, cfg validator.IDConfig) error {
 			NextID: id,
 			Total:  len(ids),
 		})
+	case "uuid":
+		id, err := nextid.GenerateUUID(ids, cfg.Length)
+		if err != nil {
+			return err
+		}
+		return WriteJSON(os.Stdout, nextid.Result{
+			NextID: id,
+			Total:  len(ids),
+		})
 	default:
 		return WriteJSON(os.Stdout, nextid.Calculate(ids))
 	}

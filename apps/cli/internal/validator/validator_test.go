@@ -1161,7 +1161,7 @@ func TestValidateConfig_WorkflowIsKnownKey(t *testing.T) {
 // --- ID config validation tests ---
 
 func TestValidateConfig_IDConfig_ValidStrategies(t *testing.T) {
-	for _, strategy := range []string{"sequential", "prefixed", "random"} {
+	for _, strategy := range []string{"sequential", "prefixed", "random", "uuid"} {
 		t.Run(strategy, func(t *testing.T) {
 			v := NewValidator(false)
 			id := &IDConfig{Strategy: strategy}
@@ -1189,7 +1189,7 @@ func TestValidateConfig_IDConfig_ValidStrategies(t *testing.T) {
 func TestValidateConfig_IDConfig_InvalidStrategy(t *testing.T) {
 	v := NewValidator(false)
 	config := &ConfigData{
-		ID:         &IDConfig{Strategy: "uuid"},
+		ID:         &IDConfig{Strategy: "guid"},
 		TopKeys:    []string{"id"},
 		ConfigPath: ".taskmd.yaml",
 	}
@@ -1202,7 +1202,7 @@ func TestValidateConfig_IDConfig_InvalidStrategy(t *testing.T) {
 
 	found := false
 	for _, issue := range result.Issues {
-		if issue.Level == LevelError && issue.Message == "invalid id strategy: 'uuid' (valid values: sequential, prefixed, random)" {
+		if issue.Level == LevelError && issue.Message == "invalid id strategy: 'guid' (valid values: sequential, prefixed, random, uuid)" {
 			found = true
 		}
 	}

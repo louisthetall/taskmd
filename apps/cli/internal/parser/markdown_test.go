@@ -485,6 +485,143 @@ Body
 	}
 }
 
+func TestDeriveFieldsFromFilename_TruncatedUUID(t *testing.T) {
+	content := []byte(`---
+status: pending
+---
+
+Body
+`)
+
+	task, err := ParseTaskContent("f47ac10b-fix-bug.md", content)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if task.ID != "f47ac10b" {
+		t.Errorf("expected ID 'f47ac10b' from truncated UUID filename, got '%s'", task.ID)
+	}
+
+	if task.Title != "fix bug" {
+		t.Errorf("expected title 'fix bug', got '%s'", task.Title)
+	}
+}
+
+func TestDeriveFieldsFromFilename_LongHexUUID(t *testing.T) {
+	content := []byte(`---
+status: pending
+---
+
+Body
+`)
+
+	task, err := ParseTaskContent("f47ac10b58cc-fix-bug.md", content)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if task.ID != "f47ac10b58cc" {
+		t.Errorf("expected ID 'f47ac10b58cc' from long hex UUID filename, got '%s'", task.ID)
+	}
+
+	if task.Title != "fix bug" {
+		t.Errorf("expected title 'fix bug', got '%s'", task.Title)
+	}
+}
+
+func TestDeriveFieldsFromFilename_FullUUID(t *testing.T) {
+	content := []byte(`---
+status: pending
+---
+
+Body
+`)
+
+	task, err := ParseTaskContent("f47ac10b-58cc-4372-a567-0e02b2c3d479-my-task.md", content)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if task.ID != "f47ac10b-58cc-4372-a567-0e02b2c3d479" {
+		t.Errorf("expected full UUID ID, got '%s'", task.ID)
+	}
+
+	if task.Title != "my task" {
+		t.Errorf("expected title 'my task', got '%s'", task.Title)
+	}
+}
+
+func TestDeriveFieldsFromFilename_FullUUIDNoSlug(t *testing.T) {
+	content := []byte(`---
+title: "UUID Task"
+status: pending
+---
+
+Body
+`)
+
+	task, err := ParseTaskContent("f47ac10b-58cc-4372-a567-0e02b2c3d479.md", content)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if task.ID != "f47ac10b-58cc-4372-a567-0e02b2c3d479" {
+		t.Errorf("expected full UUID ID, got '%s'", task.ID)
+	}
+
+	if task.Title != "UUID Task" {
+		t.Errorf("expected title from frontmatter, got '%s'", task.Title)
+	}
+}
+
+func TestSplitFilenameID_UUIDPatterns(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantID   string
+		wantSlug string
+	}{
+		{"truncated 8-char hex", "f47ac10b-fix-bug", "f47ac10b", "fix-bug"},
+		{"long hex 12 chars", "f47ac10b58cc-slug", "f47ac10b58cc", "slug"},
+		{"full UUID with slug", "f47ac10b-58cc-4372-a567-0e02b2c3d479-slug", "f47ac10b-58cc-4372-a567-0e02b2c3d479", "slug"},
+		{"full UUID no slug", "f47ac10b-58cc-4372-a567-0e02b2c3d479", "f47ac10b-58cc-4372-a567-0e02b2c3d479", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			id, slug := splitFilenameID(tt.input)
+			if id != tt.wantID {
+				t.Errorf("splitFilenameID(%q) id = %q, want %q", tt.input, id, tt.wantID)
+			}
+			if slug != tt.wantSlug {
+				t.Errorf("splitFilenameID(%q) slug = %q, want %q", tt.input, slug, tt.wantSlug)
+			}
+		})
+	}
+}
+
+func TestIsHexID(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"f47ac10b5", true},                          // 9 chars, minimum for hex ID
+		{"f47ac10b58cc", true},                       // 12 chars
+		{"0123456789abcdef0123456789abcdef", true},   // 32 chars, max
+		{"f47ac10b", false},                          // 8 chars, too short (handled by alphanumeric)
+		{"f47ac10b58cc4372a5670e02b2c3d4791", false}, // 33 chars, too long
+		{"ghijklmn0", false},                         // non-hex chars
+		{"", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			if got := isHexID(tt.input); got != tt.want {
+				t.Errorf("isHexID(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestIsNumeric(t *testing.T) {
 	tests := []struct {
 		input string

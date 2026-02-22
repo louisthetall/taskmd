@@ -93,10 +93,12 @@ func ParseTaskContent(filePath string, content []byte) (*model.Task, error) {
 }
 
 // deriveFieldsFromFilename extracts ID and title from a filename.
-// Supports three patterns:
+// Supports these patterns:
 //  1. Sequential: "009-add-feature.md" → ID="009"
 //  2. Prefixed:   "dr-001-fix-login.md" → ID="dr-001"
 //  3. Random:     "a3f9x2-slug-title.md" → ID="a3f9x2"
+//  4. UUID:       "f47ac10b-fix-bug.md" → ID="f47ac10b"
+//  5. Full UUID:  "f47ac10b-58cc-4372-a567-0e02b2c3d479-slug.md" → ID="f47ac10b-58cc-4372-a567-0e02b2c3d479"
 func deriveFieldsFromFilename(task *model.Task) {
 	base := filepath.Base(task.FilePath)
 	name := strings.TrimSuffix(base, filepath.Ext(base))
@@ -121,6 +123,11 @@ func deriveFieldsFromFilename(task *model.Task) {
 // splitFilenameID identifies the ID portion and remaining slug from a filename stem.
 // Returns ("", "") if no ID pattern matches.
 func splitFilenameID(name string) (id, slug string) {
+	// Pattern: Full UUID — 8-4-4-4-12 hex (e.g. "f47ac10b-58cc-4372-a567-0e02b2c3d479-slug")
+	if uid, rest, ok := matchFullUUID(name); ok {
+		return uid, rest
+	}
+
 	parts := strings.SplitN(name, "-", 2)
 
 	// Pattern 1: Sequential — starts with digit (e.g. "009-add-feature")
@@ -153,6 +160,11 @@ func splitFilenameID(name string) (id, slug string) {
 		return parts[0], parts[1]
 	}
 
+	// Pattern 4: Hex ID — 9-32 hex chars (truncated UUID longer than random range)
+	if isHexID(parts[0]) {
+		return parts[0], parts[1]
+	}
+
 	return "", ""
 }
 
@@ -180,6 +192,64 @@ func isAlpha(s string) bool {
 		}
 	}
 	return true
+}
+
+// matchFullUUID checks if name starts with a full UUID (8-4-4-4-12 hex pattern).
+// Returns the UUID, remaining slug, and whether it matched.
+func matchFullUUID(name string) (id, slug string, ok bool) {
+	// Full UUID is 36 chars: 8-4-4-4-12 with hyphens
+	// Minimum filename: UUID alone (36 chars) or UUID-slug (37+ chars)
+	if len(name) < 36 {
+		return "", "", false
+	}
+
+	segments := []int{8, 4, 4, 4, 12}
+	pos := 0
+	for i, segLen := range segments {
+		if i > 0 {
+			if pos >= len(name) || name[pos] != '-' {
+				return "", "", false
+			}
+			pos++
+		}
+		end := pos + segLen
+		if end > len(name) {
+			return "", "", false
+		}
+		if !isHexString(name[pos:end]) {
+			return "", "", false
+		}
+		pos = end
+	}
+
+	uuid := name[:pos]
+	rest := ""
+	if pos < len(name) {
+		if name[pos] != '-' {
+			return "", "", false
+		}
+		rest = name[pos+1:]
+	}
+	return uuid, rest, true
+}
+
+// isHexID returns true if s is 9-32 lowercase hex chars.
+// This catches truncated UUIDs longer than what isAlphanumericID handles (max 8).
+func isHexID(s string) bool {
+	if len(s) < 9 || len(s) > 32 {
+		return false
+	}
+	return isHexString(s)
+}
+
+// isHexString returns true if every character in s is a lowercase hex digit (0-9, a-f).
+func isHexString(s string) bool {
+	for _, c := range s {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return len(s) > 0
 }
 
 // isAlphanumericID returns true if s is 3-8 lowercase alphanumeric chars with at least one digit.

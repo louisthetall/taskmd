@@ -371,6 +371,7 @@ var validIDStrategies = map[string]bool{
 	"sequential": true,
 	"prefixed":   true,
 	"random":     true,
+	"uuid":       true,
 }
 
 // checkIDConfig validates the id config section.
@@ -382,7 +383,7 @@ func (v *Validator) checkIDConfig(config *ConfigData, result *ValidationResult) 
 
 	if id.Strategy != "" && !validIDStrategies[id.Strategy] {
 		result.AddIssue(LevelError, "", config.ConfigPath,
-			fmt.Sprintf("invalid id strategy: '%s' (valid values: sequential, prefixed, random)", id.Strategy))
+			fmt.Sprintf("invalid id strategy: '%s' (valid values: sequential, prefixed, random, uuid)", id.Strategy))
 	}
 
 	if id.Strategy == "prefixed" && id.Prefix == "" {
