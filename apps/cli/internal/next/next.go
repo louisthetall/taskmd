@@ -68,10 +68,11 @@ func Recommend(tasks []*model.Task, opts Options) ([]Recommendation, error) {
 		}
 	}
 
+	childrenMap := BuildChildrenMap(tasks)
 	criticalPath := CalculateCriticalPathTasks(tasks, taskMap)
 	downstreamInfo := ComputeDownstreamInfo(tasks)
 
-	actionable, err := filterActionable(tasks, opts, taskMap, criticalPath)
+	actionable, err := filterActionable(tasks, opts, taskMap, childrenMap, criticalPath)
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +144,7 @@ func filterActionable(
 	tasks []*model.Task,
 	opts Options,
 	taskMap map[string]*model.Task,
+	childrenMap map[string][]*model.Task,
 	criticalPath map[string]bool,
 ) ([]*model.Task, error) {
 	candidates := tasks
@@ -156,7 +158,7 @@ func filterActionable(
 
 	var actionable []*model.Task
 	for _, task := range candidates {
-		if IsActionable(task, taskMap) {
+		if IsActionable(task, taskMap, childrenMap) {
 			actionable = append(actionable, task)
 		}
 	}
@@ -218,6 +220,27 @@ func BuildTaskMap(tasks []*model.Task) map[string]*model.Task {
 	return taskMap
 }
 
+// BuildChildrenMap creates a map from parent task ID to its child tasks.
+func BuildChildrenMap(tasks []*model.Task) map[string][]*model.Task {
+	children := make(map[string][]*model.Task)
+	for _, task := range tasks {
+		if task.Parent != "" {
+			children[task.Parent] = append(children[task.Parent], task)
+		}
+	}
+	return children
+}
+
+// HasIncompleteChildren returns true if the task has any children that are not resolved.
+func HasIncompleteChildren(task *model.Task, childrenMap map[string][]*model.Task) bool {
+	for _, child := range childrenMap[task.ID] {
+		if !child.Status.IsResolved() {
+			return true
+		}
+	}
+	return false
+}
+
 // HasUnmetDependencies checks if any dependency is not completed.
 func HasUnmetDependencies(task *model.Task, taskMap map[string]*model.Task) bool {
 	for _, depID := range task.Dependencies {
@@ -229,12 +252,16 @@ func HasUnmetDependencies(task *model.Task, taskMap map[string]*model.Task) bool
 	return false
 }
 
-// IsActionable returns true if the task is pending/in-progress with all deps completed.
-func IsActionable(task *model.Task, taskMap map[string]*model.Task) bool {
+// IsActionable returns true if the task is pending/in-progress with all deps completed
+// and no incomplete children.
+func IsActionable(task *model.Task, taskMap map[string]*model.Task, childrenMap map[string][]*model.Task) bool {
 	if task.Status != model.StatusPending && task.Status != model.StatusInProgress {
 		return false
 	}
-	return !HasUnmetDependencies(task, taskMap)
+	if HasUnmetDependencies(task, taskMap) {
+		return false
+	}
+	return !HasIncompleteChildren(task, childrenMap)
 }
 
 // ScoreTask computes a score and reason list for an actionable task.

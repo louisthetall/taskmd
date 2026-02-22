@@ -16,6 +16,16 @@ func makeTask(id string, status model.Status, priority model.Priority, deps []st
 	}
 }
 
+func makeTaskWithParent(id string, status model.Status, priority model.Priority, parent string) *model.Task {
+	return &model.Task{
+		ID:       id,
+		Title:    "Task " + id,
+		Status:   status,
+		Priority: priority,
+		Parent:   parent,
+	}
+}
+
 func TestRecommend_ArchivedCompletedDepSatisfied(t *testing.T) {
 	// Task 002 depends on 001, but 001 is archived and completed.
 	// 002 should be actionable.
@@ -334,5 +344,131 @@ func TestCalculateCriticalPathTasks_MixedCompletedPendingChain(t *testing.T) {
 	}
 	if criticalPath["B"] {
 		t.Error("Completed task B should NOT be on critical path")
+	}
+}
+
+func TestHasIncompleteChildren(t *testing.T) {
+	tests := []struct {
+		name     string
+		task     *model.Task
+		children []*model.Task
+		expected bool
+	}{
+		{
+			name:     "no children",
+			task:     makeTask("P1", model.StatusPending, model.PriorityMedium, nil),
+			children: nil,
+			expected: false,
+		},
+		{
+			name: "all children completed",
+			task: makeTask("P1", model.StatusPending, model.PriorityMedium, nil),
+			children: []*model.Task{
+				makeTaskWithParent("C1", model.StatusCompleted, model.PriorityMedium, "P1"),
+				makeTaskWithParent("C2", model.StatusCompleted, model.PriorityMedium, "P1"),
+			},
+			expected: false,
+		},
+		{
+			name: "one pending child",
+			task: makeTask("P1", model.StatusPending, model.PriorityMedium, nil),
+			children: []*model.Task{
+				makeTaskWithParent("C1", model.StatusCompleted, model.PriorityMedium, "P1"),
+				makeTaskWithParent("C2", model.StatusPending, model.PriorityMedium, "P1"),
+			},
+			expected: true,
+		},
+		{
+			name: "cancelled child counts as resolved",
+			task: makeTask("P1", model.StatusPending, model.PriorityMedium, nil),
+			children: []*model.Task{
+				makeTaskWithParent("C1", model.StatusCancelled, model.PriorityMedium, "P1"),
+			},
+			expected: false,
+		},
+		{
+			name: "in-progress child is incomplete",
+			task: makeTask("P1", model.StatusPending, model.PriorityMedium, nil),
+			children: []*model.Task{
+				makeTaskWithParent("C1", model.StatusInProgress, model.PriorityMedium, "P1"),
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			childrenMap := BuildChildrenMap(tt.children)
+			got := HasIncompleteChildren(tt.task, childrenMap)
+			if got != tt.expected {
+				t.Errorf("HasIncompleteChildren() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsActionable_WithChildren(t *testing.T) {
+	parent := makeTask("P1", model.StatusPending, model.PriorityMedium, nil)
+	child := makeTaskWithParent("C1", model.StatusPending, model.PriorityMedium, "P1")
+
+	tasks := []*model.Task{parent, child}
+	taskMap := BuildTaskMap(tasks)
+	childrenMap := BuildChildrenMap(tasks)
+
+	// Parent with incomplete child should not be actionable
+	if IsActionable(parent, taskMap, childrenMap) {
+		t.Error("Parent with incomplete child should not be actionable")
+	}
+
+	// Child itself should be actionable (no deps, no children of its own)
+	if !IsActionable(child, taskMap, childrenMap) {
+		t.Error("Child task should be actionable")
+	}
+}
+
+func TestRecommend_ParentExcludedWhenChildrenIncomplete(t *testing.T) {
+	parent := makeTask("P1", model.StatusPending, model.PriorityHigh, nil)
+	child := makeTaskWithParent("C1", model.StatusPending, model.PriorityMedium, "P1")
+
+	tasks := []*model.Task{parent, child}
+
+	recs, err := Recommend(tasks, Options{Limit: 10})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	for _, rec := range recs {
+		if rec.ID == "P1" {
+			t.Error("Parent P1 should not be recommended while child C1 is incomplete")
+		}
+	}
+
+	if len(recs) != 1 || recs[0].ID != "C1" {
+		t.Errorf("Expected only child C1, got %v", recs)
+	}
+}
+
+func TestRecommend_ParentIncludedWhenAllChildrenResolved(t *testing.T) {
+	parent := makeTask("P1", model.StatusPending, model.PriorityHigh, nil)
+	childCompleted := makeTaskWithParent("C1", model.StatusCompleted, model.PriorityMedium, "P1")
+	childCancelled := makeTaskWithParent("C2", model.StatusCancelled, model.PriorityMedium, "P1")
+
+	tasks := []*model.Task{parent, childCompleted, childCancelled}
+
+	recs, err := Recommend(tasks, Options{Limit: 10})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := false
+	for _, rec := range recs {
+		if rec.ID == "P1" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Error("Parent P1 should be recommended when all children are resolved")
 	}
 }

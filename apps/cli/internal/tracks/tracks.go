@@ -76,6 +76,7 @@ func scoreActionable(tasks []*model.Task, filters []string, archivedTasks []*mod
 		}
 	}
 
+	childrenMap := next.BuildChildrenMap(tasks)
 	criticalPath := next.CalculateCriticalPathTasks(tasks, taskMap)
 	downstreamInfo := next.ComputeDownstreamInfo(tasks)
 
@@ -90,7 +91,7 @@ func scoreActionable(tasks []*model.Task, filters []string, archivedTasks []*mod
 
 	var items []scored
 	for _, t := range candidates {
-		if next.IsActionable(t, taskMap) {
+		if next.IsActionable(t, taskMap, childrenMap) {
 			s, _ := next.ScoreTask(t, criticalPath, downstreamInfo)
 			items = append(items, scored{task: t, score: s})
 		}

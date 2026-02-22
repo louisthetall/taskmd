@@ -902,7 +902,7 @@ func TestIsActionable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := next.IsActionable(tt.task, taskMap)
+			got := next.IsActionable(tt.task, taskMap, next.BuildChildrenMap(nil))
 			if got != tt.expected {
 				t.Errorf("isActionable() = %v, want %v", got, tt.expected)
 			}
