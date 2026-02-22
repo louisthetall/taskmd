@@ -1,7 +1,7 @@
 ---
 id: "198"
 title: "Add filtering, sorting, and limit flags to search command"
-status: in-progress
+status: completed
 priority: medium
 effort: small
 tags: [cli, search]
@@ -16,12 +16,12 @@ The `search` command currently only supports `--format` but lacks the filtering,
 
 ## Tasks
 
-- [ ] Add `--filter` flag (reuse `applyFilters` from list command)
-- [ ] Add `--sort` flag (reuse `sortTasks` from list command)
-- [ ] Add `--limit` flag
-- [ ] Update command help text and examples
-- [ ] Add tests for new flags
-- [ ] Add e2e tests for search with filters
+- [x] Add `--filter` flag (reuse `applyFilters` from list command)
+- [x] Add `--sort` flag (reuse `sortTasks` from list command)
+- [x] Add `--limit` flag
+- [x] Update command help text and examples
+- [x] Add tests for new flags
+- [x] Add e2e tests for search with filters
 
 ## Acceptance Criteria
 
