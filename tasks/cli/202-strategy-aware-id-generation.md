@@ -1,7 +1,7 @@
 ---
 id: "202"
 title: "Implement strategy-aware ID generation"
-status: pending
+status: in-progress
 priority: high
 effort: medium
 type: feature

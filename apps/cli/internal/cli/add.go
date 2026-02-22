@@ -15,6 +15,7 @@ import (
 	"github.com/driangle/taskmd/apps/cli/internal/slug"
 	"github.com/driangle/taskmd/apps/cli/internal/taskfile"
 	"github.com/driangle/taskmd/apps/cli/internal/template"
+	"github.com/driangle/taskmd/apps/cli/internal/validator"
 )
 
 var (
@@ -145,7 +146,20 @@ func resolveNextID(scanDir string, flags GlobalFlags) (string, error) {
 	for i, task := range result.Tasks {
 		ids[i] = task.ID
 	}
-	return nextid.Calculate(ids).NextID, nil
+
+	cfg := resolveIDConfig()
+	return generateID(ids, cfg)
+}
+
+func generateID(ids []string, cfg validator.IDConfig) (string, error) {
+	switch cfg.Strategy {
+	case "prefixed":
+		return nextid.GeneratePrefixed(ids, cfg.Prefix, cfg.Padding), nil
+	case "random":
+		return nextid.GenerateRandom(ids, cfg.Length)
+	default:
+		return nextid.Calculate(ids).NextID, nil
+	}
 }
 
 func resolveTaskContent(cmd *cobra.Command, id, title string) (string, error) {

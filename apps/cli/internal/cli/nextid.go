@@ -8,6 +8,7 @@ import (
 
 	"github.com/driangle/taskmd/apps/cli/internal/nextid"
 	"github.com/driangle/taskmd/apps/cli/internal/scanner"
+	"github.com/driangle/taskmd/apps/cli/internal/validator"
 )
 
 var nextIDFormat string
@@ -37,7 +38,7 @@ func init() {
 	nextIDCmd.Flags().StringVar(&nextIDFormat, "format", "plain", "output format (plain, json)")
 }
 
-func runNextID(cmd *cobra.Command, args []string) error {
+func runNextID(_ *cobra.Command, args []string) error {
 	flags := GetGlobalFlags()
 
 	scanDir := ResolveScanDir(args)
@@ -61,15 +62,43 @@ func runNextID(cmd *cobra.Command, args []string) error {
 		ids[i] = task.ID
 	}
 
-	nextResult := nextid.Calculate(ids)
+	cfg := resolveIDConfig()
 
 	switch nextIDFormat {
 	case "plain":
-		fmt.Println(nextResult.NextID)
+		id, genErr := generateID(ids, cfg)
+		if genErr != nil {
+			return genErr
+		}
+		fmt.Println(id)
 		return nil
 	case "json":
-		return WriteJSON(os.Stdout, nextResult)
+		return outputNextIDJSON(ids, cfg)
 	default:
 		return ValidateFormat(nextIDFormat, []string{"plain", "json"})
+	}
+}
+
+func outputNextIDJSON(ids []string, cfg validator.IDConfig) error {
+	switch cfg.Strategy {
+	case "prefixed":
+		id := nextid.GeneratePrefixed(ids, cfg.Prefix, cfg.Padding)
+		return WriteJSON(os.Stdout, nextid.Result{
+			NextID:  id,
+			Prefix:  cfg.Prefix,
+			Padding: cfg.Padding,
+			Total:   len(ids),
+		})
+	case "random":
+		id, err := nextid.GenerateRandom(ids, cfg.Length)
+		if err != nil {
+			return err
+		}
+		return WriteJSON(os.Stdout, nextid.Result{
+			NextID: id,
+			Total:  len(ids),
+		})
+	default:
+		return WriteJSON(os.Stdout, nextid.Calculate(ids))
 	}
 }

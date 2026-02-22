@@ -210,9 +210,6 @@ func ResolveScanDir(args []string) string {
 }
 
 // resolveIDConfig returns the ID generation config with defaults applied.
-// Not yet consumed by any command — plumbing for task 202.
-//
-//nolint:unused // Plumbing for future task 202 (ID generation command)
 func resolveIDConfig() validator.IDConfig {
 	cfg := validator.IDConfig{
 		Strategy: "sequential",

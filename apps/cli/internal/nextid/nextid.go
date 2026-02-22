@@ -1,6 +1,11 @@
 package nextid
 
-import "fmt"
+import (
+	"crypto/rand"
+	"fmt"
+	"math/big"
+	"strings"
+)
 
 // Result holds the computed next ID and related metadata.
 type Result struct {
@@ -117,6 +122,52 @@ func detectPrefix(parsed []parsedID) string {
 		return bestPrefix
 	}
 	return ""
+}
+
+// GeneratePrefixed produces the next sequential ID with the given prefix.
+// It filters existing IDs by prefix, finds the max numeric suffix, and
+// returns prefix + zero-padded(max+1).
+func GeneratePrefixed(existingIDs []string, prefix string, padding int) string {
+	maxNum := 0
+	for _, id := range existingIDs {
+		p, ok := parseID(id)
+		if !ok || !strings.EqualFold(p.prefix, prefix) {
+			continue
+		}
+		if p.number > maxNum {
+			maxNum = p.number
+		}
+	}
+	return formatID(prefix, maxNum+1, padding)
+}
+
+// GenerateRandom produces a random base-36 alphanumeric lowercase ID of the
+// given length. It retries on collision with existingIDs (max 100 attempts).
+func GenerateRandom(existingIDs []string, length int) (string, error) {
+	existing := make(map[string]struct{}, len(existingIDs))
+	for _, id := range existingIDs {
+		existing[id] = struct{}{}
+	}
+
+	const charset = "0123456789abcdefghijklmnopqrstuvwxyz"
+	charsetLen := big.NewInt(int64(len(charset)))
+
+	for attempt := 0; attempt < 100; attempt++ {
+		buf := make([]byte, length)
+		for i := range buf {
+			idx, err := rand.Int(rand.Reader, charsetLen)
+			if err != nil {
+				return "", fmt.Errorf("crypto/rand failed: %w", err)
+			}
+			buf[i] = charset[idx.Int64()]
+		}
+		id := string(buf)
+		if _, taken := existing[id]; !taken {
+			return id, nil
+		}
+	}
+
+	return "", fmt.Errorf("failed to generate unique ID after 100 attempts")
 }
 
 // formatID assembles a prefix with a zero-padded number.

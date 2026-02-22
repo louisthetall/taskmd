@@ -14,15 +14,13 @@ The user's task description is in `$ARGUMENTS`.
 
 1. **Read the specification** at `docs/taskmd_specification.md` (or `docs/TASKMD_SPEC.md`) for the correct format
 2. **Determine the next task ID**:
-   - Run `taskmd next-id` in Bash
-   - If the command succeeds, use the returned ID (the project uses monotonic zero-padded numeric IDs)
-   - If it fails because the project doesn't use monotonic zero-padded numeric IDs, generate a short unique numeric ID from the current Unix timestamp (e.g., last 6 digits of epoch seconds)
-   - If `taskmd` is not installed, fall back to scanning existing files: run `Glob` for `tasks/**/*.md`, extract numeric IDs from filenames (pattern: `NNN-description.md`), and pick the next sequential ID zero-padded to 3 digits
+   - Run `taskmd next-id` in Bash and use the returned ID
+   - The command respects the project's configured ID strategy (sequential, prefixed, or random) from `.taskmd.yaml`
 3. **Choose the subdirectory** based on the task's domain:
    - `tasks/cli/` — CLI commands, Go backend, terminal features
    - `tasks/web/` — Web frontend, UI, React components
    - `tasks/` (root) — Cross-cutting, infrastructure, documentation, or unclear domain
-4. **Create the task file** named `<NNN>-<slug>.md` with:
+4. **Create the task file** named `<ID>-<slug>.md` with:
 
 ```yaml
 ---

@@ -1,6 +1,7 @@
 package nextid
 
 import (
+	"regexp"
 	"testing"
 )
 
@@ -220,5 +221,109 @@ func TestCalculate(t *testing.T) {
 				t.Errorf("Padding = %d, want %d", result.Padding, tt.wantPad)
 			}
 		})
+	}
+}
+
+func TestGeneratePrefixed(t *testing.T) {
+	tests := []struct {
+		name    string
+		ids     []string
+		prefix  string
+		padding int
+		want    string
+	}{
+		{
+			"next after existing prefixed IDs",
+			[]string{"WEB-001", "WEB-002", "WEB-003"},
+			"WEB-", 3,
+			"WEB-004",
+		},
+		{
+			"empty existing IDs starts at 1",
+			nil,
+			"CLI-", 3,
+			"CLI-001",
+		},
+		{
+			"ignores IDs with different prefix",
+			[]string{"WEB-010", "CLI-002", "CLI-005"},
+			"CLI-", 3,
+			"CLI-006",
+		},
+		{
+			"respects padding",
+			[]string{"T-01", "T-02"},
+			"T-", 4,
+			"T-0003",
+		},
+		{
+			"case-insensitive prefix matching",
+			[]string{"web-003"},
+			"WEB-", 3,
+			"WEB-004",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GeneratePrefixed(tt.ids, tt.prefix, tt.padding)
+			if got != tt.want {
+				t.Errorf("GeneratePrefixed() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGenerateRandom_Format(t *testing.T) {
+	id, err := GenerateRandom(nil, 6)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(id) != 6 {
+		t.Errorf("length = %d, want 6", len(id))
+	}
+	if !regexp.MustCompile(`^[0-9a-z]+$`).MatchString(id) {
+		t.Errorf("id %q contains non-base36 characters", id)
+	}
+}
+
+func TestGenerateRandom_RespectsLength(t *testing.T) {
+	for _, length := range []int{4, 8, 12} {
+		id, err := GenerateRandom(nil, length)
+		if err != nil {
+			t.Fatalf("unexpected error for length %d: %v", length, err)
+		}
+		if len(id) != length {
+			t.Errorf("length = %d, want %d", len(id), length)
+		}
+	}
+}
+
+func TestGenerateRandom_CollisionAvoidance(t *testing.T) {
+	existing := []string{"abc123", "def456", "ghi789"}
+	for range 50 {
+		id, err := GenerateRandom(existing, 6)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		for _, ex := range existing {
+			if id == ex {
+				t.Errorf("generated id %q collides with existing", id)
+			}
+		}
+	}
+}
+
+func TestGenerateRandom_Uniqueness(t *testing.T) {
+	seen := make(map[string]struct{})
+	for range 100 {
+		id, err := GenerateRandom(nil, 8)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if _, exists := seen[id]; exists {
+			t.Errorf("duplicate id %q", id)
+		}
+		seen[id] = struct{}{}
 	}
 }
