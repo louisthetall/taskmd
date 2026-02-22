@@ -1,7 +1,7 @@
 ---
 id: "202"
 title: "Implement strategy-aware ID generation"
-status: in-progress
+status: completed
 priority: high
 effort: medium
 type: feature
@@ -19,12 +19,12 @@ Update `taskmd add` and `taskmd next-id` to generate IDs according to the config
 
 ## Tasks
 
-- [ ] Add `GenerateRandom(existingIDs []string, length int)` function to `nextid` package using `crypto/rand` (base-36 alphanumeric, lowercase)
-- [ ] Add `GeneratePrefixed(existingIDs []string, prefix string, padding int)` function to `nextid` package (prefix + sequential number)
-- [ ] Update `resolveNextID()` in `cli/add.go` to read ID config and dispatch to the correct generation function
-- [ ] Update `runNextID()` in `cli/nextid.go` to respect configured strategy
-- [ ] Update `add-task` skill in `claude-code-plugin/skills/add-task/SKILL.md` to rely on `taskmd next-id` without hardcoded fallback patterns
-- [ ] Add tests for random and prefixed generation (uniqueness, format, collision avoidance)
+- [x] Add `GenerateRandom(existingIDs []string, length int)` function to `nextid` package using `crypto/rand` (base-36 alphanumeric, lowercase)
+- [x] Add `GeneratePrefixed(existingIDs []string, prefix string, padding int)` function to `nextid` package (prefix + sequential number)
+- [x] Update `resolveNextID()` in `cli/add.go` to read ID config and dispatch to the correct generation function
+- [x] Update `runNextID()` in `cli/nextid.go` to respect configured strategy
+- [x] Update `add-task` skill in `claude-code-plugin/skills/add-task/SKILL.md` to rely on `taskmd next-id` without hardcoded fallback patterns
+- [x] Add tests for random and prefixed generation (uniqueness, format, collision avoidance)
 
 ## Acceptance Criteria
 
