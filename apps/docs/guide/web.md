@@ -358,6 +358,37 @@ taskmd web start --task-dir ~/project1/tasks --port 8081
 taskmd web start --task-dir ~/project2/tasks --port 8082
 ```
 
+### Docker
+
+The taskmd web server is available as a Docker image from GitHub Container Registry. The image includes the web frontend and defaults to running `taskmd web start` on port 8080. Mount your tasks directory to `/tasks` inside the container.
+
+```bash
+# Run the web dashboard with your local tasks directory
+docker run -p 8080:8080 -v $(pwd)/tasks:/tasks ghcr.io/driangle/taskmd:latest
+
+# Custom port
+docker run -p 3000:3000 -v $(pwd)/tasks:/tasks ghcr.io/driangle/taskmd:latest web start --port 3000
+
+# Read-only mode
+docker run -p 8080:8080 -v $(pwd)/tasks:/tasks:ro ghcr.io/driangle/taskmd:latest web start --readonly
+```
+
+**Docker Compose:**
+
+```yaml
+services:
+  taskmd:
+    image: ghcr.io/driangle/taskmd:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./tasks:/tasks
+```
+
+::: tip
+You can also use the Docker image to run any taskmd CLI command, not just the web server. For example: `docker run -v $(pwd)/tasks:/tasks ghcr.io/driangle/taskmd:latest taskmd list`
+:::
+
 ## Troubleshooting
 
 ### Server Won't Start

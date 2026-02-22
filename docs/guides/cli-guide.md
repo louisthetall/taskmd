@@ -130,7 +130,19 @@ taskmd list ./tasks/cli
 | `report` | Generate a comprehensive project report |
 | `tracks` | Show parallel work tracks based on scope overlap |
 | `archive` | Archive or delete completed/cancelled tasks |
+| `rm` | Delete a task file permanently |
+| `deduplicate` | Detect and resolve duplicate task IDs |
 | `next-id` | Show the next available task ID |
+| `add` | Create a new task file with proper frontmatter |
+| `search` | Full-text search across task titles and bodies |
+| `templates` | List and manage task templates |
+| `verify` | Run verification checks for a task |
+| `status` | Get lightweight metadata for a task |
+| `context` | Show file context for a task |
+| `worklog` | View or add worklog entries for a task |
+| `import` | Import tasks from external sources |
+| `spec` | Generate the taskmd specification file |
+| `commit-msg` | Generate conventional commit messages from task metadata |
 | `sync` | Sync tasks from external sources |
 | `web` | Web dashboard commands |
 | `init` | Initialize a project with agent configuration and spec files |
@@ -198,6 +210,22 @@ taskmd list --columns id,title,status
 taskmd list --columns id,title,status,priority,effort,deps
 ```
 
+**Limiting results:**
+```bash
+# Show only 5 tasks
+taskmd list --sort priority --limit 5
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--filter` | | Filter tasks (repeatable, AND logic) |
+| `--sort` | | Sort by field (`id`, `title`, `status`, `priority`, `effort`, `created`) |
+| `--columns` | `id,title,status,priority,file` | Comma-separated list of columns to display |
+| `--limit` | `0` | Maximum number of tasks to display (0 = unlimited) |
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
+
 **Examples:**
 ```bash
 # High-priority pending tasks
@@ -208,6 +236,9 @@ taskmd list --filter effort=small --filter status=pending
 
 # All CLI-related tasks
 taskmd list --filter tag=cli --sort priority
+
+# Top 5 by priority
+taskmd list --sort priority --limit 5
 
 # Export to JSON for scripting
 taskmd list --format json > tasks.json
@@ -722,6 +753,10 @@ taskmd search "authentication"
 # JSON output
 taskmd search deploy --format json
 
+# Filter and sort results
+taskmd search "auth" --filter priority=high
+taskmd search "deploy" --filter status=pending --sort priority --limit 5
+
 # Search in specific directory
 taskmd search "bug fix" --task-dir ./tasks
 ```
@@ -731,6 +766,9 @@ taskmd search "bug fix" --task-dir ./tasks
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--format` | `table` | Output format (`table`, `json`, `yaml`) |
+| `--filter` | | Filter tasks (repeatable, AND logic, e.g., `--filter status=pending --filter priority=high`) |
+| `--sort` | | Sort by field (`id`, `title`, `status`, `priority`, `effort`, `created`) |
+| `--limit` | `0` | Maximum number of results (0 = unlimited) |
 
 ### verify - Run Verification Checks
 
@@ -1305,6 +1343,81 @@ taskmd next-id ./tasks/cli
 taskmd next-id --format json
 ```
 
+### rm - Delete a Task
+
+Permanently delete a task file by ID. Displays the task details and asks for confirmation before deleting.
+
+**Basic usage:**
+```bash
+# Delete a task (with confirmation prompt)
+taskmd rm 042
+
+# Skip confirmation
+taskmd rm 042 --force
+
+# Preview what would be deleted
+taskmd rm 042 --dry-run
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--force`, `-f` | `false` | Skip confirmation prompt |
+| `--dry-run` | `false` | Preview what would be deleted without acting |
+
+### deduplicate - Resolve Duplicate IDs
+
+Detect and resolve duplicate task IDs that can occur when multiple contributors create tasks on separate branches. For each collision, the oldest task (by created date) keeps its original ID. Newer tasks get reassigned a fresh ID, with file renames and cross-reference updates applied automatically.
+
+**Basic usage:**
+```bash
+# Detect and fix duplicates
+taskmd deduplicate
+
+# Scan a specific directory
+taskmd deduplicate ./tasks
+
+# Preview changes without modifying files
+taskmd deduplicate --dry-run
+
+# Skip interactive prompts for ambiguous references
+taskmd deduplicate --no-interactive
+
+# JSON output
+taskmd deduplicate --format json
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--dry-run` | `false` | Preview changes without modifying files |
+| `--format` | `text` | Output format (`text`, `json`) |
+| `--no-interactive` | `false` | Skip interactive prompts for ambiguous references |
+
+### templates - Manage Task Templates
+
+List and inspect task templates used by the `add` command. Templates are discovered from three sources in precedence order: project (`.taskmd/templates/`), user (`~/.taskmd/templates/`), and built-in.
+
+**Basic usage:**
+```bash
+# List available templates
+taskmd templates list
+
+# JSON output
+taskmd templates list --format json
+
+# YAML output
+taskmd templates list --format yaml
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
+
 ### report - Generate Reports
 
 Generate a comprehensive project report combining summary statistics, task groupings, critical-path analysis, blocked tasks, and optional dependency graphs.
@@ -1644,6 +1757,10 @@ dir: ./tasks                    # Default task directory
 web:
   port: 8080                   # Default web server port
   auto_open_browser: true      # Auto-open browser on web start
+id:
+  strategy: sequential          # "sequential", "prefixed", "random", or "uuid"
+  prefix: ""                   # Required when strategy is "prefixed"
+  padding: 3                   # Zero-padding width (sequential strategy)
 ```
 
 **Config File Locations:**
