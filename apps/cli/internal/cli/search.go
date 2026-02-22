@@ -12,7 +12,12 @@ import (
 	"github.com/driangle/taskmd/apps/cli/internal/search"
 )
 
-var searchFormat string
+var (
+	searchFormat  string
+	searchFilters []string
+	searchSort    string
+	searchLimit   int
+)
 
 var searchCmd = &cobra.Command{
 	Use:        "search <query>",
@@ -24,10 +29,14 @@ context snippet.
 
 Output formats: table (default), json, yaml
 
+Multiple --filter flags are combined with AND logic.
+
 Examples:
   taskmd search "authentication"
   taskmd search deploy --format json
-  taskmd search "bug fix" --task-dir ./tasks`,
+  taskmd search "bug fix" --task-dir ./tasks
+  taskmd search "auth" --filter priority=high
+  taskmd search "deploy" --filter status=pending --sort priority --limit 5`,
 	Args: cobra.ExactArgs(1),
 	RunE: runSearch,
 }
@@ -36,6 +45,9 @@ func init() {
 	rootCmd.AddCommand(searchCmd)
 
 	searchCmd.Flags().StringVar(&searchFormat, "format", "table", "output format (table, json, yaml)")
+	searchCmd.Flags().StringArrayVar(&searchFilters, "filter", []string{}, "filter tasks (can specify multiple times for AND conditions, e.g., --filter status=pending --filter priority=high)")
+	searchCmd.Flags().StringVar(&searchSort, "sort", "", "sort by field (id, title, status, priority, effort, created)")
+	searchCmd.Flags().IntVar(&searchLimit, "limit", 0, "maximum number of results to display (0 = unlimited)")
 }
 
 func runSearch(cmd *cobra.Command, args []string) error {
@@ -53,7 +65,27 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	tasks := result.Tasks
 	makeFilePathsRelative(tasks, scanDir)
 
+	// Apply filters before search (narrows which tasks are searched)
+	if len(searchFilters) > 0 {
+		tasks, err = applyFilters(tasks, searchFilters)
+		if err != nil {
+			return fmt.Errorf("filter error: %w", err)
+		}
+	}
+
+	// Apply sorting before search (preserves order through search)
+	if searchSort != "" {
+		if err := sortTasks(tasks, searchSort); err != nil {
+			return fmt.Errorf("sort error: %w", err)
+		}
+	}
+
 	results := search.Search(tasks, query)
+
+	// Apply limit after search (limits final result count)
+	if searchLimit > 0 && searchLimit < len(results) {
+		results = results[:searchLimit]
+	}
 
 	if len(results) == 0 {
 		fmt.Fprintf(os.Stderr, "No tasks found matching %q\n", query)

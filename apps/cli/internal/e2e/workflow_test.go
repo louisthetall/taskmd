@@ -69,6 +69,35 @@ Test task for e2e tests.
 	}
 }
 
+// writeTaskWithBody creates a task file with a custom body for search tests.
+func writeTaskWithBody(t *testing.T, dir, filename, id, title, status, priority, body string) {
+	t.Helper()
+
+	content := fmt.Sprintf(`---
+id: %q
+title: %q
+status: %s
+priority: %s
+effort: small
+dependencies: []
+tags: ["e2e"]
+created: 2026-01-01
+---
+
+# %s
+
+%s
+`, id, title, status, priority, title, body)
+
+	path := filepath.Join(dir, filename)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("failed to create directory for %s: %v", path, err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write task file %s: %v", path, err)
+	}
+}
+
 // --- Workflow Tests ---
 
 func TestWorkflow_AddThenList(t *testing.T) {
@@ -500,6 +529,82 @@ func TestWorkflow_FlagWiring(t *testing.T) {
 			if node["status"] == "completed" {
 				t.Errorf("expected no completed tasks in graph with --exclude-status completed, found node %v", node["id"])
 			}
+		}
+	})
+}
+
+func TestWorkflow_SearchFlags(t *testing.T) {
+	dir := setupTaskDir(t)
+
+	// Create tasks with unique keywords in body for search tests.
+	writeTaskWithBody(t, dir, "001-auth-high.md", "001", "Auth login feature", "pending", "high",
+		"Implement JWT authentication for the login endpoint.")
+	writeTaskWithBody(t, dir, "002-auth-low.md", "002", "Auth docs update", "pending", "low",
+		"Document the authentication API endpoints.")
+	writeTaskWithBody(t, dir, "003-deploy.md", "003", "Deploy pipeline", "in-progress", "medium",
+		"Set up CI/CD pipeline with authentication checks.")
+	writeTaskWithBody(t, dir, "004-auth-done.md", "004", "Auth refactor", "completed", "critical",
+		"Refactored the authentication module for performance.")
+
+	t.Run("search_filter_status", func(t *testing.T) {
+		result := mustRun(t, dir, "search", "authentication", "--filter", "status=pending", "--format", "json")
+
+		var results []map[string]any
+		mustParseJSON(t, result.Stdout, &results)
+
+		for _, r := range results {
+			if r["status"] != "pending" {
+				t.Errorf("expected only pending results, got status %q for task %v", r["status"], r["id"])
+			}
+		}
+		if len(results) != 2 {
+			t.Errorf("expected 2 pending authentication results, got %d", len(results))
+		}
+	})
+
+	t.Run("search_sort_priority", func(t *testing.T) {
+		result := mustRun(t, dir, "search", "authentication", "--sort", "priority", "--format", "json")
+
+		var results []map[string]any
+		mustParseJSON(t, result.Stdout, &results)
+
+		if len(results) < 2 {
+			t.Fatalf("expected at least 2 results, got %d", len(results))
+		}
+		// Critical should come first when sorted by priority.
+		if results[0]["priority"] != "critical" {
+			t.Errorf("expected first result to be critical priority, got %q", results[0]["priority"])
+		}
+	})
+
+	t.Run("search_limit", func(t *testing.T) {
+		result := mustRun(t, dir, "search", "authentication", "--limit", "1", "--format", "json")
+
+		var results []map[string]any
+		mustParseJSON(t, result.Stdout, &results)
+
+		if len(results) != 1 {
+			t.Errorf("expected 1 result with --limit 1, got %d", len(results))
+		}
+	})
+
+	t.Run("search_combined", func(t *testing.T) {
+		result := mustRun(t, dir, "search", "authentication", "--filter", "status=pending", "--sort", "priority", "--limit", "2", "--format", "json")
+
+		var results []map[string]any
+		mustParseJSON(t, result.Stdout, &results)
+
+		if len(results) > 2 {
+			t.Errorf("expected at most 2 results with --limit 2, got %d", len(results))
+		}
+		for _, r := range results {
+			if r["status"] != "pending" {
+				t.Errorf("expected only pending results, got status %q", r["status"])
+			}
+		}
+		// With sort by priority, high should come before low.
+		if len(results) == 2 && results[0]["priority"] != "high" {
+			t.Errorf("expected first result to be high priority, got %q", results[0]["priority"])
 		}
 	})
 }

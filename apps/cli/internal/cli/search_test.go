@@ -14,6 +14,9 @@ import (
 
 func resetSearchFlags() {
 	searchFormat = "table"
+	searchFilters = []string{}
+	searchSort = ""
+	searchLimit = 0
 	taskDir = "."
 	noColor = true
 }
@@ -377,6 +380,216 @@ func TestHighlightMatch(t *testing.T) {
 	result = highlightMatch("no match", "xyz", r)
 	if result != "no match" {
 		t.Errorf("expected original text, got %q", result)
+	}
+}
+
+func TestSearch_FilterByPriority(t *testing.T) {
+	resetSearchFlags()
+
+	tasks := []*model.Task{
+		{ID: "001", Title: "Auth system", Status: model.StatusPending, Priority: model.PriorityHigh, Body: "JWT authentication"},
+		{ID: "002", Title: "Auth docs", Status: model.StatusPending, Priority: model.PriorityLow, Body: "Document authentication endpoints"},
+	}
+
+	// Both match "authentication", but only 001 is high priority
+	searchFilters = []string{"priority=high"}
+	filtered, err := applyFilters(tasks, searchFilters)
+	if err != nil {
+		t.Fatalf("unexpected filter error: %v", err)
+	}
+	results := search.Search(filtered, "authentication")
+
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].ID != "001" {
+		t.Errorf("expected task 001, got %s", results[0].ID)
+	}
+}
+
+func TestSearch_FilterByStatus(t *testing.T) {
+	resetSearchFlags()
+
+	tasks := []*model.Task{
+		{ID: "001", Title: "Auth login", Status: model.StatusPending, Priority: model.PriorityHigh, Body: "Login endpoint"},
+		{ID: "002", Title: "Auth logout", Status: model.StatusCompleted, Priority: model.PriorityMedium, Body: "Logout endpoint"},
+	}
+
+	filtered, err := applyFilters(tasks, []string{"status=pending"})
+	if err != nil {
+		t.Fatalf("unexpected filter error: %v", err)
+	}
+	results := search.Search(filtered, "auth")
+
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].ID != "001" {
+		t.Errorf("expected task 001, got %s", results[0].ID)
+	}
+}
+
+func TestSearch_MultipleFilters(t *testing.T) {
+	resetSearchFlags()
+
+	tasks := []*model.Task{
+		{ID: "001", Title: "Auth high pending", Status: model.StatusPending, Priority: model.PriorityHigh, Body: "security feature"},
+		{ID: "002", Title: "Auth high done", Status: model.StatusCompleted, Priority: model.PriorityHigh, Body: "security fix"},
+		{ID: "003", Title: "Auth low pending", Status: model.StatusPending, Priority: model.PriorityLow, Body: "security docs"},
+	}
+
+	filtered, err := applyFilters(tasks, []string{"status=pending", "priority=high"})
+	if err != nil {
+		t.Fatalf("unexpected filter error: %v", err)
+	}
+	results := search.Search(filtered, "security")
+
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].ID != "001" {
+		t.Errorf("expected task 001, got %s", results[0].ID)
+	}
+}
+
+func TestSearch_SortByPriority(t *testing.T) {
+	resetSearchFlags()
+
+	tasks := []*model.Task{
+		{ID: "001", Title: "Deploy low", Status: model.StatusPending, Priority: model.PriorityLow, Body: "deploy staging"},
+		{ID: "002", Title: "Deploy critical", Status: model.StatusPending, Priority: model.PriorityCritical, Body: "deploy production"},
+		{ID: "003", Title: "Deploy high", Status: model.StatusPending, Priority: model.PriorityHigh, Body: "deploy canary"},
+	}
+
+	if err := sortTasks(tasks, "priority"); err != nil {
+		t.Fatalf("unexpected sort error: %v", err)
+	}
+	results := search.Search(tasks, "deploy")
+
+	if len(results) != 3 {
+		t.Fatalf("expected 3 results, got %d", len(results))
+	}
+	// Critical first, then high, then low
+	if results[0].ID != "002" {
+		t.Errorf("expected first result to be 002 (critical), got %s", results[0].ID)
+	}
+	if results[1].ID != "003" {
+		t.Errorf("expected second result to be 003 (high), got %s", results[1].ID)
+	}
+	if results[2].ID != "001" {
+		t.Errorf("expected third result to be 001 (low), got %s", results[2].ID)
+	}
+}
+
+func TestSearch_LimitResults(t *testing.T) {
+	resetSearchFlags()
+
+	tasks := []*model.Task{
+		{ID: "001", Title: "API endpoint one", Status: model.StatusPending, Priority: model.PriorityHigh, Body: "first endpoint"},
+		{ID: "002", Title: "API endpoint two", Status: model.StatusPending, Priority: model.PriorityMedium, Body: "second endpoint"},
+		{ID: "003", Title: "API endpoint three", Status: model.StatusPending, Priority: model.PriorityLow, Body: "third endpoint"},
+	}
+
+	results := search.Search(tasks, "endpoint")
+
+	if len(results) != 3 {
+		t.Fatalf("expected 3 results before limit, got %d", len(results))
+	}
+
+	// Apply limit
+	limit := 2
+	if limit < len(results) {
+		results = results[:limit]
+	}
+
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results after limit, got %d", len(results))
+	}
+}
+
+func TestSearch_AllFlagsCombined(t *testing.T) {
+	resetSearchFlags()
+
+	tasks := []*model.Task{
+		{ID: "001", Title: "Bug fix auth", Status: model.StatusPending, Priority: model.PriorityLow, Body: "fix login bug"},
+		{ID: "002", Title: "Bug fix deploy", Status: model.StatusPending, Priority: model.PriorityHigh, Body: "fix deploy bug"},
+		{ID: "003", Title: "Bug fix cache", Status: model.StatusPending, Priority: model.PriorityCritical, Body: "fix cache bug"},
+		{ID: "004", Title: "Bug fix API", Status: model.StatusCompleted, Priority: model.PriorityCritical, Body: "fix api bug"},
+	}
+
+	// Filter: only pending tasks
+	filtered, err := applyFilters(tasks, []string{"status=pending"})
+	if err != nil {
+		t.Fatalf("unexpected filter error: %v", err)
+	}
+
+	// Sort by priority (critical first)
+	if err := sortTasks(filtered, "priority"); err != nil {
+		t.Fatalf("unexpected sort error: %v", err)
+	}
+
+	// Search for "bug"
+	results := search.Search(filtered, "bug")
+
+	// Limit to 2
+	if len(results) > 2 {
+		results = results[:2]
+	}
+
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+	// Critical pending first, then high pending
+	if results[0].ID != "003" {
+		t.Errorf("expected first result 003 (critical), got %s", results[0].ID)
+	}
+	if results[1].ID != "002" {
+		t.Errorf("expected second result 002 (high), got %s", results[1].ID)
+	}
+}
+
+func TestSearch_FilterNoMatchingTasks(t *testing.T) {
+	resetSearchFlags()
+
+	tasks := []*model.Task{
+		{ID: "001", Title: "Auth system", Status: model.StatusCompleted, Priority: model.PriorityHigh, Body: "JWT authentication"},
+	}
+
+	// Filter for pending, but task is completed
+	filtered, err := applyFilters(tasks, []string{"status=pending"})
+	if err != nil {
+		t.Fatalf("unexpected filter error: %v", err)
+	}
+	results := search.Search(filtered, "authentication")
+
+	if len(results) != 0 {
+		t.Fatalf("expected 0 results, got %d", len(results))
+	}
+}
+
+func TestSearch_InvalidFilter(t *testing.T) {
+	resetSearchFlags()
+
+	tasks := []*model.Task{
+		{ID: "001", Title: "Test", Status: model.StatusPending, Priority: model.PriorityMedium},
+	}
+
+	_, err := applyFilters(tasks, []string{"badfilter"})
+	if err == nil {
+		t.Fatal("expected error for invalid filter syntax")
+	}
+}
+
+func TestSearch_InvalidSort(t *testing.T) {
+	resetSearchFlags()
+
+	tasks := []*model.Task{
+		{ID: "001", Title: "Test", Status: model.StatusPending, Priority: model.PriorityMedium},
+	}
+
+	err := sortTasks(tasks, "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for invalid sort field")
 	}
 }
 
