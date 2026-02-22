@@ -415,6 +415,97 @@ func insertLine(lines []string, idx int, line string) []string {
 	return lines
 }
 
+// ReplaceID rewrites the id field in a task file's frontmatter.
+func ReplaceID(filePath, newID string) error {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	lines := strings.Split(string(content), "\n")
+	openIdx, closeIdx := FindFrontmatterBounds(lines)
+	if openIdx < 0 || closeIdx < 0 {
+		return fmt.Errorf("no valid frontmatter in %s", filePath)
+	}
+
+	for i := openIdx + 1; i < closeIdx; i++ {
+		if strings.HasPrefix(strings.TrimSpace(lines[i]), "id:") {
+			lines[i] = fmt.Sprintf("id: %q", newID)
+			return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644)
+		}
+	}
+
+	return fmt.Errorf("id field not found in frontmatter of %s", filePath)
+}
+
+// referenceFields are the frontmatter field prefixes where task ID cross-references appear.
+var referenceFields = []string{"parent:", "dependencies:"}
+
+// ReplaceReference replaces occurrences of oldID with newID in dependency and parent
+// fields within a task file's frontmatter.
+func ReplaceReference(filePath, oldID, newID string) error {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	lines := strings.Split(string(content), "\n")
+	openIdx, closeIdx := FindFrontmatterBounds(lines)
+	if openIdx < 0 || closeIdx < 0 {
+		return fmt.Errorf("no valid frontmatter in %s", filePath)
+	}
+
+	changed := replaceRefsInLines(lines, openIdx, closeIdx, oldID, newID)
+	if !changed {
+		return nil
+	}
+
+	return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644)
+}
+
+// replaceRefsInLines performs the actual replacement of oldID with newID within frontmatter lines.
+func replaceRefsInLines(lines []string, openIdx, closeIdx int, oldID, newID string) bool {
+	changed := false
+	inDeps := false
+
+	for i := openIdx + 1; i < closeIdx; i++ {
+		trimmed := strings.TrimSpace(lines[i])
+
+		// Check if this line is a reference field (parent: or dependencies:).
+		if isReferenceField(trimmed) {
+			inDeps = strings.HasPrefix(trimmed, "dependencies:")
+			if strings.Contains(lines[i], oldID) {
+				lines[i] = strings.Replace(lines[i], oldID, newID, 1)
+				changed = true
+			}
+			continue
+		}
+
+		// Handle multiline dependency items.
+		if inDeps && strings.HasPrefix(trimmed, "- ") {
+			if strings.Contains(lines[i], oldID) {
+				lines[i] = strings.Replace(lines[i], oldID, newID, 1)
+				changed = true
+			}
+			continue
+		}
+
+		inDeps = false
+	}
+
+	return changed
+}
+
+// isReferenceField checks if a trimmed line starts with a known reference field prefix.
+func isReferenceField(trimmed string) bool {
+	for _, prefix := range referenceFields {
+		if strings.HasPrefix(trimmed, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 // FindFrontmatterBounds returns the line indices of the opening and closing "---" delimiters.
 func FindFrontmatterBounds(lines []string) (int, int) {
 	openIdx := -1

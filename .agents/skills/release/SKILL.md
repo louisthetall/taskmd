@@ -1,7 +1,6 @@
 ---
 name: release
 description: Create a new release by bumping versions, tagging, pushing, and generating release notes. Use when the user wants to release a new version.
-allowed-tools: Bash, Read, Edit, Grep, Glob, Task
 metadata:
   internal: true
 ---
@@ -33,24 +32,30 @@ The user's input is in `$ARGUMENTS` (a semver version like `1.2.3` or `v1.2.3`, 
 4. **If `--dry-run`**, stop here and report that validation passed.
 
 5. **Generate release notes** from the commit history since the last tag:
+
    ```bash
    git log $(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || git rev-list --max-parents=0 HEAD)..HEAD --pretty=format:"- %s" --no-merges
    ```
+
    Don't use these raw commit messages as the release notes. Instead, investigate what each commit/task actually did (read task files, check diffs) and write polished, user-facing release notes grouped by category (e.g., New Commands, CLI Improvements, Web Dashboard, Core, Documentation, Removed). Present the release notes to the user before proceeding.
 
 6. **Write the release notes to a file** at `/tmp/taskmd-release-notes-X.Y.Z.md` using the Write tool.
 
 7. **If `--no-push`**, run the script without pushing:
-    ```bash
-    echo "y" | scripts/release.sh --no-push --notes-file /tmp/taskmd-release-notes-X.Y.Z.md X.Y.Z
-    ```
-    Report what was created locally and stop.
+
+   ```bash
+   echo "y" | scripts/release.sh --no-push --notes-file /tmp/taskmd-release-notes-X.Y.Z.md X.Y.Z
+   ```
+
+   Report what was created locally and stop.
 
 8. **Run the release script** to handle the full release lifecycle:
-    ```bash
-    echo "y" | scripts/release.sh --notes-file /tmp/taskmd-release-notes-X.Y.Z.md X.Y.Z
-    ```
-    The script has an interactive confirmation prompt — piping `echo "y"` auto-confirms it. The user already approved the release when they confirmed the release notes, so no second confirmation is needed. The script handles everything: version bumps, commit, tag, push, CI workflow monitoring, and applying release notes after CI creates the release.
+
+   ```bash
+   echo "y" | scripts/release.sh --notes-file /tmp/taskmd-release-notes-X.Y.Z.md X.Y.Z
+   ```
+
+   The script has an interactive confirmation prompt — piping `echo "y"` auto-confirms it. The user already approved the release when they confirmed the release notes, so no second confirmation is needed. The script handles everything: version bumps, commit, tag, push, CI workflow monitoring, and applying release notes after CI creates the release.
 
 9. **Report success** with the release tag and a link to the GitHub releases page.
 

@@ -1,7 +1,6 @@
 ---
 name: audit-docs
 description: Audit documentation coverage across CLI commands, web features, and configuration. Builds the CLI, discovers all commands/flags, checks web pages, and cross-references against docs/ and apps/docs/.
-allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Task
 metadata:
   internal: true
 ---
@@ -13,10 +12,12 @@ Discover all CLI commands, web features, and configuration options, then cross-r
 ## Instructions
 
 Arguments in `$ARGUMENTS` are optional flags:
+
 - `--fix` — after reporting gaps, update the documentation files to fill them
 - `--cli-only` — only audit CLI command documentation
 - `--web-only` — only audit web feature documentation
 - `--verbose` — include per-flag detail in the report
+- `--since-last-release` — only check for items added since the last release. Look at the last git tag and determine whether changes since that tag have been documented.
 
 If no arguments are provided, run a full audit and produce a report (no fixes).
 

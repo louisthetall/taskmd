@@ -436,6 +436,132 @@ func TestUpdateTaskFile_PRPreservesOtherFields(t *testing.T) {
 	}
 }
 
+func TestReplaceID(t *testing.T) {
+	task := `---
+id: "001"
+title: "Test task"
+status: pending
+created: 2026-01-01
+---
+
+# Test task
+`
+	path := createTestFile(t, task)
+
+	err := ReplaceID(path, "abc123")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if !strings.Contains(s, `id: "abc123"`) {
+		t.Errorf("expected id to be updated to abc123, got:\n%s", s)
+	}
+	if strings.Contains(s, `id: "001"`) {
+		t.Error("expected old ID to be replaced")
+	}
+	// Other fields preserved
+	if !strings.Contains(s, `title: "Test task"`) {
+		t.Error("expected title to be preserved")
+	}
+}
+
+func TestReplaceID_NoFrontmatter(t *testing.T) {
+	path := createTestFile(t, "# Just a heading\nNo frontmatter.")
+
+	err := ReplaceID(path, "abc123")
+	if err == nil {
+		t.Fatal("expected error for file without frontmatter")
+	}
+	if !strings.Contains(err.Error(), "no valid frontmatter") {
+		t.Errorf("expected 'no valid frontmatter' error, got: %v", err)
+	}
+}
+
+func TestReplaceReference_Dependencies(t *testing.T) {
+	task := `---
+id: "002"
+title: "Depends on 001"
+status: pending
+dependencies: ["001", "003"]
+created: 2026-01-01
+---
+
+# Depends on 001
+`
+	path := createTestFile(t, task)
+
+	err := ReplaceReference(path, "001", "xyz789")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if !strings.Contains(s, "xyz789") {
+		t.Errorf("expected reference to be updated, got:\n%s", s)
+	}
+	if strings.Contains(s, `"001"`) {
+		t.Error("expected old reference to be replaced")
+	}
+	// Other dependency preserved
+	if !strings.Contains(s, `"003"`) {
+		t.Error("expected other dependencies to be preserved")
+	}
+}
+
+func TestReplaceReference_Parent(t *testing.T) {
+	task := `---
+id: "003"
+title: "Child task"
+status: pending
+parent: "001"
+created: 2026-01-01
+---
+
+# Child task
+`
+	path := createTestFile(t, task)
+
+	err := ReplaceReference(path, "001", "new-id")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if !strings.Contains(s, `parent: "new-id"`) {
+		t.Errorf("expected parent to be updated, got:\n%s", s)
+	}
+}
+
+func TestReplaceReference_NoMatch(t *testing.T) {
+	task := `---
+id: "002"
+title: "No refs"
+status: pending
+dependencies: ["003"]
+created: 2026-01-01
+---
+
+# No refs
+`
+	path := createTestFile(t, task)
+
+	err := ReplaceReference(path, "001", "xyz")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// File should be unchanged
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if !strings.Contains(s, `dependencies: ["003"]`) {
+		t.Errorf("expected file to be unchanged, got:\n%s", s)
+	}
+}
+
 func TestFindFrontmatterBounds(t *testing.T) {
 	tests := []struct {
 		name      string
