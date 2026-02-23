@@ -81,6 +81,28 @@ This is the task body.
 	}
 }
 
+func TestParseTaskContent_QuotedCreatedDate(t *testing.T) {
+	content := []byte(`---
+id: "010"
+title: "Quoted Date Task"
+status: pending
+created: "2026-02-23"
+---
+
+# Quoted Date Task
+`)
+
+	task, err := ParseTaskContent("test.md", content)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	expectedDate := time.Date(2026, 2, 23, 0, 0, 0, 0, time.UTC)
+	if !task.Created.Equal(expectedDate) {
+		t.Errorf("expected created date %v, got %v", expectedDate, task.Created)
+	}
+}
+
 func TestParseTaskContent_MinimalTask(t *testing.T) {
 	content := []byte(`---
 id: "002"

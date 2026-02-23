@@ -3,7 +3,59 @@ package model
 import (
 	"fmt"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
+
+// FlexibleTime wraps time.Time with a custom YAML unmarshaler that handles
+// both quoted strings ("2025-01-15") and native YAML dates (2025-01-15).
+type FlexibleTime struct {
+	time.Time
+}
+
+// dateFormats lists formats to try when the YAML value is a quoted string.
+var dateFormats = []string{
+	"2006-01-02",
+	time.RFC3339,
+	"2006-01-02T15:04:05",
+	time.DateTime,
+	time.DateOnly,
+}
+
+func (ft *FlexibleTime) UnmarshalYAML(value *yaml.Node) error {
+	// Native YAML timestamp tag — yaml.v3 already parsed it.
+	if value.Tag == "!!timestamp" {
+		var t time.Time
+		if err := value.Decode(&t); err != nil {
+			return err
+		}
+		ft.Time = t
+		return nil
+	}
+
+	// Quoted string — try multiple date formats.
+	s := value.Value
+	for _, layout := range dateFormats {
+		if t, err := time.Parse(layout, s); err == nil {
+			ft.Time = t
+			return nil
+		}
+	}
+
+	return fmt.Errorf("cannot parse %q as a date", s)
+}
+
+// NewFlexibleTime wraps a time.Time into a FlexibleTime.
+func NewFlexibleTime(t time.Time) FlexibleTime {
+	return FlexibleTime{Time: t}
+}
+
+func (ft FlexibleTime) MarshalYAML() (any, error) {
+	if ft.Time.IsZero() {
+		return nil, nil
+	}
+	return ft.Time.Format("2006-01-02"), nil
+}
 
 // Status represents the current state of a task
 type Status string
@@ -100,7 +152,7 @@ type Task struct {
 	Group        string       `yaml:"group" json:"group,omitempty"`
 	Owner        string       `yaml:"owner" json:"owner,omitempty"`
 	Parent       string       `yaml:"parent,omitempty" json:"parent,omitempty"`
-	Created      time.Time    `yaml:"created" json:"created"`
+	Created      FlexibleTime `yaml:"created" json:"created"`
 	Verify       []VerifyStep `yaml:"verify,omitempty" json:"verify,omitempty"`
 	ExternalID   string       `yaml:"external_id,omitempty" json:"external_id,omitempty"`
 	PRs          []string     `yaml:"pr,omitempty" json:"pr,omitempty"`

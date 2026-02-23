@@ -306,14 +306,14 @@ func TestToJSON(t *testing.T) {
 			Status:       model.StatusCompleted,
 			Priority:     model.PriorityHigh,
 			Dependencies: []string{},
-			Created:      time.Now(),
+			Created:      model.NewFlexibleTime(time.Now()),
 		},
 		{
 			ID:           "T2",
 			Title:        "Task 2",
 			Status:       model.StatusPending,
 			Dependencies: []string{"T1"},
-			Created:      time.Now(),
+			Created:      model.NewFlexibleTime(time.Now()),
 		},
 	}
 

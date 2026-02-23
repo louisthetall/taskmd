@@ -3,6 +3,9 @@ package model
 import (
 	"strings"
 	"testing"
+	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestValidateVerifySteps(t *testing.T) {
@@ -129,6 +132,102 @@ func TestTask_GetGroup(t *testing.T) {
 		task := Task{}
 		if got := task.GetGroup(); got != "" {
 			t.Errorf("GetGroup() = %q, want empty string", got)
+		}
+	})
+}
+
+func TestFlexibleTime_UnmarshalYAML(t *testing.T) {
+	type doc struct {
+		Created FlexibleTime `yaml:"created"`
+	}
+
+	tests := []struct {
+		name    string
+		input   string
+		want    time.Time
+		wantErr bool
+	}{
+		{
+			name:  "unquoted date (native YAML timestamp)",
+			input: "created: 2025-01-15",
+			want:  time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:  "quoted date-only string",
+			input: `created: "2025-01-15"`,
+			want:  time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:  "quoted RFC3339",
+			input: `created: "2025-01-15T10:30:00Z"`,
+			want:  time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+		{
+			name:  "unquoted RFC3339",
+			input: "created: 2025-01-15T10:30:00Z",
+			want:  time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+		{
+			name:  "quoted datetime without timezone",
+			input: `created: "2025-01-15T10:30:00"`,
+			want:  time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+		{
+			name:  "quoted space-separated datetime",
+			input: `created: "2025-01-15 10:30:00"`,
+			want:  time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+		{
+			name:    "invalid string",
+			input:   `created: "not-a-date"`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var d doc
+			err := yaml.Unmarshal([]byte(tt.input), &d)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !d.Created.Time.Equal(tt.want) {
+				t.Errorf("got %v, want %v", d.Created.Time, tt.want)
+			}
+		})
+	}
+}
+
+func TestFlexibleTime_MarshalYAML(t *testing.T) {
+	type doc struct {
+		Created FlexibleTime `yaml:"created"`
+	}
+
+	t.Run("non-zero time", func(t *testing.T) {
+		d := doc{Created: NewFlexibleTime(time.Date(2025, 3, 20, 0, 0, 0, 0, time.UTC))}
+		out, err := yaml.Marshal(&d)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !strings.Contains(string(out), "2025-03-20") {
+			t.Errorf("expected output to contain '2025-03-20', got %q", string(out))
+		}
+	})
+
+	t.Run("zero time", func(t *testing.T) {
+		d := doc{Created: FlexibleTime{}}
+		out, err := yaml.Marshal(&d)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if strings.Contains(string(out), "0001") {
+			t.Errorf("zero time should marshal as null, got %q", string(out))
 		}
 	})
 }

@@ -88,7 +88,7 @@ func sortTasks(tasks []*model.Task, field string) error {
 		}
 		sort.Slice(tasks, func(i, j int) bool { return order[tasks[i].Effort] < order[tasks[j].Effort] })
 	case "created":
-		sort.Slice(tasks, func(i, j int) bool { return tasks[i].Created.Before(tasks[j].Created) })
+		sort.Slice(tasks, func(i, j int) bool { return tasks[i].Created.Before(tasks[j].Created.Time) })
 	default:
 		return fmt.Errorf("unsupported sort field: %s (supported: id, title, status, priority, effort, created)", field)
 	}

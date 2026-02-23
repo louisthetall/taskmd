@@ -13,9 +13,9 @@ import (
 func TestSortTasks(t *testing.T) {
 	now := time.Now()
 	tasks := []*model.Task{
-		{ID: "003", Title: "C", Status: model.StatusPending, Priority: model.PriorityLow, Effort: model.EffortLarge, Created: now.Add(2 * time.Hour)},
-		{ID: "001", Title: "A", Status: model.StatusCompleted, Priority: model.PriorityHigh, Effort: model.EffortSmall, Created: now},
-		{ID: "002", Title: "B", Status: model.StatusInProgress, Priority: model.PriorityCritical, Effort: model.EffortMedium, Created: now.Add(1 * time.Hour)},
+		{ID: "003", Title: "C", Status: model.StatusPending, Priority: model.PriorityLow, Effort: model.EffortLarge, Created: model.NewFlexibleTime(now.Add(2 * time.Hour))},
+		{ID: "001", Title: "A", Status: model.StatusCompleted, Priority: model.PriorityHigh, Effort: model.EffortSmall, Created: model.NewFlexibleTime(now)},
+		{ID: "002", Title: "B", Status: model.StatusInProgress, Priority: model.PriorityCritical, Effort: model.EffortMedium, Created: model.NewFlexibleTime(now.Add(1 * time.Hour))},
 	}
 
 	tests := []struct {
@@ -59,7 +59,7 @@ func TestGetColumnValue(t *testing.T) {
 		Effort:       model.EffortSmall,
 		Group:        "testing",
 		Owner:        "alice",
-		Created:      created,
+		Created:      model.NewFlexibleTime(created),
 		Dependencies: []string{"002", "003"},
 		Tags:         []string{"cli", "test"},
 	}

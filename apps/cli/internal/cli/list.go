@@ -158,7 +158,7 @@ func sortTasks(tasks []*model.Task, sortField string) error {
 		})
 	case "created":
 		sort.Slice(tasks, func(i, j int) bool {
-			return tasks[i].Created.Before(tasks[j].Created)
+			return tasks[i].Created.Before(tasks[j].Created.Time)
 		})
 	default:
 		return invalidValueError("sort field", sortField, validSortFields)

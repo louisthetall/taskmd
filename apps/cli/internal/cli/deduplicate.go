@@ -333,8 +333,8 @@ func collectAllIDs(tasks []*model.Task) []string {
 // Falls back to filepath alphabetical order for equal dates.
 func sortByCreated(tasks []*model.Task) {
 	sort.Slice(tasks, func(i, j int) bool {
-		if !tasks[i].Created.Equal(tasks[j].Created) {
-			return tasks[i].Created.Before(tasks[j].Created)
+		if !tasks[i].Created.Equal(tasks[j].Created.Time) {
+			return tasks[i].Created.Before(tasks[j].Created.Time)
 		}
 		return tasks[i].FilePath < tasks[j].FilePath
 	})
