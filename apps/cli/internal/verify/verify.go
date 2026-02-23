@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/driangle/taskmd/apps/cli/internal/model"
@@ -133,7 +134,7 @@ func execBashCommand(sr *StepResult, step model.VerifyStep, opts Options) {
 
 	dir := opts.ProjectRoot
 	if step.Dir != "" {
-		dir = opts.ProjectRoot + "/" + step.Dir
+		dir = filepath.Join(opts.ProjectRoot, step.Dir)
 	}
 	if dir != "" {
 		cmd.Dir = dir

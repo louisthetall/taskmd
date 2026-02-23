@@ -1,7 +1,7 @@
 ---
 id: "143"
 title: "Add Windows CI testing"
-status: pending
+status: completed
 priority: low
 effort: small
 tags: [ci, windows, testing]
@@ -16,10 +16,10 @@ Ensure taskmd's Go tests pass on Windows by adding `windows-latest` to the CI ma
 
 ## Tasks
 
-- [ ] Add `windows-latest` to the test job matrix in `.github/workflows/ci.yml` using `runs-on` strategy
-- [ ] Add `windows-latest` to the build-cli job matrix
-- [ ] Keep the lint job on `ubuntu-latest` only (golangci-lint action works best on Linux)
-- [ ] Fix any test failures caused by Windows-specific behavior (path separators, file operations)
+- [x] Add `windows-latest` to the test job matrix in `.github/workflows/ci.yml` using `runs-on` strategy
+- [x] Add `windows-latest` to the build-cli job matrix
+- [x] Keep the lint job on `ubuntu-latest` only (golangci-lint action works best on Linux)
+- [x] Fix any test failures caused by Windows-specific behavior (path separators, file operations)
 
 ## Acceptance Criteria
 
