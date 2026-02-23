@@ -12,6 +12,10 @@ Files are the lowest common denominator. Every editor can open them, every AI as
 
 Those tools are designed for teams coordinating through a web interface. taskmd is designed for developers working with AI assistants. An AI assistant can't click through Jira, but it can read a file in the repo. taskmd keeps your working backlog where your work happens — in the repository. It's not a replacement for your team's project management tool; it's a development-time companion.
 
+### Why store tasks in files at all? Why not just tell the AI what to do directly?
+
+Telling an AI "build me a login page" works for one-shot tasks. But real projects have dozens of interrelated tasks with dependencies, priorities, and acceptance criteria that evolve over days or weeks. Without a written backlog, you're carrying all of that context in your head — and re-explaining it every session. Task files give the AI a persistent, structured view of what needs doing, what's done, and what's blocked. You stop being the bottleneck for context and start directing work at a higher level.
+
 ### Why should tasks live inside my code repository?
 
 Tasks and code evolve together. When you branch to build a feature, the tasks for that feature travel with the branch. When you open a PR, reviewers can see what tasks were completed alongside the code changes. When you roll back a release, the task state rolls back too. Git history becomes a record of both *what changed* and *why*.
@@ -33,6 +37,14 @@ Context windows reset between sessions. When you close your terminal and come ba
 ### How is this different from built-in AI task features like Claude Code's TodoWrite or Cursor's task tracking?
 
 Those features are session-scoped and tool-specific. They help the AI organize its work during a single session, but the data disappears when the session ends. taskmd files are tool-agnostic, persistent, and human-owned. Any AI assistant can read and write them, and the tasks survive across sessions and tools.
+
+### How does taskmd compare to Claude Code's task list?
+
+Claude Code has a built-in task list (`Ctrl+T`) that it creates during a session to track its own progress on multi-step work. It's useful — you can see what's pending, in progress, or complete while Claude works. But it's a session-level tool for the AI to organize itself, not a project-level tool for you to organize your backlog.
+
+The key differences: Claude Code's tasks are created by the AI during a session and live in Claude's internal state. They can persist across context compactions within a session, but they're not files in your repo — they don't travel with branches, show up in PRs, or carry structured metadata like priority and dependencies. A different AI tool can't read them. A teammate can't pick them up. They're an execution aid, not a planning system.
+
+taskmd tasks are files you own. They exist before the AI session starts and after it ends. They define *what* to build and *why*, with acceptance criteria the AI can verify against. Claude Code's task list tracks *how* the AI is executing right now. They complement each other — taskmd defines the work, and Claude Code's task list helps it stay organized while doing it.
 
 ## The Format
 

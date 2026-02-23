@@ -36,10 +36,12 @@ Thumbs.db
 # binaries
 apps/cli/taskmd
 
+# test artifacts
+*.out
+
+# vitepress build artifacts
+apps/docs/.vitepress/cache/
+apps/docs/.vitepress/dist/
+
 # misc
 settings.local.json
-
-# VitePress (docs)
-apps/docs/.vitepress/cache
-
-coverage.out
