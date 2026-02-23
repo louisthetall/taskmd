@@ -723,8 +723,10 @@ taskmd add "Deploy to staging" --depends-on 041,042
 | `--depends-on` | | Comma-separated dependency task IDs |
 | `--parent` | | Parent task ID |
 | `--group` | | Subdirectory to create the task in |
+| `--slug` | | Custom filename slug (default: auto-generated from title) |
 | `--format` | `plain` | Output format (`plain`, `json`) |
 | `--edit` | `false` | Open the new task in `$EDITOR` |
+| `--template` | | Use a task template (e.g., `bug`, `feature`, `chore`) |
 
 **Examples:**
 ```bash
@@ -739,6 +741,12 @@ taskmd add "Automated task" --format json
 
 # Open in editor immediately
 taskmd add "Draft specification" --edit
+
+# Custom filename slug
+taskmd add "Fix the login bug" --slug fix-login
+
+# Create from a template
+taskmd add "Login fails on Safari" --template bug
 ```
 
 ### search - Full-Text Search
@@ -779,8 +787,11 @@ Run the acceptance checks defined in a task's `verify` field. Each verify step h
 
 **Basic usage:**
 ```bash
-# Verify a task
+# Verify a task (stops at first failure)
 taskmd verify 042
+
+# Run all checks even if some fail
+taskmd verify 042 --all
 
 # JSON output
 taskmd verify 042 --format json
@@ -800,6 +811,7 @@ taskmd verify --task-id 042
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--task-id` | | Task ID to verify (alternative to positional argument) |
+| `--all` | `false` | Run all checks even if one fails (default: fail-fast) |
 | `--format` | `table` | Output format (`table`, `json`) |
 | `--dry-run` | `false` | List checks without executing |
 | `--timeout` | `60` | Per-command timeout in seconds |
@@ -1111,6 +1123,7 @@ taskmd get 037-task
 | `--format string` | `text` | Output format (`text`, `json`, `yaml`) |
 | `--exact` | `false` | Disable fuzzy matching, exact match only |
 | `--threshold float` | `0.6` | Fuzzy match sensitivity (0.0–1.0) |
+| `--raw-markdown` | `false` | Display raw markdown without formatting |
 | `--context` | `false` | Include context files in output |
 
 **Output formats:**

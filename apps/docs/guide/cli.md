@@ -362,6 +362,7 @@ taskmd get sho --exact
 | `--format` | `text` | Output format (`text`, `json`, `yaml`) |
 | `--exact` | `false` | Disable fuzzy matching |
 | `--threshold` | `0.6` | Fuzzy match sensitivity (0.0–1.0) |
+| `--raw-markdown` | `false` | Display raw markdown without formatting |
 
 ### set - Update Task Fields
 
@@ -615,6 +616,9 @@ taskmd add "Quick fix" --edit
 # With dependencies
 taskmd add "Deploy to staging" --depends-on 041,042
 
+# Custom filename slug
+taskmd add "Fix the login bug" --slug fix-login
+
 # JSON output for scripting
 taskmd add "Automated task" --format json
 ```
@@ -631,6 +635,7 @@ taskmd add "Automated task" --format json
 | `--depends-on` | | Comma-separated dependency task IDs |
 | `--parent` | | Parent task ID |
 | `--group` | | Subdirectory to create the task in |
+| `--slug` | | Custom filename slug (default: auto-generated from title) |
 | `--format` | `plain` | Output format (`plain`, `json`) |
 | `--edit` | `false` | Open the new task in `$EDITOR` |
 | `--template` | | Use a task template (e.g., `bug`, `feature`, `chore`) |
@@ -699,8 +704,11 @@ Run the acceptance checks defined in a task's `verify` field. Each verify step h
 - **assert** -- displays a check for the agent to evaluate (not executed)
 
 ```bash
-# Verify a task
+# Verify a task (stops at first failure)
 taskmd verify 042
+
+# Run all checks even if some fail
+taskmd verify 042 --all
 
 # JSON output
 taskmd verify 042 --format json
@@ -720,6 +728,7 @@ taskmd verify --task-id 042
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--task-id` | | Task ID to verify (alternative to positional argument) |
+| `--all` | `false` | Run all checks even if one fails (default: fail-fast) |
 | `--format` | `table` | Output format (`table`, `json`) |
 | `--dry-run` | `false` | List checks without executing |
 | `--timeout` | `60` | Per-command timeout in seconds |

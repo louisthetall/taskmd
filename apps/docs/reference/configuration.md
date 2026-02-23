@@ -43,6 +43,7 @@ Command-line flags always override config file values.
 | `todos.exclude` | string[] | `[]` | Glob patterns to exclude from TODO/FIXME scanning |
 | `web.port` | integer | `8080` | Web server port |
 | `web.auto_open_browser` | boolean | `false` | Auto-open browser on `web start` |
+| `web.readonly` | boolean | `false` | Start web server in read-only mode (disables editing) |
 | `id.strategy` | string | `"sequential"` | ID generation strategy ([details](#id-strategy-configuration)) |
 | `id.prefix` | string | `""` | Prefix for `prefixed` strategy |
 | `id.padding` | integer | `3` | Zero-padding width for `sequential` strategy |
