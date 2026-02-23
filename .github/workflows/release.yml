@@ -212,7 +212,7 @@ jobs:
             end
 
             test do
-              system "#{bin}/taskmd", "--version"
+              system bin/"taskmd", "--version"
               assert_match version.to_s, shell_output("#{bin}/taskmd --version")
             end
           end
@@ -225,6 +225,9 @@ jobs:
           sed -i "s/SHA256_DARWIN_AMD64_PLACEHOLDER/${SHA256_DARWIN_AMD64}/g" Formula/taskmd.rb
           sed -i "s/SHA256_LINUX_ARM64_PLACEHOLDER/${SHA256_LINUX_ARM64}/g" Formula/taskmd.rb
           sed -i "s/SHA256_LINUX_AMD64_PLACEHOLDER/${SHA256_LINUX_AMD64}/g" Formula/taskmd.rb
+
+          # Audit formula before pushing
+          brew audit --strict Formula/taskmd.rb
 
           # Configure git
           git config user.name "github-actions[bot]"

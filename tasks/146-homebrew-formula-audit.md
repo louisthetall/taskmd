@@ -1,7 +1,7 @@
 ---
 id: "146"
 title: "Add Homebrew formula audit checks"
-status: pending
+status: completed
 priority: low
 effort: small
 tags: [homebrew, distribution]
@@ -16,10 +16,10 @@ Ensure the Homebrew formula passes `brew audit --strict` so it meets the style g
 
 ## Tasks
 
-- [ ] Run `brew audit --strict taskmd` against the current formula
-- [ ] Fix any style guideline violations reported by the audit
-- [ ] Add a CI step to run `brew audit` on formula changes
-- [ ] Verify the formula meets homebrew-core submission requirements
+- [x] Run `brew audit --strict taskmd` against the current formula
+- [x] Fix any style guideline violations reported by the audit
+- [x] Add a CI step to run `brew audit` on formula changes
+- [x] Verify the formula meets homebrew-core submission requirements
 
 ## Acceptance Criteria
 

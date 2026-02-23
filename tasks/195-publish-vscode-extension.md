@@ -2,7 +2,7 @@
 id: "195"
 title: "Publish VS Code extension to marketplace"
 status: pending
-priority: medium
+priority: low
 effort: medium
 type: chore
 tags: [vscode, distribution]
