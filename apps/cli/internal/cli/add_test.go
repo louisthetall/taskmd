@@ -21,6 +21,7 @@ func resetAddFlags() {
 	addFormat = "plain"
 	addEdit = false
 	addTemplate = ""
+	addSlug = ""
 	taskDir = "."
 
 	// Reset cobra flag "changed" state for template override tests
@@ -652,6 +653,53 @@ func TestAdd_TemplateFlag_Chore(t *testing.T) {
 	}
 	if !strings.Contains(fileStr, "priority: low") {
 		t.Error("expected priority: low from chore template")
+	}
+}
+
+func TestAdd_CustomSlug(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetAddFlags()
+	taskDir = tmpDir
+	addSlug = "fix-login"
+
+	output, err := captureAddOutput(t, "Fix the login bug")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "Created task 001") {
+		t.Errorf("expected 'Created task 001' in output, got: %s", output)
+	}
+
+	// Verify the file uses the custom filename
+	expectedFile := filepath.Join(tmpDir, "001-fix-login.md")
+	if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
+		t.Fatalf("expected file %s to exist", expectedFile)
+	}
+
+	content, _ := os.ReadFile(expectedFile)
+	fileStr := string(content)
+
+	// Title in frontmatter should still be the full title
+	if !strings.Contains(fileStr, `title: "Fix the login bug"`) {
+		t.Error("expected original title in frontmatter")
+	}
+}
+
+func TestAdd_CustomSlug_NotUsedWhenEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetAddFlags()
+	taskDir = tmpDir
+
+	_, err := captureAddOutput(t, "My great task")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should fall back to slugified title
+	files, _ := filepath.Glob(filepath.Join(tmpDir, "001-my-great-task.md"))
+	if len(files) != 1 {
+		t.Fatalf("expected file 001-my-great-task.md, got files: %v", files)
 	}
 }
 

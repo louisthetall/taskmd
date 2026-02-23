@@ -30,6 +30,7 @@ var (
 	addFormat    string
 	addEdit      bool
 	addTemplate  string
+	addSlug      string
 )
 
 var addCmd = &cobra.Command{
@@ -38,6 +39,7 @@ var addCmd = &cobra.Command{
 	Long: `Add creates a new task markdown file with proper frontmatter.
 
 The title is used to generate both the task title and the filename slug.
+Use --slug to provide a custom slug instead of the auto-generated one.
 A sequential ID is automatically assigned based on existing tasks.
 
 Use --template to start from a reusable template (bug, feature, chore, or custom).
@@ -49,7 +51,8 @@ Examples:
   taskmd add "Design mockups" --group design --effort large
   taskmd add "Quick fix" --edit
   taskmd add "Login fails on Safari" --template bug
-  taskmd add "Dark mode support" --template feature --priority high`,
+  taskmd add "Dark mode support" --template feature --priority high
+  taskmd add "Fix the login bug" --slug fix-login`,
 	Args: cobra.ExactArgs(1),
 	RunE: runAdd,
 }
@@ -68,6 +71,7 @@ func init() {
 	addCmd.Flags().StringVar(&addFormat, "format", "plain", "output format (plain, json)")
 	addCmd.Flags().BoolVar(&addEdit, "edit", false, "open the new task in $EDITOR")
 	addCmd.Flags().StringVar(&addTemplate, "template", "", "use a task template (e.g. bug, feature, chore)")
+	addCmd.Flags().StringVar(&addSlug, "slug", "", "custom filename slug (default: auto-generated from title)")
 
 	_ = addCmd.RegisterFlagCompletionFunc("priority", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return validPriorityValues, cobra.ShellCompDirectiveNoFileComp
@@ -111,7 +115,11 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		outputDir = filepath.Join(scanDir, addGroup)
 	}
 
-	filePath := filepath.Join(outputDir, fmt.Sprintf("%s-%s.md", id, slug.Slugify(title)))
+	suffix := addSlug
+	if suffix == "" {
+		suffix = slug.Slugify(title)
+	}
+	filePath := filepath.Join(outputDir, fmt.Sprintf("%s-%s.md", id, suffix))
 
 	content, err := resolveTaskContent(cmd, id, title)
 	if err != nil {
