@@ -2,6 +2,10 @@
 
 Use the taskmd MCP server to give LLM-based tools direct access to your tasks. Any client that supports the [Model Context Protocol](https://modelcontextprotocol.io) (Claude Code, Claude Desktop, Cursor, Windsurf, etc.) can list, query, update, and analyze tasks without running CLI commands.
 
+## Installation via MCPB Bundle
+
+The fastest way to install the taskmd MCP server is with an MCPB bundle. Download the `.mcpb` file for your platform from the [latest release](https://github.com/driangle/taskmd/releases) and open it in any MCP client that supports bundles. Available for macOS, Linux, and Windows (AMD64 and ARM64).
+
 ## Starting the Server
 
 ```bash

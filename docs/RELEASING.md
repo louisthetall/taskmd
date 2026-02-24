@@ -19,9 +19,11 @@ The release workflow builds binaries for:
 
 - **Linux**: AMD64, ARM64
 - **macOS**: AMD64 (Intel), ARM64 (Apple Silicon)
-- **Windows**: AMD64
+- **Windows**: AMD64, ARM64
 
 All binaries include the embedded web dashboard.
+
+Each release also produces **MCPB bundles** (`.mcpb` files) for all 6 platform/architecture combinations. MCPB bundles enable one-click MCP server installation in clients that support the format.
 
 ## Creating a Release
 
@@ -59,12 +61,19 @@ Once the workflow completes:
 
 1. Go to the **Releases** page in your GitHub repository
 2. Verify the new release is published
-3. Check that all 5 binary archives are attached:
+3. Check that all binary archives and MCPB bundles are attached:
    - `taskmd-v1.0.0-linux-amd64.tar.gz`
    - `taskmd-v1.0.0-linux-arm64.tar.gz`
    - `taskmd-v1.0.0-darwin-amd64.tar.gz`
    - `taskmd-v1.0.0-darwin-arm64.tar.gz`
    - `taskmd-v1.0.0-windows-amd64.zip`
+   - `taskmd-v1.0.0-windows-arm64.zip`
+   - `taskmd-v1.0.0-darwin-amd64.mcpb`
+   - `taskmd-v1.0.0-darwin-arm64.mcpb`
+   - `taskmd-v1.0.0-linux-amd64.mcpb`
+   - `taskmd-v1.0.0-linux-arm64.mcpb`
+   - `taskmd-v1.0.0-windows-amd64.mcpb`
+   - `taskmd-v1.0.0-windows-arm64.mcpb`
    - `checksums.txt`
 
 ## Version Information
@@ -116,6 +125,7 @@ To recreate a release:
 - [ ] Tag is pushed to GitHub
 - [ ] Release workflow completes successfully
 - [ ] All platform binaries are attached to the release
+- [ ] All MCPB bundles are attached (6 total)
 - [ ] Checksums file is included
 - [ ] Release notes are accurate
 

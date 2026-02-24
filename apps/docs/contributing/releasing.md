@@ -19,9 +19,11 @@ The release process is automated via GitHub Actions. When you push a version tag
 |----------|-------------|
 | Linux | AMD64, ARM64 |
 | macOS | AMD64 (Intel), ARM64 (Apple Silicon) |
-| Windows | AMD64 |
+| Windows | AMD64, ARM64 |
 
 All binaries include the embedded web dashboard.
+
+Each release also produces **MCPB bundles** (`.mcpb` files) for all 6 platform/architecture combinations. MCPB bundles enable one-click MCP server installation in clients that support the format.
 
 ## Creating a Release
 
@@ -56,6 +58,8 @@ Check the **Releases** page for:
 - `taskmd-v1.0.0-darwin-amd64.tar.gz`
 - `taskmd-v1.0.0-darwin-arm64.tar.gz`
 - `taskmd-v1.0.0-windows-amd64.zip`
+- `taskmd-v1.0.0-windows-arm64.zip`
+- `taskmd-v1.0.0-*.mcpb` (6 MCPB bundles, one per platform/arch)
 - `checksums.txt`
 
 ## Version Information
@@ -86,6 +90,7 @@ Pre-release suffixes: `v1.0.0-alpha.1`, `v1.0.0-beta.1`, `v1.0.0-rc.1`
 - [ ] Release workflow completes successfully
 - [ ] Docs site redeploys automatically (triggered by `package.json` version bump on `main`)
 - [ ] All platform binaries are attached
+- [ ] All MCPB bundles are attached (6 total)
 - [ ] Checksums file is included
 - [ ] Release notes are accurate
 
