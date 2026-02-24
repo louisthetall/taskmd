@@ -249,6 +249,56 @@ created: 2026-02-14
   });
 });
 
+describe("validate: unknown fields", () => {
+  it("warns on unknown field", () => {
+    const issues = getIssues(`---
+id: "042"
+title: "Test"
+stauts: pending
+---`);
+    const issue = issueFor(issues, "stauts");
+    expect(issue).toBeDefined();
+    expect(issue!.severity).toBe("warning");
+    expect(issue!.target).toBe("key");
+    expect(issue!.message).toContain("stauts");
+  });
+
+  it("no warning for valid fields", () => {
+    const issues = getIssues(`---
+id: "042"
+title: "My Task"
+status: pending
+priority: high
+tags:
+  - cli
+---`);
+    const warnings = issues.filter((i) => i.severity === "warning" && i.message.includes("unknown"));
+    expect(warnings).toHaveLength(0);
+  });
+
+  it("no warning for verify field", () => {
+    const issues = getIssues(`---
+id: "042"
+title: "Test"
+verify:
+  - type: bash
+    run: "echo hello"
+---`);
+    expect(issueFor(issues, "verify")).toBeUndefined();
+  });
+
+  it("warning message includes field name", () => {
+    const issues = getIssues(`---
+id: "042"
+title: "Test"
+foobar: something
+---`);
+    const issue = issueFor(issues, "foobar");
+    expect(issue).toBeDefined();
+    expect(issue!.message).toBe("unknown field 'foobar'");
+  });
+});
+
 describe("validate: verify steps", () => {
   it("error when step missing type", () => {
     const issues = getIssues(`---

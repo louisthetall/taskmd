@@ -4,6 +4,7 @@ import {
   ENUM_FIELDS,
   STRING_ARRAY_FIELDS,
   DATE_FIELDS,
+  KNOWN_FIELDS,
 } from "./schema";
 
 export type Severity = "error" | "warning";
@@ -25,6 +26,7 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 export function validate(frontmatter: ParsedFrontmatter): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
+  checkUnknownFields(frontmatter, issues);
   checkRequiredFields(frontmatter, issues);
   checkEnumFields(frontmatter, issues);
   checkArrayFields(frontmatter, issues);
@@ -32,6 +34,22 @@ export function validate(frontmatter: ParsedFrontmatter): ValidationIssue[] {
   checkVerifySteps(frontmatter, issues);
 
   return issues;
+}
+
+function checkUnknownFields(
+  fm: ParsedFrontmatter,
+  issues: ValidationIssue[]
+): void {
+  for (const [name] of fm.fields) {
+    if (!KNOWN_FIELDS.has(name)) {
+      issues.push({
+        severity: "warning",
+        message: `unknown field '${name}'`,
+        field: name,
+        target: "key",
+      });
+    }
+  }
 }
 
 function checkRequiredFields(
