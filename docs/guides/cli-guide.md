@@ -1774,7 +1774,7 @@ web:
   port: 8080                   # Default web server port
   auto_open_browser: true      # Auto-open browser on web start
 id:
-  strategy: sequential          # "sequential", "prefixed", "random", or "uuid"
+  strategy: sequential          # "sequential", "prefixed", "random", or "ulid"
   prefix: ""                   # Required when strategy is "prefixed"
   padding: 3                   # Zero-padding width (sequential strategy)
 ```

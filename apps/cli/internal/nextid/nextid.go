@@ -2,9 +2,11 @@ package nextid
 
 import (
 	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 )
 
 // Result holds the computed next ID and related metadata.
@@ -170,11 +172,16 @@ func GenerateRandom(existingIDs []string, length int) (string, error) {
 	return "", fmt.Errorf("failed to generate unique ID after 100 attempts")
 }
 
-// GenerateUUID produces a random hex ID (from UUID v4 space) of the given length.
-// Default length is 8 when length <= 0. It retries on collision with existingIDs (max 100 attempts).
-func GenerateUUID(existingIDs []string, length int) (string, error) {
-	if length <= 0 {
-		length = 8
+// crockfordBase32 is the Crockford Base32 alphabet (lowercase).
+const crockfordBase32 = "0123456789abcdefghjkmnpqrstvwxyz"
+
+// GenerateULID produces a ULID: 48-bit millisecond timestamp + 80-bit crypto random,
+// encoded as 26 Crockford Base32 characters (lowercase). When length > 0 and < 26,
+// the result is truncated to that length. It retries on collision with existingIDs
+// (max 100 attempts).
+func GenerateULID(existingIDs []string, length int) (string, error) {
+	if length <= 0 || length > 26 {
+		length = 26
 	}
 
 	existing := make(map[string]struct{}, len(existingIDs))
@@ -182,25 +189,72 @@ func GenerateUUID(existingIDs []string, length int) (string, error) {
 		existing[id] = struct{}{}
 	}
 
-	const charset = "0123456789abcdef"
-	charsetLen := big.NewInt(int64(len(charset)))
-
 	for attempt := 0; attempt < 100; attempt++ {
-		buf := make([]byte, length)
-		for i := range buf {
-			idx, err := rand.Int(rand.Reader, charsetLen)
-			if err != nil {
-				return "", fmt.Errorf("crypto/rand failed: %w", err)
-			}
-			buf[i] = charset[idx.Int64()]
+		id, err := encodeULID(length)
+		if err != nil {
+			return "", err
 		}
-		id := string(buf)
 		if _, taken := existing[id]; !taken {
 			return id, nil
 		}
 	}
 
-	return "", fmt.Errorf("failed to generate unique UUID ID after 100 attempts")
+	return "", fmt.Errorf("failed to generate unique ULID after 100 attempts")
+}
+
+// encodeULID generates a single ULID string of the given length.
+func encodeULID(length int) (string, error) {
+	ms := uint64(time.Now().UnixMilli())
+
+	// Read 10 bytes of randomness (80 bits)
+	var randomBytes [10]byte
+	if _, err := rand.Read(randomBytes[:]); err != nil {
+		return "", fmt.Errorf("crypto/rand failed: %w", err)
+	}
+
+	// Build the full 26-char ULID:
+	// - 10 chars for 48-bit timestamp
+	// - 16 chars for 80-bit random
+	var buf [26]byte
+
+	// Encode timestamp (48 bits) into 10 Crockford Base32 chars (big-endian)
+	buf[0] = crockfordBase32[(ms>>45)&0x1F]
+	buf[1] = crockfordBase32[(ms>>40)&0x1F]
+	buf[2] = crockfordBase32[(ms>>35)&0x1F]
+	buf[3] = crockfordBase32[(ms>>30)&0x1F]
+	buf[4] = crockfordBase32[(ms>>25)&0x1F]
+	buf[5] = crockfordBase32[(ms>>20)&0x1F]
+	buf[6] = crockfordBase32[(ms>>15)&0x1F]
+	buf[7] = crockfordBase32[(ms>>10)&0x1F]
+	buf[8] = crockfordBase32[(ms>>5)&0x1F]
+	buf[9] = crockfordBase32[ms&0x1F]
+
+	// Encode random (80 bits = 10 bytes) into 16 Crockford Base32 chars
+	// Pack into a uint64 + uint16 for bit manipulation
+	hi := binary.BigEndian.Uint64(randomBytes[0:8]) // top 64 bits
+	lo := uint64(binary.BigEndian.Uint16(randomBytes[8:10]))
+
+	// 80 bits → 16 base32 chars (16 * 5 = 80 bits exactly)
+	// Combine into a single 80-bit value spread across hi (bits 79-16) and lo (bits 15-0)
+	buf[10] = crockfordBase32[(hi>>59)&0x1F]
+	buf[11] = crockfordBase32[(hi>>54)&0x1F]
+	buf[12] = crockfordBase32[(hi>>49)&0x1F]
+	buf[13] = crockfordBase32[(hi>>44)&0x1F]
+	buf[14] = crockfordBase32[(hi>>39)&0x1F]
+	buf[15] = crockfordBase32[(hi>>34)&0x1F]
+	buf[16] = crockfordBase32[(hi>>29)&0x1F]
+	buf[17] = crockfordBase32[(hi>>24)&0x1F]
+	buf[18] = crockfordBase32[(hi>>19)&0x1F]
+	buf[19] = crockfordBase32[(hi>>14)&0x1F]
+	buf[20] = crockfordBase32[(hi>>9)&0x1F]
+	buf[21] = crockfordBase32[(hi>>4)&0x1F]
+	// Last 4 bits of hi + first bit of lo
+	buf[22] = crockfordBase32[((hi&0x0F)<<1)|(lo>>15)]
+	buf[23] = crockfordBase32[(lo>>10)&0x1F]
+	buf[24] = crockfordBase32[(lo>>5)&0x1F]
+	buf[25] = crockfordBase32[lo&0x1F]
+
+	return string(buf[:length]), nil
 }
 
 // formatID assembles a prefix with a zero-padded number.

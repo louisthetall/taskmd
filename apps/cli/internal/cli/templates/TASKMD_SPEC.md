@@ -227,9 +227,9 @@ The `id` section in `.taskmd.yaml` configures how task IDs are generated.
 ```yaml
 # .taskmd.yaml
 id:
-  strategy: sequential  # "sequential", "prefixed", "random", or "uuid"
+  strategy: sequential  # "sequential", "prefixed", "random", or "ulid"
   prefix: ""            # required when strategy is "prefixed"
-  length: 6             # ID length (used by random and uuid strategies)
+  length: 6             # ID length (used by random and ulid strategies)
   padding: 3            # zero-padding width (used by sequential strategy)
 ```
 
@@ -240,7 +240,7 @@ id:
 | `sequential` (default) | Zero-padded number | `009-add-feature.md` | `009` |
 | `prefixed` | Prefix + number | `dr-001-fix-login.md` | `dr-001` |
 | `random` | Alphanumeric string | `a3f9x2-slug-title.md` | `a3f9x2` |
-| `uuid` | Hex string (truncated UUID) | `f47ac10b-fix-bug.md` | `f47ac10b` |
+| `ulid` | ULID (timestamp + random) | `01h5a3mpk2-fix-bug.md` | `01h5a3mpk2` |
 
 ### Defaults
 
@@ -259,7 +259,7 @@ The parser automatically derives task IDs from filenames based on these patterns
 - **Sequential**: Filename starts with digits — `001-slug.md` → ID `001`
 - **Prefixed**: Lowercase alpha prefix, hyphen, digits — `dr-001-slug.md` → ID `dr-001`
 - **Random**: 3-8 lowercase alphanumeric chars with at least one digit — `a3f9x2-slug.md` → ID `a3f9x2`
-- **UUID**: Hex string (truncated or full UUID) — `f47ac10b-slug.md` → ID `f47ac10b`; full UUID `f47ac10b-58cc-4372-a567-0e02b2c3d479-slug.md` → ID `f47ac10b-58cc-4372-a567-0e02b2c3d479`
+- **ULID**: Crockford Base32 string (timestamp + random) — `01h5a3mpk2-slug.md` → ID `01h5a3mpk2`
 
 ## File Organization
 

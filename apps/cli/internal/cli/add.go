@@ -165,8 +165,8 @@ func generateID(ids []string, cfg validator.IDConfig) (string, error) {
 		return nextid.GeneratePrefixed(ids, cfg.Prefix, cfg.Padding), nil
 	case "random":
 		return nextid.GenerateRandom(ids, cfg.Length)
-	case "uuid":
-		return nextid.GenerateUUID(ids, cfg.Length)
+	case "ulid":
+		return nextid.GenerateULID(ids, cfg.Length)
 	default:
 		return nextid.Calculate(ids).NextID, nil
 	}

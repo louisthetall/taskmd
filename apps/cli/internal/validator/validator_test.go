@@ -1161,7 +1161,7 @@ func TestValidateConfig_WorkflowIsKnownKey(t *testing.T) {
 // --- ID config validation tests ---
 
 func TestValidateConfig_IDConfig_ValidStrategies(t *testing.T) {
-	for _, strategy := range []string{"sequential", "prefixed", "random", "uuid"} {
+	for _, strategy := range []string{"sequential", "prefixed", "random", "ulid"} {
 		t.Run(strategy, func(t *testing.T) {
 			v := NewValidator(false)
 			id := &IDConfig{Strategy: strategy}
@@ -1202,7 +1202,7 @@ func TestValidateConfig_IDConfig_InvalidStrategy(t *testing.T) {
 
 	found := false
 	for _, issue := range result.Issues {
-		if issue.Level == LevelError && issue.Message == "invalid id strategy: 'guid' (valid values: sequential, prefixed, random, uuid)" {
+		if issue.Level == LevelError && issue.Message == "invalid id strategy: 'guid' (valid values: sequential, prefixed, random, ulid)" {
 			found = true
 		}
 	}
