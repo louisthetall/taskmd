@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { ENUM_FIELDS } from "./schema";
 import { findFrontmatterBounds } from "./frontmatter";
-import { readScopes, type ScopeEntry } from "./config";
+import { readScopes, scanTaskIds, type ScopeEntry, type TaskEntry } from "./config";
 
 /** Result of resolving completions for a line in frontmatter. */
 export interface CompletionResult {
@@ -25,7 +25,8 @@ export function resolveCompletions(
   cursorCol: number,
   frontmatterStartLine: number,
   frontmatterEndLine: number,
-  scopes?: readonly ScopeEntry[]
+  scopes?: readonly ScopeEntry[],
+  taskEntries?: readonly TaskEntry[]
 ): CompletionResult | undefined {
   if (cursorLine <= frontmatterStartLine || cursorLine >= frontmatterEndLine) {
     return undefined;
@@ -58,6 +59,14 @@ export function resolveCompletions(
       lines, cursorLine, cursorCol, frontmatterStartLine, scopes
     );
     if (touchesResult) return touchesResult;
+  }
+
+  // Check for task ID completions (dependencies, parent)
+  if (taskEntries && taskEntries.length > 0) {
+    const taskIdResult = resolveTaskIdCompletions(
+      lines, cursorLine, cursorCol, frontmatterStartLine, taskEntries
+    );
+    if (taskIdResult) return taskIdResult;
   }
 
   return undefined;
@@ -114,6 +123,80 @@ export function resolveTouchesCompletions(
   return undefined;
 }
 
+const TASK_ID_FIELDS = ["dependencies", "parent"];
+
+/**
+ * Resolve completions for task ID fields (dependencies, parent).
+ * Handles block array items, inline arrays (dependencies), and scalar values (parent).
+ */
+export function resolveTaskIdCompletions(
+  lines: string[],
+  cursorLine: number,
+  cursorCol: number,
+  frontmatterStartLine: number,
+  taskEntries: readonly TaskEntry[]
+): CompletionResult | undefined {
+  const lineText = lines[cursorLine];
+  if (!lineText) return undefined;
+
+  const beforeCursor = lineText.substring(0, cursorCol);
+  const ids = taskEntries.map((e) => e.id);
+  const titles = taskEntries.map((e) => e.title || undefined);
+
+  // Block array item: "  - value" under dependencies field
+  const blockMatch = beforeCursor.match(/^(\s+-\s*"?)(\S*)$/);
+  if (blockMatch) {
+    const parentField = findParentField(lines, cursorLine, frontmatterStartLine);
+    if (parentField === "dependencies") {
+      const prefix = blockMatch[1];
+      const hasQuote = prefix.endsWith('"');
+      const replaceStart = hasQuote ? prefix.length - 1 : prefix.length;
+      return {
+        fieldName: "dependencies",
+        values: ids,
+        details: titles,
+        insertTexts: ids.map((id) => `"${id}"`),
+        replaceColumns: [replaceStart, cursorCol],
+      };
+    }
+  }
+
+  // Inline array: `dependencies: ["` or `dependencies: ["xxx", "`
+  const inlineMatch = beforeCursor.match(/^dependencies:\s*\[(?:.*,\s*)?"?(\S*)$/);
+  if (inlineMatch) {
+    const partial = inlineMatch[1] ?? "";
+    // Check if there's an opening quote before the partial
+    const beforePartial = beforeCursor.substring(0, cursorCol - partial.length);
+    const hasQuote = beforePartial.endsWith('"');
+    const replaceStart = hasQuote ? cursorCol - partial.length - 1 : cursorCol - partial.length;
+    return {
+      fieldName: "dependencies",
+      values: ids,
+      details: titles,
+      insertTexts: ids.map((id) => `"${id}"`),
+      replaceColumns: [replaceStart, cursorCol],
+    };
+  }
+
+  // Parent field: `parent: ` (scalar value)
+  const parentMatch = beforeCursor.match(/^parent:\s*"?(\S*)$/);
+  if (parentMatch) {
+    const partial = parentMatch[1] ?? "";
+    const beforePartial = beforeCursor.substring(0, cursorCol - partial.length);
+    const hasQuote = beforePartial.endsWith('"');
+    const replaceStart = hasQuote ? cursorCol - partial.length - 1 : cursorCol - partial.length;
+    return {
+      fieldName: "parent",
+      values: ids,
+      details: titles,
+      insertTexts: ids.map((id) => `"${id}"`),
+      replaceColumns: [replaceStart, cursorCol],
+    };
+  }
+
+  return undefined;
+}
+
 /**
  * Walk backwards from cursorLine to find the YAML field name that owns
  * the current block array items.
@@ -132,7 +215,22 @@ function findParentField(
   return null;
 }
 
+const TASK_ID_FIELD_SET = new Set(TASK_ID_FIELDS);
+
 export class TaskmdCompletionProvider implements vscode.CompletionItemProvider {
+  private cachedTaskEntries: TaskEntry[] | null = null;
+
+  invalidateTaskCache(): void {
+    this.cachedTaskEntries = null;
+  }
+
+  private getTaskEntries(filePath: string): TaskEntry[] {
+    if (!this.cachedTaskEntries) {
+      this.cachedTaskEntries = scanTaskIds(filePath);
+    }
+    return this.cachedTaskEntries;
+  }
+
   provideCompletionItems(
     document: vscode.TextDocument,
     position: vscode.Position
@@ -141,7 +239,9 @@ export class TaskmdCompletionProvider implements vscode.CompletionItemProvider {
     const bounds = findFrontmatterBounds(text);
     if (!bounds) return undefined;
 
-    const scopes = readScopes(document.uri.fsPath);
+    const filePath = document.uri.fsPath;
+    const scopes = readScopes(filePath);
+    const taskEntries = this.getTaskEntries(filePath);
     const lines = text.split("\n");
     const result = resolveCompletions(
       lines,
@@ -149,7 +249,8 @@ export class TaskmdCompletionProvider implements vscode.CompletionItemProvider {
       position.character,
       bounds.startLine,
       bounds.endLine,
-      scopes
+      scopes,
+      taskEntries
     );
     if (!result) return undefined;
 
@@ -159,9 +260,11 @@ export class TaskmdCompletionProvider implements vscode.CompletionItemProvider {
     );
 
     return result.values.map((val, i) => {
-      const kind = result.fieldName === "touches"
-        ? vscode.CompletionItemKind.Value
-        : vscode.CompletionItemKind.EnumMember;
+      const kind = TASK_ID_FIELD_SET.has(result.fieldName)
+        ? vscode.CompletionItemKind.Reference
+        : result.fieldName === "touches"
+          ? vscode.CompletionItemKind.Value
+          : vscode.CompletionItemKind.EnumMember;
       const item = new vscode.CompletionItem(val, kind);
       item.insertText = result.insertTexts[i];
       item.range = replaceRange;

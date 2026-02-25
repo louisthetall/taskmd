@@ -1,7 +1,7 @@
 ---
 id: "164"
 title: "VSCode extension: task ID autocomplete"
-status: pending
+status: completed
 priority: low
 effort: medium
 tags: []

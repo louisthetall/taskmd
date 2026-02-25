@@ -101,6 +101,51 @@ export function isUnderTaskDir(filePath: string): boolean {
   return normalizedFile.startsWith(normalizedTaskDir + path.sep);
 }
 
+/** A task entry with its ID and title. */
+export interface TaskEntry {
+  id: string;
+  title: string;
+}
+
+/**
+ * Scan the task directory for all task files and extract their IDs and titles.
+ * Uses lightweight regex to read `id:` and `title:` from frontmatter.
+ */
+export function scanTaskIds(filePath: string): TaskEntry[] {
+  const taskDir = resolveTaskDir(filePath);
+  if (!taskDir || !fs.existsSync(taskDir)) return [];
+
+  let files: string[];
+  try {
+    files = fs.readdirSync(taskDir, { recursive: true }) as string[];
+  } catch {
+    return [];
+  }
+
+  const entries: TaskEntry[] = [];
+  for (const rel of files) {
+    if (!String(rel).endsWith(".md")) continue;
+    const fullPath = path.join(taskDir, String(rel));
+    try {
+      const content = fs.readFileSync(fullPath, "utf-8");
+      const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      if (!fmMatch) continue;
+      const fm = fmMatch[1];
+      const idMatch = fm.match(/^id:\s*"?([^"\n]+)"?\s*$/m);
+      const titleMatch = fm.match(/^title:\s*"?([^"\n]+)"?\s*$/m);
+      if (idMatch) {
+        entries.push({
+          id: idMatch[1].trim(),
+          title: titleMatch ? titleMatch[1].trim() : "",
+        });
+      }
+    } catch {
+      // skip unreadable files
+    }
+  }
+  return entries;
+}
+
 /** A scope entry with its name and optional description. */
 export interface ScopeEntry {
   name: string;

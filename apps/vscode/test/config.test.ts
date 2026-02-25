@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { findConfigFile, resolveTaskDir, isUnderTaskDir, readScopes } from "../src/config";
+import { findConfigFile, resolveTaskDir, isUnderTaskDir, readScopes, scanTaskIds } from "../src/config";
 
 function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "taskmd-test-"));
@@ -160,5 +160,88 @@ describe("readScopes", () => {
   it("returns empty array when no config exists", () => {
     const filePath = path.join(tmpDir, "tasks", "001.md");
     expect(readScopes(filePath)).toEqual([]);
+  });
+});
+
+describe("scanTaskIds", () => {
+  let tmpDir: string;
+  beforeEach(() => { tmpDir = makeTmpDir(); });
+  afterEach(() => cleanup(tmpDir));
+
+  it("scans task files and extracts id and title", () => {
+    fs.writeFileSync(path.join(tmpDir, ".taskmd.yaml"), "task-dir: tasks\n");
+    const tasksDir = path.join(tmpDir, "tasks");
+    fs.mkdirSync(tasksDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(tasksDir, "001-setup.md"),
+      '---\nid: "001"\ntitle: "Setup project"\nstatus: pending\n---\n# Setup\n'
+    );
+    fs.writeFileSync(
+      path.join(tasksDir, "002-auth.md"),
+      '---\nid: "002"\ntitle: "Add auth"\n---\n# Auth\n'
+    );
+    const filePath = path.join(tasksDir, "001-setup.md");
+    const entries = scanTaskIds(filePath);
+    expect(entries).toHaveLength(2);
+    expect(entries).toContainEqual({ id: "001", title: "Setup project" });
+    expect(entries).toContainEqual({ id: "002", title: "Add auth" });
+  });
+
+  it("scans nested subdirectories", () => {
+    fs.writeFileSync(path.join(tmpDir, ".taskmd.yaml"), "task-dir: tasks\n");
+    const subDir = path.join(tmpDir, "tasks", "cli");
+    fs.mkdirSync(subDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(subDir, "010-feature.md"),
+      '---\nid: "010"\ntitle: "CLI feature"\n---\n'
+    );
+    const entries = scanTaskIds(path.join(tmpDir, "tasks", "test.md"));
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toEqual({ id: "010", title: "CLI feature" });
+  });
+
+  it("skips files without frontmatter", () => {
+    fs.writeFileSync(path.join(tmpDir, ".taskmd.yaml"), "task-dir: tasks\n");
+    const tasksDir = path.join(tmpDir, "tasks");
+    fs.mkdirSync(tasksDir, { recursive: true });
+    fs.writeFileSync(path.join(tasksDir, "readme.md"), "# Just markdown\n");
+    const entries = scanTaskIds(path.join(tasksDir, "readme.md"));
+    expect(entries).toEqual([]);
+  });
+
+  it("skips files without id in frontmatter", () => {
+    fs.writeFileSync(path.join(tmpDir, ".taskmd.yaml"), "task-dir: tasks\n");
+    const tasksDir = path.join(tmpDir, "tasks");
+    fs.mkdirSync(tasksDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(tasksDir, "note.md"),
+      '---\ntitle: "No ID"\nstatus: pending\n---\n'
+    );
+    const entries = scanTaskIds(path.join(tasksDir, "note.md"));
+    expect(entries).toEqual([]);
+  });
+
+  it("handles unquoted id values", () => {
+    fs.writeFileSync(path.join(tmpDir, ".taskmd.yaml"), "task-dir: tasks\n");
+    const tasksDir = path.join(tmpDir, "tasks");
+    fs.mkdirSync(tasksDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(tasksDir, "003.md"),
+      '---\nid: 003\ntitle: Bare title\n---\n'
+    );
+    const entries = scanTaskIds(path.join(tasksDir, "003.md"));
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toEqual({ id: "003", title: "Bare title" });
+  });
+
+  it("returns empty when no config exists", () => {
+    const entries = scanTaskIds(path.join(tmpDir, "tasks", "001.md"));
+    expect(entries).toEqual([]);
+  });
+
+  it("returns empty when task dir does not exist", () => {
+    fs.writeFileSync(path.join(tmpDir, ".taskmd.yaml"), "task-dir: nonexistent\n");
+    const entries = scanTaskIds(path.join(tmpDir, "nonexistent", "001.md"));
+    expect(entries).toEqual([]);
   });
 });

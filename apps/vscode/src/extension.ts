@@ -31,13 +31,21 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   // Register completion provider
+  const completionProvider = new TaskmdCompletionProvider();
   context.subscriptions.push(
     vscode.languages.registerCompletionItemProvider(
       { language: "markdown", scheme: "file" },
-      new TaskmdCompletionProvider(),
-      ":"
+      completionProvider,
+      ":", "-", "[", '"'
     )
   );
+
+  // Watch for task file changes to invalidate the task ID cache
+  const watcher = vscode.workspace.createFileSystemWatcher("**/*.md");
+  watcher.onDidCreate(() => completionProvider.invalidateTaskCache());
+  watcher.onDidDelete(() => completionProvider.invalidateTaskCache());
+  watcher.onDidChange(() => completionProvider.invalidateTaskCache());
+  context.subscriptions.push(watcher);
 
   // Validate already-open documents
   for (const doc of vscode.workspace.textDocuments) {

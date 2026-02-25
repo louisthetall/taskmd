@@ -30,6 +30,8 @@ export class Diagnostic {
 
 export enum CompletionItemKind {
   EnumMember = 19,
+  Value = 11,
+  Reference = 17,
 }
 
 export class CompletionItem {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { findFrontmatterBounds } from "../src/frontmatter";
 import { resolveCompletions } from "../src/completion";
-import type { ScopeEntry } from "../src/config";
+import type { ScopeEntry, TaskEntry } from "../src/config";
 
 const TEST_SCOPES: ScopeEntry[] = [
   { name: "cli", description: "CLI application" },
@@ -9,11 +9,23 @@ const TEST_SCOPES: ScopeEntry[] = [
   { name: "cli/graph" },
 ];
 
-function getResult(text: string, line: number, character: number, scopes?: ScopeEntry[]) {
+const TEST_TASKS: TaskEntry[] = [
+  { id: "001", title: "Setup project" },
+  { id: "002", title: "Add authentication" },
+  { id: "042", title: "Implement graphs" },
+];
+
+function getResult(
+  text: string,
+  line: number,
+  character: number,
+  scopes?: ScopeEntry[],
+  taskEntries?: TaskEntry[]
+) {
   const bounds = findFrontmatterBounds(text);
   if (!bounds) return undefined;
   const lines = text.split("\n");
-  return resolveCompletions(lines, line, character, bounds.startLine, bounds.endLine, scopes);
+  return resolveCompletions(lines, line, character, bounds.startLine, bounds.endLine, scopes, taskEntries);
 }
 
 describe("completion logic", () => {
@@ -243,6 +255,138 @@ touches: [cli,
 status:
 ---`;
     const result = getResult(doc, 1, 8, TEST_SCOPES);
+    expect(result).toBeDefined();
+    expect(result!.fieldName).toBe("status");
+    expect(result!.values).toContain("pending");
+  });
+});
+
+describe("task ID completions", () => {
+  it("provides task ID completions for dependencies block array", () => {
+    const doc = `---
+dependencies:
+  -
+---`;
+    const result = getResult(doc, 2, 4, [], TEST_TASKS);
+    expect(result).toBeDefined();
+    expect(result!.fieldName).toBe("dependencies");
+    expect(result!.values).toEqual(["001", "002", "042"]);
+  });
+
+  it("includes task titles as details", () => {
+    const doc = `---
+dependencies:
+  -
+---`;
+    const result = getResult(doc, 2, 4, [], TEST_TASKS);
+    expect(result).toBeDefined();
+    expect(result!.details).toEqual(["Setup project", "Add authentication", "Implement graphs"]);
+  });
+
+  it("wraps task IDs in quotes for dependencies block items", () => {
+    const doc = `---
+dependencies:
+  -
+---`;
+    const result = getResult(doc, 2, 4, [], TEST_TASKS);
+    expect(result).toBeDefined();
+    expect(result!.insertTexts[0]).toBe('"001"');
+    expect(result!.insertTexts[1]).toBe('"002"');
+  });
+
+  it("handles dependencies block item with existing quote", () => {
+    const doc = `---
+dependencies:
+  - "
+---`;
+    const result = getResult(doc, 2, 5, [], TEST_TASKS);
+    expect(result).toBeDefined();
+    expect(result!.fieldName).toBe("dependencies");
+    // replaceColumns should cover the opening quote at position 4
+    expect(result!.replaceColumns[0]).toBe(4);
+    expect(result!.insertTexts[0]).toBe('"001"');
+  });
+
+  it("provides task ID completions for dependencies inline array", () => {
+    const doc = `---
+dependencies: ["
+---`;
+    const result = getResult(doc, 1, 17, [], TEST_TASKS);
+    expect(result).toBeDefined();
+    expect(result!.fieldName).toBe("dependencies");
+    expect(result!.values).toEqual(["001", "002", "042"]);
+  });
+
+  it("provides completions after comma in dependencies inline array", () => {
+    const doc = `---
+dependencies: ["001", "
+---`;
+    const result = getResult(doc, 1, 24, [], TEST_TASKS);
+    expect(result).toBeDefined();
+    expect(result!.fieldName).toBe("dependencies");
+  });
+
+  it("provides task ID completions for parent field", () => {
+    const doc = `---
+parent:
+---`;
+    const result = getResult(doc, 1, 8, [], TEST_TASKS);
+    expect(result).toBeDefined();
+    expect(result!.fieldName).toBe("parent");
+    expect(result!.values).toEqual(["001", "002", "042"]);
+  });
+
+  it("wraps task IDs in quotes for parent field", () => {
+    const doc = `---
+parent:
+---`;
+    const result = getResult(doc, 1, 8, [], TEST_TASKS);
+    expect(result).toBeDefined();
+    expect(result!.insertTexts[0]).toBe('"001"');
+  });
+
+  it("handles parent field with existing quote", () => {
+    const doc = `---
+parent: "
+---`;
+    const result = getResult(doc, 1, 9, [], TEST_TASKS);
+    expect(result).toBeDefined();
+    expect(result!.replaceColumns[0]).toBe(8);
+    expect(result!.insertTexts[0]).toBe('"001"');
+  });
+
+  it("no task ID completions for non-ID fields", () => {
+    const doc = `---
+tags:
+  -
+---`;
+    const result = getResult(doc, 2, 4, [], TEST_TASKS);
+    expect(result).toBeUndefined();
+  });
+
+  it("no task ID completions when task entries are empty", () => {
+    const doc = `---
+dependencies:
+  -
+---`;
+    const result = getResult(doc, 2, 4, [], []);
+    expect(result).toBeUndefined();
+  });
+
+  it("no task ID completions when task entries not provided", () => {
+    const doc = `---
+dependencies:
+  -
+---`;
+    const result = getResult(doc, 2, 4);
+    expect(result).toBeUndefined();
+  });
+
+  it("enum completions still work with task entries provided", () => {
+    const doc = `---
+status:
+---`;
+    const result = getResult(doc, 1, 8, [], TEST_TASKS);
     expect(result).toBeDefined();
     expect(result!.fieldName).toBe("status");
     expect(result!.values).toContain("pending");
