@@ -24,6 +24,12 @@ Set up a testing framework and coverage reporting for the web app (`apps/web`). 
 - [ ] Integrate coverage report into CI (fail on threshold regression)
 - [ ] Document how to run tests and view coverage locally
 
+## Sub-tasks
+
+- **214** — Set up Vitest test infrastructure for web app
+- **215** — Add coverage reporting and thresholds to web app
+- **216** — Integrate web test coverage into CI
+
 ## Acceptance Criteria
 
 - `pnpm test` runs the test suite successfully from `apps/web`
