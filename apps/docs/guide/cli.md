@@ -153,6 +153,13 @@ taskmd validate --strict
 taskmd validate --format json
 ```
 
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `text` | Output format (`text`, `table`, `json`) |
+| `--strict` | `false` | Enable strict validation with additional warnings |
+
 **What it checks:**
 - Required fields present (id, title, status)
 - Valid field values
@@ -200,6 +207,16 @@ taskmd next --critical --limit 1
 taskmd next --format json
 ```
 
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
+| `--limit` | `5` | Maximum number of recommendations |
+| `--filter` | | Filter tasks (repeatable, e.g. `--filter tag=cli`) |
+| `--quick-wins` | `false` | Show only quick wins (effort: small) |
+| `--critical` | `false` | Show only critical path tasks |
+
 ### graph - Visualize Dependencies
 
 Export task dependency graphs in various formats.
@@ -242,6 +259,30 @@ taskmd graph --root 022 --downstream
 taskmd graph --root 022
 ```
 
+**Filter and highlight:**
+```bash
+# Filter by task attributes
+taskmd graph --filter priority=high
+taskmd graph --filter tag=cli --exclude-status completed
+
+# Highlight a specific task
+taskmd graph --focus 022 --format mermaid
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `ascii` | Output format (`mermaid`, `dot`, `ascii`, `json`) |
+| `--exclude-status` | `completed` | Exclude tasks with status (repeatable) |
+| `--all` | `false` | Include all tasks (overrides `--exclude-status`) |
+| `--root` | | Start graph from specific task ID |
+| `--upstream` | `false` | Show only dependencies (ancestors) |
+| `--downstream` | `false` | Show only dependents (descendants) |
+| `--focus` | | Highlight specific task ID |
+| `--filter` | | Filter tasks (repeatable, AND logic) |
+| `--out`, `-o` | | Write output to file |
+
 **Output to file:**
 ```bash
 taskmd graph --format mermaid --out deps.mmd
@@ -265,6 +306,12 @@ taskmd stats ./tasks
 # JSON output
 taskmd stats --format json
 ```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
 
 **Metrics provided:**
 - Total tasks and count by status
@@ -297,7 +344,18 @@ taskmd board --group-by tag
 taskmd board --format md    # Markdown (default)
 taskmd board --format txt   # Plain text
 taskmd board --format json  # JSON
+
+# Output to file
+taskmd board --out board.md
 ```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `md` | Output format (`md`, `txt`, `json`) |
+| `--group-by` | `status` | Field to group by (`status`, `priority`, `effort`, `type`, `group`, `tag`) |
+| `--out`, `-o` | | Write output to file |
 
 ### snapshot - Machine-Readable Export
 
@@ -325,6 +383,16 @@ taskmd snapshot --group-by priority
 # Output to file
 taskmd snapshot --out snapshot.json
 ```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `json` | Output format (`json`, `yaml`, `md`) |
+| `--core` | `false` | Output only core fields (id, title, dependencies) |
+| `--derived` | `false` | Include computed/derived fields (blocked status, depth, topological order) |
+| `--group-by` | | Group tasks by field (`status`, `priority`, `effort`, `type`, `group`) |
+| `--out`, `-o` | | Write output to file |
 
 ### get - View Task Details
 
@@ -363,6 +431,7 @@ taskmd get sho --exact
 | `--exact` | `false` | Disable fuzzy matching |
 | `--threshold` | `0.6` | Fuzzy match sensitivity (0.0–1.0) |
 | `--raw-markdown` | `false` | Display raw markdown without formatting |
+| `--context` | `false` | Include context files in output |
 
 ### set - Update Task Fields
 
@@ -402,6 +471,7 @@ taskmd set 042 --priority critical --dry-run
 | `--add-pr` | | Add a PR URL (repeatable) |
 | `--remove-pr` | | Remove a PR URL (repeatable) |
 | `--type` | | Work type (`feature`, `bug`, `improvement`, `chore`, `docs`) |
+| `--depends-on` | | Set dependencies (comma-separated IDs, e.g. `010,015`) |
 | `--verify` | `false` | Run verification checks before completing a task |
 
 **Tag management:**
@@ -543,6 +613,12 @@ taskmd next-id ./tasks/cli
 # JSON output with metadata
 taskmd next-id --format json
 ```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `plain` | Output format (`plain`, `json`) |
 
 **Scripting example:**
 ```bash

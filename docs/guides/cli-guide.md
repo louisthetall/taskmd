@@ -263,6 +263,13 @@ taskmd validate --strict
 taskmd validate --format json
 ```
 
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `text` | Output format (`text`, `table`, `json`) |
+| `--strict` | `false` | Enable strict validation with additional warnings |
+
 **What it checks:**
 - Required fields present (id, title, status)
 - Valid field values
@@ -337,17 +344,15 @@ taskmd next --quick-wins
 taskmd next --critical --limit 1
 ```
 
-**Output formats:**
-```bash
-# Table (default)
-taskmd next
+**Flags:**
 
-# JSON for automation
-taskmd next --format json
-
-# YAML
-taskmd next --format yaml
-```
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
+| `--limit` | `5` | Maximum number of recommendations |
+| `--filter` | | Filter tasks (repeatable, e.g. `--filter tag=cli`) |
+| `--quick-wins` | `false` | Show only quick wins (effort: small) |
+| `--critical` | `false` | Show only critical path tasks |
 
 **Examples:**
 ```bash
@@ -426,6 +431,20 @@ taskmd graph --format dot --out deps.dot
 taskmd graph --format json --out graph.json
 ```
 
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `ascii` | Output format (`mermaid`, `dot`, `ascii`, `json`) |
+| `--exclude-status` | `completed` | Exclude tasks with status (repeatable) |
+| `--all` | `false` | Include all tasks (overrides `--exclude-status`) |
+| `--root` | | Start graph from specific task ID |
+| `--upstream` | `false` | Show only dependencies (ancestors) |
+| `--downstream` | `false` | Show only dependents (descendants) |
+| `--focus` | | Highlight specific task ID |
+| `--filter` | | Filter tasks (repeatable, AND logic) |
+| `--out`, `-o` | | Write output to file |
+
 **Examples:**
 ```bash
 # Quick view in terminal
@@ -462,6 +481,12 @@ taskmd stats ./tasks
 # JSON output
 taskmd stats --format json
 ```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
 
 **Metrics provided:**
 
@@ -520,12 +545,13 @@ taskmd board --format txt
 taskmd board --format json
 ```
 
-**Output to file:**
-```bash
-# Save board view
-taskmd board --out board.md
-taskmd board --group-by priority --format txt --out priority-board.txt
-```
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `md` | Output format (`md`, `txt`, `json`) |
+| `--group-by` | `status` | Field to group by (`status`, `priority`, `effort`, `type`, `group`, `tag`) |
+| `--out`, `-o` | | Write output to file |
 
 **Examples:**
 ```bash
@@ -585,11 +611,15 @@ taskmd snapshot --group-by priority
 taskmd snapshot --group-by effort
 ```
 
-**Output to file:**
-```bash
-taskmd snapshot --out snapshot.json
-taskmd snapshot --format yaml --out snapshot.yaml
-```
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `json` | Output format (`json`, `yaml`, `md`) |
+| `--core` | `false` | Output only core fields (id, title, dependencies) |
+| `--derived` | `false` | Include computed/derived fields (blocked status, depth, topological order) |
+| `--group-by` | | Group tasks by field (`status`, `priority`, `effort`, `type`, `group`) |
+| `--out`, `-o` | | Write output to file |
 
 **Examples:**
 ```bash
@@ -1187,6 +1217,7 @@ taskmd set 042 --done
 | `--add-pr string` | | Add a PR URL (repeatable) |
 | `--remove-pr string` | | Remove a PR URL (repeatable) |
 | `--type string` | | Work type (`feature`, `bug`, `improvement`, `chore`, `docs`) |
+| `--depends-on string` | | Set dependencies (comma-separated IDs, e.g. `010,015`) |
 | `--verify` | `false` | Run verification checks before completing a task |
 
 **Tag management:**
@@ -1602,6 +1633,57 @@ taskmd mcp
 The server exposes task operations as MCP tools (`list`, `get`, `next`, `search`, `context`, `set`, `validate`, `graph`) that any MCP-compatible client can discover and call.
 
 See the [MCP Server Guide](mcp-guide.md) for client configuration and full tool reference.
+
+### init - Initialize a Project
+
+Set up a complete taskmd project in the current directory. Creates a task directory, `.taskmd.yaml` config, agent configuration files, the taskmd specification document, and built-in task templates.
+
+When run interactively (in a terminal), prompts for any values not provided via flags. In non-interactive mode, defaults to Claude agent configuration.
+
+**Basic usage:**
+```bash
+# Interactive setup (prompts for missing info)
+taskmd init
+
+# Set task directory, prompt for agents
+taskmd init --task-dir ./tasks
+
+# Claude agent config, prompt for task directory
+taskmd init --claude
+
+# Fully non-interactive
+taskmd init --task-dir ./tasks --claude
+
+# Multiple agents
+taskmd init --claude --gemini
+
+# Skip specific outputs
+taskmd init --no-spec         # Skip TASKMD_SPEC.md
+taskmd init --no-agent        # Skip agent configs
+taskmd init --no-templates    # Skip task templates
+
+# Overwrite existing files
+taskmd init --force
+
+# Print all content to stdout instead of writing files
+taskmd init --stdout
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--task-dir` | `./tasks` | Task directory path to create |
+| `--claude` | `false` | Initialize for Claude Code |
+| `--gemini` | `false` | Initialize for Gemini |
+| `--codex` | `false` | Initialize for Codex |
+| `--no-spec` | `false` | Skip generating TASKMD_SPEC.md |
+| `--no-agent` | `false` | Skip generating agent configuration files |
+| `--no-templates` | `false` | Skip copying built-in task templates |
+| `--force` | `false` | Overwrite existing files |
+| `--stdout` | `false` | Print all content to stdout instead of writing files |
+
+If a file already exists and `--force` is not set, it is skipped with a warning.
 
 ## Common Workflows
 
