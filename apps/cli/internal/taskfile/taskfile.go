@@ -10,19 +10,20 @@ import (
 
 // UpdateRequest describes which fields to update. Nil pointer means "no change".
 type UpdateRequest struct {
-	Title    *string
-	Status   *string
-	Priority *string
-	Effort   *string
-	Type     *string
-	Owner    *string
-	Parent   *string
-	Tags     *[]string // replace tags entirely
-	AddTags  []string  // add to existing tags
-	RemTags  []string  // remove from existing tags
-	AddPRs   []string  // add PR URLs
-	RemPRs   []string  // remove PR URLs
-	Body     *string
+	Title        *string
+	Status       *string
+	Priority     *string
+	Effort       *string
+	Type         *string
+	Owner        *string
+	Parent       *string
+	Tags         *[]string // replace tags entirely
+	AddTags      []string  // add to existing tags
+	RemTags      []string  // remove from existing tags
+	AddPRs       []string  // add PR URLs
+	RemPRs       []string  // remove PR URLs
+	Dependencies *[]string // replace dependencies entirely
+	Body         *string
 }
 
 var validStatuses = map[string]bool{
@@ -88,27 +89,7 @@ func UpdateTaskFile(filePath string, req UpdateRequest) error {
 	}
 
 	// Apply scalar field updates within frontmatter.
-	scalarUpdates := buildScalarUpdates(req)
-	found := make([]bool, len(scalarUpdates))
-	for i := openIdx + 1; i < closeIdx; i++ {
-		for j, u := range scalarUpdates {
-			prefix := u.key + ":"
-			if strings.HasPrefix(strings.TrimSpace(lines[i]), prefix) {
-				lines[i] = u.key + ": " + u.value
-				found[j] = true
-				break
-			}
-		}
-	}
-
-	// Insert any scalar fields that weren't found in existing frontmatter.
-	for j := len(scalarUpdates) - 1; j >= 0; j-- {
-		if !found[j] {
-			u := scalarUpdates[j]
-			lines = insertLine(lines, closeIdx, u.key+": "+u.value)
-			closeIdx++
-		}
-	}
+	lines, closeIdx = applyScalarUpdates(lines, openIdx, closeIdx, req)
 
 	// Apply tag updates.
 	if req.Tags != nil {
@@ -124,6 +105,11 @@ func UpdateTaskFile(filePath string, req UpdateRequest) error {
 		currentPRs := parseCurrentListField(lines, openIdx, closeIdx, "pr")
 		newPRs := ComputeNewTags(currentPRs, req.AddPRs, req.RemPRs)
 		lines, closeIdx = applyListFieldUpdates(lines, openIdx, closeIdx, "pr", newPRs)
+	}
+
+	// Apply dependency updates.
+	if req.Dependencies != nil {
+		lines, closeIdx = applyListFieldUpdates(lines, openIdx, closeIdx, "dependencies", *req.Dependencies)
 	}
 
 	// Apply body update — replace everything after closing ---.
@@ -163,6 +149,33 @@ func buildScalarUpdates(req UpdateRequest) []scalarUpdate {
 		updates = append(updates, scalarUpdate{key: "parent", value: *req.Parent})
 	}
 	return updates
+}
+
+// applyScalarUpdates updates or inserts scalar frontmatter fields.
+func applyScalarUpdates(lines []string, openIdx, closeIdx int, req UpdateRequest) ([]string, int) {
+	scalarUpdates := buildScalarUpdates(req)
+	found := make([]bool, len(scalarUpdates))
+	for i := openIdx + 1; i < closeIdx; i++ {
+		for j, u := range scalarUpdates {
+			prefix := u.key + ":"
+			if strings.HasPrefix(strings.TrimSpace(lines[i]), prefix) {
+				lines[i] = u.key + ": " + u.value
+				found[j] = true
+				break
+			}
+		}
+	}
+
+	// Insert any scalar fields that weren't found in existing frontmatter.
+	for j := len(scalarUpdates) - 1; j >= 0; j-- {
+		if !found[j] {
+			u := scalarUpdates[j]
+			lines = insertLine(lines, closeIdx, u.key+": "+u.value)
+			closeIdx++
+		}
+	}
+
+	return lines, closeIdx
 }
 
 // replaceBody replaces all content after the closing frontmatter delimiter.

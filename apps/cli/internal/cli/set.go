@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
+	"github.com/driangle/taskmd/apps/cli/internal/graph"
 	"github.com/driangle/taskmd/apps/cli/internal/model"
 	"github.com/driangle/taskmd/apps/cli/internal/scanner"
 	"github.com/driangle/taskmd/apps/cli/internal/taskfile"
@@ -30,6 +31,7 @@ var (
 	setRemoveTags []string
 	setAddPRs     []string
 	setRemovePRs  []string
+	setDependsOn  string
 )
 
 var setCmd = &cobra.Command{
@@ -80,6 +82,7 @@ func init() {
 		cmd.Flags().StringArrayVar(&setRemoveTags, "remove-tag", nil, "remove a tag (repeatable)")
 		cmd.Flags().StringArrayVar(&setAddPRs, "add-pr", nil, "add a PR URL (repeatable)")
 		cmd.Flags().StringArrayVar(&setRemovePRs, "remove-pr", nil, "remove a PR URL (repeatable)")
+		cmd.Flags().StringVar(&setDependsOn, "depends-on", "", "set dependencies (comma-separated IDs, e.g. 010,015)")
 	}
 }
 
@@ -129,6 +132,12 @@ func runSet(cmd *cobra.Command, args []string) error {
 	task := findExactMatch(taskID, result.Tasks)
 	if task == nil {
 		return fmt.Errorf("task not found: %s", taskID)
+	}
+
+	if req.Dependencies != nil {
+		if err := validateDependencies(task, *req.Dependencies, result.Tasks); err != nil {
+			return err
+		}
 	}
 
 	if err := runSetVerification(task, req); err != nil {
@@ -198,12 +207,17 @@ func buildSetRequest(cmd *cobra.Command) (taskfile.UpdateRequest, error) {
 		req.RemPRs = setRemovePRs
 	}
 
+	if cmd.Flags().Changed("depends-on") {
+		deps := parseCommaSeparatedIDs(setDependsOn)
+		req.Dependencies = &deps
+	}
+
 	if err := validateSetEnums(req); err != nil {
 		return taskfile.UpdateRequest{}, err
 	}
 
 	if !hasUpdates(req) {
-		return taskfile.UpdateRequest{}, fmt.Errorf("nothing to update: provide --status, --priority, --effort, --type, --owner, --parent, --done, --add-tag, --remove-tag, --add-pr, or --remove-pr")
+		return taskfile.UpdateRequest{}, fmt.Errorf("nothing to update: provide --status, --priority, --effort, --type, --owner, --parent, --done, --add-tag, --remove-tag, --add-pr, --remove-pr, or --depends-on")
 	}
 
 	return req, nil
@@ -214,7 +228,8 @@ func hasUpdates(req taskfile.UpdateRequest) bool {
 		req.Type != nil || req.Owner != nil || req.Parent != nil
 	hasTags := len(req.AddTags) > 0 || len(req.RemTags) > 0
 	hasPRs := len(req.AddPRs) > 0 || len(req.RemPRs) > 0
-	return hasScalar || hasTags || hasPRs
+	hasDeps := req.Dependencies != nil
+	return hasScalar || hasTags || hasPRs || hasDeps
 }
 
 type changeEntry struct {
@@ -269,6 +284,14 @@ func buildChangeLog(task *model.Task, req taskfile.UpdateRequest) []changeEntry 
 			field:    "pr",
 			oldValue: "[" + strings.Join(task.PRs, ", ") + "]",
 			newValue: "[" + strings.Join(newPRs, ", ") + "]",
+		})
+	}
+
+	if req.Dependencies != nil {
+		changes = append(changes, changeEntry{
+			field:    "dependencies",
+			oldValue: "[" + strings.Join(task.Dependencies, ", ") + "]",
+			newValue: "[" + strings.Join(*req.Dependencies, ", ") + "]",
 		})
 	}
 
@@ -342,4 +365,60 @@ func runSetVerification(task *model.Task, req taskfile.UpdateRequest) error {
 		return fmt.Errorf("verification failed: %d check(s) failed — status change aborted", vResult.Failed)
 	}
 	return nil
+}
+
+// parseCommaSeparatedIDs splits a comma-separated string into a slice of trimmed IDs.
+// An empty string returns an empty slice (used to clear the field).
+func parseCommaSeparatedIDs(raw string) []string {
+	if raw == "" {
+		return []string{}
+	}
+	parts := strings.Split(raw, ",")
+	var ids []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			ids = append(ids, p)
+		}
+	}
+	return ids
+}
+
+// validateDependencies checks that all dependency IDs exist and that
+// setting them would not create a circular dependency.
+func validateDependencies(task *model.Task, depIDs []string, tasks []*model.Task) error {
+	tasksByID := make(map[string]*model.Task, len(tasks))
+	for _, t := range tasks {
+		tasksByID[t.ID] = t
+	}
+
+	// Check existence.
+	for _, id := range depIDs {
+		if _, ok := tasksByID[id]; !ok {
+			return fmt.Errorf("dependency %q not found", id)
+		}
+	}
+
+	// Self-dependency check.
+	for _, id := range depIDs {
+		if id == task.ID {
+			return fmt.Errorf("task cannot depend on itself: %s", id)
+		}
+	}
+
+	// Check for circular dependencies by temporarily setting the new deps.
+	origDeps := task.Dependencies
+	task.Dependencies = depIDs
+	defer func() { task.Dependencies = origDeps }()
+
+	g := graph.NewGraph(tasks)
+	if cycles := g.DetectCycles(); len(cycles) > 0 {
+		return fmt.Errorf("circular dependency detected: %s", formatCycle(cycles[0]))
+	}
+
+	return nil
+}
+
+func formatCycle(cycle []string) string {
+	return strings.Join(cycle, " -> ")
 }

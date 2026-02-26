@@ -1,7 +1,7 @@
 ---
 title: "Add --depends-on flag to set command"
 id: "208"
-status: pending
+status: completed
 priority: medium
 type: feature
 tags: []
@@ -16,13 +16,13 @@ Add a `--depends-on` flag to the `taskmd set` command so users can add or update
 
 ## Tasks
 
-- [ ] Add `--depends-on` string flag to the `set` command in `internal/cli/set.go`
-- [ ] Parse comma-separated task IDs from the flag value
-- [ ] Update the task's `dependencies` frontmatter field (append or replace, depending on design)
-- [ ] Validate that referenced dependency IDs exist
-- [ ] Validate no circular dependencies are introduced
-- [ ] Add tests in `internal/cli/set_test.go` for the new flag
-- [ ] Add e2e tests covering `--depends-on` usage
+- [x] Add `--depends-on` string flag to the `set` command in `internal/cli/set.go`
+- [x] Parse comma-separated task IDs from the flag value
+- [x] Update the task's `dependencies` frontmatter field (replace semantics)
+- [x] Validate that referenced dependency IDs exist
+- [x] Validate no circular dependencies are introduced
+- [x] Add tests in `internal/cli/set_test.go` for the new flag
+- [x] Add e2e tests covering `--depends-on` usage
 
 ## Acceptance Criteria
 

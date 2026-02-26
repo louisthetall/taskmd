@@ -114,6 +114,7 @@ func resetSetFlags() {
 	setType = ""
 	setOwner = ""
 	setParent = ""
+	setDependsOn = ""
 	setDone = false
 	setDryRun = false
 	setVerify = false
@@ -124,11 +125,10 @@ func resetSetFlags() {
 	taskDir = "."
 
 	// Reset cobra flag Changed state to avoid test interference
-	if f := setCmd.Flags().Lookup("status"); f != nil {
-		f.Changed = false
-	}
-	if f := setCmd.Flags().Lookup("parent"); f != nil {
-		f.Changed = false
+	for _, name := range []string{"status", "parent", "depends-on"} {
+		if f := setCmd.Flags().Lookup(name); f != nil {
+			f.Changed = false
+		}
 	}
 }
 
@@ -1370,6 +1370,151 @@ func TestSet_DoneFlag_PRReviewWorkflow(t *testing.T) {
 	content, _ := os.ReadFile(filepath.Join(tmpDir, "001-setup.md"))
 	if !strings.Contains(string(content), "status: in-review") {
 		t.Error("Expected file to contain in-review status")
+	}
+}
+
+func TestSet_DependsOn(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "003"
+	setDependsOn = "001,002"
+
+	setCmd.Flags().Set("depends-on", "001,002")
+	defer func() { setCmd.Flags().Lookup("depends-on").Changed = false }()
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "dependencies: [002] -> [001, 002]") {
+		t.Errorf("Expected dependencies change in output, got: %s", output)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "003-ui.md"))
+	fileStr := string(content)
+	if !strings.Contains(fileStr, `dependencies: ["001", "002"]`) {
+		t.Errorf("Expected file to contain updated dependencies, got:\n%s", fileStr)
+	}
+}
+
+func TestSet_DependsOn_InvalidID(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "001"
+	setDependsOn = "999"
+
+	setCmd.Flags().Set("depends-on", "999")
+	defer func() { setCmd.Flags().Lookup("depends-on").Changed = false }()
+
+	_, err := captureSetOutput(t)
+	if err == nil {
+		t.Fatal("Expected error for non-existent dependency ID")
+	}
+	if !strings.Contains(err.Error(), `dependency "999" not found`) {
+		t.Errorf("Expected 'not found' error, got: %v", err)
+	}
+}
+
+func TestSet_DependsOn_CircularDep(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	// 001 has no deps, 002 depends on 001, 003 depends on 002.
+	// Setting 001 to depend on 003 creates: 001->003->002->001 (cycle).
+	setTaskID = "001"
+	setDependsOn = "003"
+
+	setCmd.Flags().Set("depends-on", "003")
+	defer func() { setCmd.Flags().Lookup("depends-on").Changed = false }()
+
+	_, err := captureSetOutput(t)
+	if err == nil {
+		t.Fatal("Expected error for circular dependency")
+	}
+	if !strings.Contains(err.Error(), "circular dependency detected") {
+		t.Errorf("Expected 'circular dependency' error, got: %v", err)
+	}
+}
+
+func TestSet_DependsOn_SelfDep(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "001"
+	setDependsOn = "001"
+
+	setCmd.Flags().Set("depends-on", "001")
+	defer func() { setCmd.Flags().Lookup("depends-on").Changed = false }()
+
+	_, err := captureSetOutput(t)
+	if err == nil {
+		t.Fatal("Expected error for self-dependency")
+	}
+	if !strings.Contains(err.Error(), "cannot depend on itself") {
+		t.Errorf("Expected 'cannot depend on itself' error, got: %v", err)
+	}
+}
+
+func TestSet_DependsOn_WithOtherFlags(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "003"
+	setStatus = "in-progress"
+	setDependsOn = "001"
+
+	setCmd.Flags().Set("depends-on", "001")
+	defer func() { setCmd.Flags().Lookup("depends-on").Changed = false }()
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "status: blocked -> in-progress") {
+		t.Error("Expected status change in output")
+	}
+	if !strings.Contains(output, "dependencies: [002] -> [001]") {
+		t.Errorf("Expected dependencies change in output, got: %s", output)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "003-ui.md"))
+	fileStr := string(content)
+	if !strings.Contains(fileStr, "status: in-progress") {
+		t.Error("Expected file to contain updated status")
+	}
+	if !strings.Contains(fileStr, `dependencies: ["001"]`) {
+		t.Errorf("Expected file to contain updated dependencies, got:\n%s", fileStr)
+	}
+}
+
+func TestSet_DependsOn_Clear(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "002"
+	setDependsOn = ""
+
+	setCmd.Flags().Set("depends-on", "")
+	defer func() { setCmd.Flags().Lookup("depends-on").Changed = false }()
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "dependencies: [001] -> []") {
+		t.Errorf("Expected dependencies cleared in output, got: %s", output)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "002-auth.md"))
+	fileStr := string(content)
+	// When clearing, the dependencies line should be removed
+	if strings.Contains(fileStr, "dependencies:") {
+		t.Errorf("Expected dependencies line to be removed, got:\n%s", fileStr)
 	}
 }
 
