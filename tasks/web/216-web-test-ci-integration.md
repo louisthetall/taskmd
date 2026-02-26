@@ -1,7 +1,7 @@
 ---
 id: "216"
 title: "Integrate web test coverage into CI"
-status: pending
+status: completed
 priority: medium
 type: chore
 effort: small
@@ -19,9 +19,9 @@ Add the web app test suite and coverage enforcement to the CI pipeline so thresh
 
 ## Tasks
 
-- [ ] Add web test step to CI workflow (run `pnpm test:coverage` in `apps/web`)
-- [ ] Ensure CI fails when coverage drops below configured thresholds
-- [ ] Document how to run tests and view coverage locally (in README or CONTRIBUTING)
+- [x] Add web test step to CI workflow (run `pnpm test:coverage` in `apps/web`)
+- [x] Ensure CI fails when coverage drops below configured thresholds
+- [x] Document how to run tests and view coverage locally (in README or CONTRIBUTING)
 
 ## Acceptance Criteria
 
