@@ -218,6 +218,177 @@ func TestRm_InteractiveConfirmEmpty(t *testing.T) {
 	}
 }
 
+func TestRm_BlockedByDependency(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Task 001 exists; task 003 depends on 001
+	os.WriteFile(filepath.Join(tmpDir, "001-setup.md"), []byte(rmTaskPending), 0644)
+	depTask := `---
+id: "003"
+title: "Depends on setup"
+status: pending
+priority: medium
+effort: small
+dependencies: ["001"]
+tags: []
+created: 2026-02-08
+---
+
+# Depends on setup
+`
+	os.WriteFile(filepath.Join(tmpDir, "003-dep.md"), []byte(depTask), 0644)
+
+	resetRmFlags()
+	taskDir = tmpDir
+
+	// Without --force, should fail
+	_, err := captureRmOutput(t, []string{"001"})
+	if err == nil {
+		t.Fatal("expected error when task is referenced")
+	}
+	if !strings.Contains(err.Error(), "referenced by other tasks") {
+		t.Errorf("expected reference error, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "003") {
+		t.Errorf("expected referencing task ID in error, got: %v", err)
+	}
+
+	// File should still exist
+	if _, err := os.Stat(filepath.Join(tmpDir, "001-setup.md")); err != nil {
+		t.Error("expected file to remain when blocked by reference")
+	}
+}
+
+func TestRm_BlockedByParent(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.WriteFile(filepath.Join(tmpDir, "001-setup.md"), []byte(rmTaskPending), 0644)
+	childTask := `---
+id: "004"
+title: "Child task"
+status: pending
+priority: medium
+effort: small
+dependencies: []
+parent: "001"
+tags: []
+created: 2026-02-08
+---
+
+# Child task
+`
+	os.WriteFile(filepath.Join(tmpDir, "004-child.md"), []byte(childTask), 0644)
+
+	resetRmFlags()
+	taskDir = tmpDir
+
+	_, err := captureRmOutput(t, []string{"001"})
+	if err == nil {
+		t.Fatal("expected error when task has child referencing it as parent")
+	}
+	if !strings.Contains(err.Error(), "referenced by other tasks") {
+		t.Errorf("expected reference error, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "004") {
+		t.Errorf("expected child task ID in error, got: %v", err)
+	}
+}
+
+func TestRm_ForceDeletesReferencedTask(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.WriteFile(filepath.Join(tmpDir, "001-setup.md"), []byte(rmTaskPending), 0644)
+	depTask := `---
+id: "003"
+title: "Depends on setup"
+status: pending
+priority: medium
+effort: small
+dependencies: ["001"]
+tags: []
+created: 2026-02-08
+---
+
+# Depends on setup
+`
+	os.WriteFile(filepath.Join(tmpDir, "003-dep.md"), []byte(depTask), 0644)
+
+	resetRmFlags()
+	taskDir = tmpDir
+	rmForce = true
+
+	output, err := captureRmOutput(t, []string{"001"})
+	if err != nil {
+		t.Fatalf("expected --force to override reference check, got: %v", err)
+	}
+	if !strings.Contains(output, "Deleted 1 task") {
+		t.Errorf("expected delete confirmation, got: %s", output)
+	}
+
+	if _, err := os.Stat(filepath.Join(tmpDir, "001-setup.md")); !os.IsNotExist(err) {
+		t.Error("expected file to be deleted with --force")
+	}
+}
+
+func TestRm_DeletesWorklog(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.WriteFile(filepath.Join(tmpDir, "001-setup.md"), []byte(rmTaskPending), 0644)
+
+	// Create worklog
+	wlDir := filepath.Join(tmpDir, ".worklogs")
+	os.MkdirAll(wlDir, 0755)
+	os.WriteFile(filepath.Join(wlDir, "001.md"), []byte("## 2026-02-08T10:00:00Z\n\nStarted work.\n"), 0644)
+
+	resetRmFlags()
+	taskDir = tmpDir
+	rmForce = true
+
+	output, err := captureRmOutput(t, []string{"001"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "Deleted worklog") {
+		t.Errorf("expected worklog deletion message, got: %s", output)
+	}
+
+	// Worklog file should be gone
+	if _, err := os.Stat(filepath.Join(wlDir, "001.md")); !os.IsNotExist(err) {
+		t.Error("expected worklog file to be deleted")
+	}
+
+	// Empty .worklogs dir should be removed
+	if _, err := os.Stat(wlDir); !os.IsNotExist(err) {
+		t.Error("expected empty .worklogs directory to be removed")
+	}
+}
+
+func TestRm_WorklogDirKeptIfNotEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.WriteFile(filepath.Join(tmpDir, "001-setup.md"), []byte(rmTaskPending), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "002-old.md"), []byte(rmTaskCompleted), 0644)
+
+	// Create worklogs for both tasks
+	wlDir := filepath.Join(tmpDir, ".worklogs")
+	os.MkdirAll(wlDir, 0755)
+	os.WriteFile(filepath.Join(wlDir, "001.md"), []byte("## 2026-02-08T10:00:00Z\n\nWork.\n"), 0644)
+	os.WriteFile(filepath.Join(wlDir, "002.md"), []byte("## 2026-02-08T10:00:00Z\n\nWork.\n"), 0644)
+
+	resetRmFlags()
+	taskDir = tmpDir
+	rmForce = true
+
+	_, err := captureRmOutput(t, []string{"001"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// 001 worklog gone, but .worklogs dir should remain (002.md still there)
+	if _, err := os.Stat(filepath.Join(wlDir, "001.md")); !os.IsNotExist(err) {
+		t.Error("expected 001 worklog to be deleted")
+	}
+	if _, err := os.Stat(wlDir); err != nil {
+		t.Error("expected .worklogs directory to remain (still has 002.md)")
+	}
+}
+
 func TestRm_ShowsTaskDetails(t *testing.T) {
 	tmpDir := createRmTestFiles(t)
 	resetRmFlags()

@@ -10,7 +10,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/driangle/taskmd/apps/cli/internal/model"
 	"github.com/driangle/taskmd/apps/cli/internal/scanner"
+	"github.com/driangle/taskmd/apps/cli/internal/worklog"
 )
 
 var (
@@ -63,15 +65,13 @@ func runRm(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("task not found: %s", taskID)
 	}
 
-	absScanDir, err := filepath.Abs(scanDir)
-	if err != nil {
-		return fmt.Errorf("failed to resolve scan directory: %w", err)
+	if !rmForce {
+		if err := checkTaskReferences(taskID, result.Tasks); err != nil {
+			return err
+		}
 	}
 
-	relPath, err := filepath.Rel(absScanDir, task.FilePath)
-	if err != nil {
-		relPath = task.FilePath
-	}
+	relPath := resolveRelPath(scanDir, task.FilePath)
 
 	r := getRenderer()
 	fmt.Printf("Delete 1 task:\n")
@@ -97,6 +97,76 @@ func runRm(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete %s: %w", relPath, err)
 	}
 
+	cleanupWorklog(task.FilePath, task.ID)
+
 	fmt.Println(formatSuccess("Deleted 1 task.", r))
 	return nil
+}
+
+// checkTaskReferences returns an error if any other task references the given ID.
+func checkTaskReferences(taskID string, tasks []*model.Task) error {
+	refs := findReferencingTasks(taskID, tasks)
+	if len(refs) > 0 {
+		return fmt.Errorf("task %s is referenced by other tasks (use --force to delete anyway):\n%s",
+			taskID, formatReferencingTasks(refs))
+	}
+	return nil
+}
+
+// resolveRelPath returns the task file path relative to the scan directory.
+func resolveRelPath(scanDir, filePath string) string {
+	absScanDir, err := filepath.Abs(scanDir)
+	if err != nil {
+		return filePath
+	}
+	relPath, err := filepath.Rel(absScanDir, filePath)
+	if err != nil {
+		return filePath
+	}
+	return relPath
+}
+
+// cleanupWorklog removes the worklog file and its parent directory if empty.
+func cleanupWorklog(taskFilePath, taskID string) {
+	wlPath := worklog.WorklogPath(taskFilePath, taskID)
+	if !worklog.Exists(wlPath) {
+		return
+	}
+	if err := os.Remove(wlPath); err != nil {
+		fmt.Printf("Warning: failed to delete worklog %s: %v\n", wlPath, err)
+		return
+	}
+	fmt.Println("Deleted worklog: " + filepath.Base(wlPath))
+	_ = os.Remove(filepath.Dir(wlPath)) // only succeeds if empty
+}
+
+// findReferencingTasks returns tasks that reference the given task ID
+// via their Dependencies or Parent fields.
+func findReferencingTasks(taskID string, tasks []*model.Task) []*model.Task {
+	var refs []*model.Task
+	for _, t := range tasks {
+		if t.ID == taskID {
+			continue
+		}
+		if t.Parent == taskID {
+			refs = append(refs, t)
+			continue
+		}
+		for _, dep := range t.Dependencies {
+			if dep == taskID {
+				refs = append(refs, t)
+				break
+			}
+		}
+	}
+	return refs
+}
+
+// formatReferencingTasks formats a list of referencing tasks for display.
+func formatReferencingTasks(tasks []*model.Task) string {
+	var lines []string
+	for _, t := range tasks {
+		lines = append(lines, fmt.Sprintf("  - %s %s", t.ID, t.Title))
+	}
+	return strings.Join(lines, "\n")
 }

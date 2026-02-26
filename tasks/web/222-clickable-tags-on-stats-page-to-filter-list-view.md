@@ -1,6 +1,6 @@
 ---
 title: "Clickable tags on Stats page to filter List view"
-id: "207"
+id: "222"
 status: completed
 priority: medium
 type: feature

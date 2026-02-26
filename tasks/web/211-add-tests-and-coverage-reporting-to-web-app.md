@@ -1,7 +1,7 @@
 ---
 title: "Add tests and coverage reporting to web app"
 id: "211"
-status: pending
+status: completed
 priority: medium
 type: feature
 tags: ["testing", "quality"]

@@ -1,7 +1,7 @@
 ---
 title: "Add rm command to delete tasks by ID"
 id: "207"
-status: pending
+status: in-progress
 priority: medium
 type: feature
 tags: []
