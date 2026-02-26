@@ -1,7 +1,7 @@
 ---
 id: "219"
 title: "Test TaskTable filtering and URL sync"
-status: pending
+status: completed
 priority: medium
 type: chore
 effort: medium
@@ -18,13 +18,13 @@ Add tests for the task list's filter logic, which is the most-used interactive f
 
 ## Tasks
 
-- [ ] Refactor: extract filter application logic from `TaskTable.tsx` into a pure function (e.g. `applyFilters(tasks, filters)`) that can be tested without rendering
-- [ ] Test filter intersection (status AND priority AND type AND effort AND tags)
-- [ ] Test `hasActiveFilters` calculation
-- [ ] Test URL synchronization (filters read from and written to search params)
-- [ ] Test `clearFilters()` resets all filter state
-- [ ] Test `SearchDialog`'s `Highlight` subcomponent (match found, no match, case insensitivity)
-- [ ] Refactor: extract `Highlight` from `SearchDialog.tsx` into its own file if it's useful elsewhere
+- [x] Refactor: extract filter application logic from `TaskTable.tsx` into a pure function (e.g. `applyFilters(tasks, filters)`) that can be tested without rendering
+- [x] Test filter intersection (status AND priority AND type AND effort AND tags)
+- [x] Test `hasActiveFilters` calculation
+- [x] Test URL synchronization (filters read from and written to search params)
+- [x] Test `clearFilters()` resets all filter state
+- [x] Test `SearchDialog`'s `Highlight` subcomponent (match found, no match, case insensitivity)
+- [x] Refactor: extract `Highlight` from `SearchDialog.tsx` into its own file if it's useful elsewhere
 
 ## Acceptance Criteria
 

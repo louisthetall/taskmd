@@ -13,6 +13,7 @@ import { STATUSES, PRIORITIES, TYPES } from "./TaskTable/constants.ts";
 import { FilterBar } from "./TaskTable/FilterBar.tsx";
 import { createTaskColumns } from "./TaskTable/columns.tsx";
 import { toggleInSet } from "./TaskTable/utils.ts";
+import { applyFilters, hasActiveFilters as checkActiveFilters } from "./TaskTable/filters.ts";
 import { MobileCardList } from "./TaskTable/MobileCardList.tsx";
 
 interface TaskTableProps {
@@ -43,13 +44,8 @@ export function TaskTable({ tasks, initialTags, initialStatuses, initialPrioriti
     () => initialEffort && initialEffort.length > 0 ? new Set(initialEffort) : new Set(),
   );
 
-  const hasActiveFilters =
-    selectedStatuses.size !== STATUSES.length ||
-    selectedPriorities.size !== PRIORITIES.length ||
-    selectedTypes.size !== TYPES.length ||
-    selectedTags.size > 0 ||
-    selectedEffort.size > 0 ||
-    globalFilter !== "";
+  const filterState = { selectedStatuses, selectedPriorities, selectedTypes, selectedTags, selectedEffort, globalFilter };
+  const hasActiveFilters = checkActiveFilters(filterState);
 
   const syncFiltersToUrl = useCallback(
     (updates: { tag?: Set<string>; status?: Set<string>; priority?: Set<string>; effort?: Set<string> }) => {
@@ -87,21 +83,10 @@ export function TaskTable({ tasks, initialTags, initialStatuses, initialPrioriti
     });
   }
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      if (!selectedStatuses.has(task.status)) return false;
-      if (task.priority && !selectedPriorities.has(task.priority)) return false;
-      if (task.type && !selectedTypes.has(task.type)) return false;
-      if (selectedTags.size > 0) {
-        if (!task.tags || !task.tags.some((t) => selectedTags.has(t)))
-          return false;
-      }
-      if (selectedEffort.size > 0) {
-        if (!task.effort || !selectedEffort.has(task.effort)) return false;
-      }
-      return true;
-    });
-  }, [tasks, selectedStatuses, selectedPriorities, selectedTypes, selectedTags, selectedEffort]);
+  const filteredTasks = useMemo(
+    () => applyFilters(tasks, filterState),
+    [tasks, selectedStatuses, selectedPriorities, selectedTypes, selectedTags, selectedEffort],
+  );
 
   const columns = useMemo(
     () => createTaskColumns(selectedTags, toggleTag),
