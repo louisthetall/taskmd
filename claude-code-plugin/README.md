@@ -59,6 +59,7 @@ Use `--scope user` instead of `--scope project` to install across all projects.
 | get-task | `/taskmd:get-task <ID>` | View task details by ID or name |
 | add-task | `/taskmd:add-task <description>` | Create a new task file |
 | complete-task | `/taskmd:complete-task <ID>` | Mark a task as completed |
+| update-task | `/taskmd:update-task <description>` | Update a task's fields (status, priority, title, tags, etc.) |
 | list-tasks | `/taskmd:list-tasks` | List tasks with optional filters |
 | validate | `/taskmd:validate` | Validate task files for errors |
 | divide-and-conquer | `/taskmd:divide-and-conquer <ID>` | Split a large task into smaller sub-tasks |
@@ -78,6 +79,9 @@ Use `--scope user` instead of `--scope project` to install across all projects.
 
 # Create a new task
 /taskmd:add-task Add user authentication to the API
+
+# Update task fields
+/taskmd:update-task set task 042 to high priority and in-progress
 
 # Mark a task as done
 /taskmd:complete-task 015

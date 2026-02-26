@@ -1,7 +1,7 @@
 ---
 title: "Add update-task skill to plugin"
 id: "224"
-status: pending
+status: completed
 priority: medium
 type: feature
 tags: []
@@ -16,14 +16,14 @@ Add a new "update-task" skill to the Claude Code plugin (`claude-code-plugin/ski
 
 ## Tasks
 
-- [ ] Create `claude-code-plugin/skills/update-task/` directory with skill definition
-- [ ] Define the skill prompt that parses user intent and determines which fields to update
-- [ ] For CLI-supported fields (status, priority, effort, tags, owner, parent, type, PRs), instruct the agent to use `taskmd set` with appropriate flags
-- [ ] For fields not supported by `taskmd set` (title, dependencies, custom frontmatter), instruct the agent to edit the task file directly
-- [ ] Document which fields use CLI vs direct file editing in the skill prompt
-- [ ] Register the skill in the plugin manifest
-- [ ] Handle edge cases (invalid IDs, invalid field values) with clear error messages
-- [ ] Test the skill with various update scenarios
+- [x] Create `claude-code-plugin/skills/update-task/` directory with skill definition
+- [x] Define the skill prompt that parses user intent and determines which fields to update
+- [x] For CLI-supported fields (status, priority, effort, tags, owner, parent, type, PRs), instruct the agent to use `taskmd set` with appropriate flags
+- [x] For fields not supported by `taskmd set` (title, dependencies, custom frontmatter), instruct the agent to edit the task file directly
+- [x] Document which fields use CLI vs direct file editing in the skill prompt
+- [x] Register the skill in the plugin manifest
+- [x] Handle edge cases (invalid IDs, invalid field values) with clear error messages
+- [x] Test the skill with various update scenarios
 
 ## Acceptance Criteria
 
