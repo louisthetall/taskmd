@@ -248,8 +248,13 @@ jobs:
             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           fi
 
+          # Link the cloned repo as a Homebrew tap so audit can find it by name
+          BREW_TAP_DIR="$(brew --repository)/Library/Taps/driangle/homebrew-tap"
+          mkdir -p "$(dirname "$BREW_TAP_DIR")"
+          ln -sfn "$(pwd)" "$BREW_TAP_DIR"
+
           # Audit formula before pushing
-          brew audit --strict Formula/taskmd.rb
+          brew audit --strict --formula driangle/tap/taskmd
 
           # Configure git
           git config user.name "github-actions[bot]"
