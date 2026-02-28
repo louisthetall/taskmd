@@ -9,7 +9,7 @@ import {
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { Task } from "../../api/types.ts";
-import { STATUSES, PRIORITIES, TYPES } from "./TaskTable/constants.ts";
+import { STATUSES, PRIORITIES, EFFORTS, TYPES } from "./TaskTable/constants.ts";
 import { FilterBar } from "./TaskTable/FilterBar.tsx";
 import { createTaskColumns } from "./TaskTable/columns.tsx";
 import { toggleInSet } from "./TaskTable/utils.ts";
@@ -41,7 +41,7 @@ export function TaskTable({ tasks, initialTags, initialStatuses, initialPrioriti
     () => new Set(initialTags),
   );
   const [selectedEffort, setSelectedEffort] = useState<Set<string>>(
-    () => initialEffort && initialEffort.length > 0 ? new Set(initialEffort) : new Set(),
+    () => initialEffort && initialEffort.length > 0 ? new Set(initialEffort) : new Set(EFFORTS),
   );
 
   const filterState = { selectedStatuses, selectedPriorities, selectedTypes, selectedTags, selectedEffort, globalFilter };
@@ -70,7 +70,7 @@ export function TaskTable({ tasks, initialTags, initialStatuses, initialPrioriti
     setSelectedPriorities(new Set(PRIORITIES));
     setSelectedTypes(new Set(TYPES));
     setSelectedTags(new Set());
-    setSelectedEffort(new Set());
+    setSelectedEffort(new Set(EFFORTS));
     syncFiltersToUrl({ tag: new Set(), status: new Set(), priority: new Set(), effort: new Set() });
     setGlobalFilter("");
   }
@@ -125,6 +125,14 @@ export function TaskTable({ tasks, initialTags, initialStatuses, initialPrioriti
           setSelectedPriorities((prev) => {
             const next = toggleInSet(prev, p);
             syncFiltersToUrl({ priority: next.size === PRIORITIES.length ? new Set() : next });
+            return next;
+          })
+        }
+        selectedEffort={selectedEffort}
+        onToggleEffort={(e) =>
+          setSelectedEffort((prev) => {
+            const next = toggleInSet(prev, e);
+            syncFiltersToUrl({ effort: next.size === EFFORTS.length ? new Set() : next });
             return next;
           })
         }

@@ -1,7 +1,7 @@
 ---
 title: "Add effort filter to Tasks page FilterBar"
 id: "213"
-status: pending
+status: completed
 priority: low
 type: feature
 tags: ["ui"]
@@ -16,11 +16,11 @@ Add an "Effort" toggle group to the FilterBar on the Tasks page, matching the ex
 
 ## Tasks
 
-- [ ] Add `EFFORTS` constant to `TaskTable/constants.ts` (e.g. `["small", "medium", "large"]`)
-- [ ] Add effort toggle group to `FilterBar.tsx` matching the existing status/priority/type pattern
-- [ ] Wire `selectedEffort` and `onToggleEffort` props through from `TaskTable.tsx` to `FilterBar`
-- [ ] Sync effort filter toggles to URL params (using the existing `syncFiltersToUrl` from task 208)
-- [ ] Include effort in `hasActiveFilters` check and `clearFilters` reset (already partially done in task 208)
+- [x] Add `EFFORTS` constant to `TaskTable/constants.ts` (e.g. `["small", "medium", "large"]`)
+- [x] Add effort toggle group to `FilterBar.tsx` matching the existing status/priority/type pattern
+- [x] Wire `selectedEffort` and `onToggleEffort` props through from `TaskTable.tsx` to `FilterBar`
+- [x] Sync effort filter toggles to URL params (using the existing `syncFiltersToUrl` from task 208)
+- [x] Include effort in `hasActiveFilters` check and `clearFilters` reset (already partially done in task 208)
 
 ## Acceptance Criteria
 

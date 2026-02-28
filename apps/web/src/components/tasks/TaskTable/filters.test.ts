@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Task } from "../../../api/types.ts";
 import { applyFilters, hasActiveFilters, defaultFilterState } from "./filters.ts";
-import { STATUSES, PRIORITIES, TYPES } from "./constants.ts";
+import { STATUSES, PRIORITIES, EFFORTS, TYPES } from "./constants.ts";
 
 function makeTask(overrides: Partial<Task> = {}): Task {
   return {
@@ -186,7 +186,7 @@ describe("hasActiveFilters", () => {
       selectedPriorities: new Set(PRIORITIES),
       selectedTypes: new Set(TYPES),
       selectedTags: new Set<string>(),
-      selectedEffort: new Set<string>(),
+      selectedEffort: new Set(EFFORTS),
       globalFilter: "",
     };
     expect(hasActiveFilters(filters)).toBe(false);
@@ -210,8 +210,8 @@ describe("defaultFilterState", () => {
     expect(defaultFilterState().selectedTags.size).toBe(0);
   });
 
-  it("has no effort selected", () => {
-    expect(defaultFilterState().selectedEffort.size).toBe(0);
+  it("has all efforts selected", () => {
+    expect(defaultFilterState().selectedEffort).toEqual(new Set(EFFORTS));
   });
 
   it("has empty global filter", () => {

@@ -1,4 +1,4 @@
-import { STATUSES, PRIORITIES, TYPES, STATUS_COLORS, PRIORITY_COLORS, TYPE_COLORS } from "./constants.ts";
+import { STATUSES, PRIORITIES, EFFORTS, TYPES, STATUS_COLORS, PRIORITY_COLORS, EFFORT_COLORS, TYPE_COLORS } from "./constants.ts";
 
 export interface FilterBarProps {
   globalFilter: string;
@@ -7,6 +7,8 @@ export interface FilterBarProps {
   onToggleStatus: (status: string) => void;
   selectedPriorities: Set<string>;
   onTogglePriority: (priority: string) => void;
+  selectedEffort: Set<string>;
+  onToggleEffort: (effort: string) => void;
   selectedTypes: Set<string>;
   onToggleType: (type: string) => void;
   selectedTags: Set<string>;
@@ -22,6 +24,8 @@ export function FilterBar({
   onToggleStatus,
   selectedPriorities,
   onTogglePriority,
+  selectedEffort,
+  onToggleEffort,
   selectedTypes,
   onToggleType,
   selectedTags,
@@ -84,6 +88,26 @@ export function FilterBar({
               }`}
             >
               {p}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Effort:</span>
+        {EFFORTS.map((e) => {
+          const active = selectedEffort.has(e);
+          return (
+            <button
+              key={e}
+              onClick={() => onToggleEffort(e)}
+              className={`min-h-[44px] sm:min-h-0 inline-flex items-center px-2.5 py-1 text-xs rounded-full transition-colors duration-150 ${
+                active
+                  ? EFFORT_COLORS[e]
+                  : "bg-gray-50 border border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-400"
+              }`}
+            >
+              {e}
             </button>
           );
         })}
