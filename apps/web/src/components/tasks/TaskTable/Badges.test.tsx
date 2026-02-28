@@ -96,4 +96,24 @@ describe("BlockedStatusBadge", () => {
     const badge = container.querySelector("span")!;
     expect(badge.className).toContain("bg-amber-100");
   });
+
+  it("shows Ready when all dependencies are completed", () => {
+    const statusMap = new Map([["005", "completed"], ["010", "completed"]]);
+    render(<BlockedStatusBadge dependencies={["005", "010"]} taskStatusMap={statusMap} />);
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+  });
+
+  it("shows Blocked only for unmet dependencies", () => {
+    const statusMap = new Map([["005", "completed"], ["010", "pending"]]);
+    render(<BlockedStatusBadge dependencies={["005", "010"]} taskStatusMap={statusMap} />);
+    expect(screen.getByText("(1)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Blocked by: 010")).toBeInTheDocument();
+  });
+
+  it("treats missing tasks in statusMap as unmet", () => {
+    const statusMap = new Map([["005", "completed"]]);
+    render(<BlockedStatusBadge dependencies={["005", "999"]} taskStatusMap={statusMap} />);
+    expect(screen.getByText("(1)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Blocked by: 999")).toBeInTheDocument();
+  });
 });

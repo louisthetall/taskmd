@@ -6,6 +6,7 @@ import { StatusBadge, PriorityBadge, TypeBadge, BlockedStatusBadge } from "./Bad
 export function createTaskColumns(
   selectedTags: Set<string>,
   toggleTag: (tag: string) => void,
+  taskStatusMap?: Map<string, string>,
 ) {
   const columnHelper = createColumnHelper<Task>();
 
@@ -40,11 +41,11 @@ export function createTaskColumns(
       id: "blocked",
       header: "Blocked",
       meta: { className: "hidden md:table-cell" },
-      cell: (info) => <BlockedStatusBadge dependencies={info.getValue()} />,
+      cell: (info) => <BlockedStatusBadge dependencies={info.getValue()} taskStatusMap={taskStatusMap} />,
       sortingFn: (rowA, rowB) => {
-        const aCount = rowA.original.dependencies?.length ?? 0;
-        const bCount = rowB.original.dependencies?.length ?? 0;
-        return aCount - bCount;
+        const filterUnmet = (deps: string[] | null) =>
+          deps?.filter((id) => !taskStatusMap || taskStatusMap.get(id) !== "completed").length ?? 0;
+        return filterUnmet(rowA.original.dependencies) - filterUnmet(rowB.original.dependencies);
       },
     }),
     columnHelper.accessor("priority", {

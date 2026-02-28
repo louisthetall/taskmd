@@ -89,9 +89,14 @@ export function TaskTable({ tasks, initialTags, initialStatuses, initialPrioriti
     [tasks, selectedStatuses, selectedPriorities, selectedTypes, selectedTags, selectedEffort],
   );
 
+  const taskStatusMap = useMemo(
+    () => new Map(tasks.map((t) => [t.id, t.status])),
+    [tasks],
+  );
+
   const columns = useMemo(
-    () => createTaskColumns(selectedTags, toggleTag),
-    [selectedTags],
+    () => createTaskColumns(selectedTags, toggleTag, taskStatusMap),
+    [selectedTags, taskStatusMap],
   );
 
   const table = useReactTable({

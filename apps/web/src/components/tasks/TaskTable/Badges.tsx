@@ -32,10 +32,15 @@ export function TypeBadge({ type: taskType }: { type: string }) {
 
 export function BlockedStatusBadge({
   dependencies,
+  taskStatusMap,
 }: {
   dependencies: string[] | null;
+  taskStatusMap?: Map<string, string>;
 }) {
-  const blockedByCount = dependencies?.length ?? 0;
+  const unmetDeps = dependencies?.filter(
+    (id) => !taskStatusMap || taskStatusMap.get(id) !== "completed",
+  ) ?? [];
+  const blockedByCount = unmetDeps.length;
   const isBlocked = blockedByCount > 0;
 
   if (!isBlocked) {
@@ -50,7 +55,7 @@ export function BlockedStatusBadge({
     );
   }
 
-  const tooltipText = `Blocked by: ${dependencies?.join(", ")}`;
+  const tooltipText = `Blocked by: ${unmetDeps.join(", ")}`;
 
   return (
     <span

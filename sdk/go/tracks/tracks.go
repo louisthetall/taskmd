@@ -58,6 +58,9 @@ func Assign(tasks []*model.Task, opts Options) (*Result, error) {
 	warnings := validateScopes(items, opts.KnownScopes)
 	depComponents := buildDependencyComponents(tasks)
 	assignedTracks, flexible := assignTracks(items, depComponents)
+	if assignedTracks == nil {
+		assignedTracks = []Track{}
+	}
 
 	return &Result{
 		Tracks:   assignedTracks,
@@ -306,6 +309,7 @@ func minString(ss []string) string {
 func newTrack(id int) Track {
 	return Track{
 		ID:       id,
+		Scopes:   []string{},
 		scopeSet: make(map[string]bool),
 	}
 }
