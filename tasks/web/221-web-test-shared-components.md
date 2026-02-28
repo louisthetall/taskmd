@@ -1,7 +1,7 @@
 ---
 id: "221"
 title: "Test shared and presentational components"
-status: pending
+status: completed
 priority: low
 type: chore
 effort: small
@@ -18,11 +18,11 @@ Add tests for the remaining shared UI components and presentational pieces. Thes
 
 ## Tasks
 
-- [ ] Test `LoadingState.tsx` renders correct skeleton variant for each variant prop
-- [ ] Test `TaskEditForm.tsx` and `TaskEditFormFields.tsx` (field rendering, dirty state detection, form submission)
-- [ ] Test `StatsView.tsx` renders correct breakdown sections
-- [ ] Test `NavTabs.tsx` highlights the active route
-- [ ] Test badge components in `TaskTable/Badges.tsx` (StatusBadge, PriorityBadge, TypeBadge render correct styles)
+- [x] Test `LoadingState.tsx` renders correct skeleton variant for each variant prop
+- [x] Test `TaskEditForm.tsx` and `TaskEditFormFields.tsx` (field rendering, dirty state detection, form submission)
+- [x] Test `StatsView.tsx` renders correct breakdown sections
+- [x] Test `NavTabs.tsx` highlights the active route
+- [x] Test badge components in `TaskTable/Badges.tsx` (StatusBadge, PriorityBadge, TypeBadge render correct styles)
 
 ## Acceptance Criteria
 
