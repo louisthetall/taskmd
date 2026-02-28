@@ -2,7 +2,7 @@
 title: "Create TypeScript library for taskmd"
 id: "228"
 status: pending
-priority: medium
+priority: low
 effort: large
 type: feature
 tags: ["library", "typescript", "api"]

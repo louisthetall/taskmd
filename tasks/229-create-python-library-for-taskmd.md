@@ -2,7 +2,7 @@
 title: "Create Python library for taskmd"
 id: "229"
 status: pending
-priority: medium
+priority: low
 effort: large
 type: feature
 tags: ["library", "python", "api"]

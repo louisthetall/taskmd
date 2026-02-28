@@ -2,7 +2,7 @@
 id: "209"
 title: "Fix CI: re-enable Windows test runner"
 status: pending
-priority: medium
+priority: low
 effort: medium
 tags: [ci, windows]
 created: 2026-02-25
