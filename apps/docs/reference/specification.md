@@ -3,6 +3,8 @@
 **Version:** 1.2
 **Last Updated:** 2026-02-15
 
+> **See also:** [Operations Specification](./taskmd_operations.md) — defines behavioral contracts for scanning, filtering, validation, ranking, dependency resolution, graph construction, and search.
+
 ## Quick Reference
 
 Each task is a `.md` file with YAML frontmatter and a markdown body.

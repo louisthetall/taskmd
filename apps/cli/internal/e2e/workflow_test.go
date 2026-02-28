@@ -463,6 +463,15 @@ func TestWorkflow_FlagWiring(t *testing.T) {
 		}
 	})
 
+	t.Run("list_filter_no_matches_returns_empty_array", func(t *testing.T) {
+		result := mustRun(t, dir, "list", "--filter", "status=cancelled", "--format", "json")
+
+		stdout := strings.TrimSpace(result.Stdout)
+		if stdout != "[]" {
+			t.Errorf("expected empty JSON array '[]', got %q", stdout)
+		}
+	})
+
 	t.Run("list_sort_priority", func(t *testing.T) {
 		result := mustRun(t, dir, "list", "--sort", "priority", "--format", "json")
 

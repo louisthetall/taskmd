@@ -503,3 +503,27 @@ func TestListCommand_LimitJSONOutput(t *testing.T) {
 		t.Error("Task 003 should not appear in limited JSON output")
 	}
 }
+
+func TestOutputJSON_NilTasks_ReturnsEmptyArray(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := outputJSON(nil)
+	if err != nil {
+		w.Close()
+		os.Stdout = oldStdout
+		t.Fatalf("outputJSON failed: %v", err)
+	}
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := strings.TrimSpace(buf.String())
+
+	if output != "[]" {
+		t.Errorf("expected empty JSON array '[]', got %q", output)
+	}
+}

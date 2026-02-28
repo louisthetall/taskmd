@@ -161,6 +161,9 @@ func sortTasks(tasks []*model.Task, sortField string) error {
 
 // outputJSON outputs tasks as JSON
 func outputJSON(tasks []*model.Task) error {
+	if tasks == nil {
+		tasks = []*model.Task{}
+	}
 	return WriteJSON(os.Stdout, tasks)
 }
 
