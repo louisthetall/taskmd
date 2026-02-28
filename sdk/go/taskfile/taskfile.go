@@ -22,6 +22,8 @@ type UpdateRequest struct {
 	RemTags      []string  // remove from existing tags
 	AddPRs       []string  // add PR URLs
 	RemPRs       []string  // remove PR URLs
+	AddTouches   []string  // add scope identifiers to touches
+	RemTouches   []string  // remove scope identifiers from touches
 	Dependencies *[]string // replace dependencies entirely
 	Body         *string
 }
@@ -105,6 +107,13 @@ func UpdateTaskFile(filePath string, req UpdateRequest) error {
 		currentPRs := parseCurrentListField(lines, openIdx, closeIdx, "pr")
 		newPRs := ComputeNewTags(currentPRs, req.AddPRs, req.RemPRs)
 		lines, closeIdx = applyListFieldUpdates(lines, openIdx, closeIdx, "pr", newPRs)
+	}
+
+	// Apply touches updates.
+	if len(req.AddTouches) > 0 || len(req.RemTouches) > 0 {
+		currentTouches := parseCurrentListField(lines, openIdx, closeIdx, "touches")
+		newTouches := ComputeNewTags(currentTouches, req.AddTouches, req.RemTouches)
+		lines, closeIdx = applyListFieldUpdates(lines, openIdx, closeIdx, "touches", newTouches)
 	}
 
 	// Apply dependency updates.

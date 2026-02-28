@@ -17,21 +17,23 @@ import (
 )
 
 var (
-	setTaskID     string
-	setStatus     string
-	setPriority   string
-	setEffort     string
-	setType       string
-	setOwner      string
-	setParent     string
-	setDone       bool
-	setDryRun     bool
-	setVerify     bool
-	setAddTags    []string
-	setRemoveTags []string
-	setAddPRs     []string
-	setRemovePRs  []string
-	setDependsOn  string
+	setTaskID        string
+	setStatus        string
+	setPriority      string
+	setEffort        string
+	setType          string
+	setOwner         string
+	setParent        string
+	setDone          bool
+	setDryRun        bool
+	setVerify        bool
+	setAddTags       []string
+	setRemoveTags    []string
+	setAddPRs        []string
+	setRemovePRs     []string
+	setAddTouches    []string
+	setRemoveTouches []string
+	setDependsOn     string
 )
 
 var setCmd = &cobra.Command{
@@ -48,6 +50,8 @@ Examples:
   taskmd set cli-049 --done
   taskmd set cli-049 --add-tag backend --add-tag api
   taskmd set cli-049 --remove-tag deprecated
+  taskmd set cli-049 --add-touches cli/graph --add-touches cli/output
+  taskmd set cli-049 --remove-touches cli/graph
   taskmd set --task-id cli-049 --status completed   # --task-id also works`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runSet,
@@ -82,6 +86,8 @@ func init() {
 		cmd.Flags().StringArrayVar(&setRemoveTags, "remove-tag", nil, "remove a tag (repeatable)")
 		cmd.Flags().StringArrayVar(&setAddPRs, "add-pr", nil, "add a PR URL (repeatable)")
 		cmd.Flags().StringArrayVar(&setRemovePRs, "remove-pr", nil, "remove a PR URL (repeatable)")
+		cmd.Flags().StringArrayVar(&setAddTouches, "add-touches", nil, "add a scope identifier to touches (repeatable)")
+		cmd.Flags().StringArrayVar(&setRemoveTouches, "remove-touches", nil, "remove a scope identifier from touches (repeatable)")
 		cmd.Flags().StringVar(&setDependsOn, "depends-on", "", "set dependencies (comma-separated IDs, e.g. 010,015)")
 	}
 }
@@ -206,6 +212,12 @@ func buildSetRequest(cmd *cobra.Command) (taskfile.UpdateRequest, error) {
 	if len(setRemovePRs) > 0 {
 		req.RemPRs = setRemovePRs
 	}
+	if len(setAddTouches) > 0 {
+		req.AddTouches = setAddTouches
+	}
+	if len(setRemoveTouches) > 0 {
+		req.RemTouches = setRemoveTouches
+	}
 
 	if cmd.Flags().Changed("depends-on") {
 		deps := parseCommaSeparatedIDs(setDependsOn)
@@ -217,7 +229,7 @@ func buildSetRequest(cmd *cobra.Command) (taskfile.UpdateRequest, error) {
 	}
 
 	if !hasUpdates(req) {
-		return taskfile.UpdateRequest{}, fmt.Errorf("nothing to update: provide --status, --priority, --effort, --type, --owner, --parent, --done, --add-tag, --remove-tag, --add-pr, --remove-pr, or --depends-on")
+		return taskfile.UpdateRequest{}, fmt.Errorf("nothing to update: provide --status, --priority, --effort, --type, --owner, --parent, --done, --add-tag, --remove-tag, --add-pr, --remove-pr, --add-touches, --remove-touches, or --depends-on")
 	}
 
 	return req, nil
@@ -228,14 +240,27 @@ func hasUpdates(req taskfile.UpdateRequest) bool {
 		req.Type != nil || req.Owner != nil || req.Parent != nil
 	hasTags := len(req.AddTags) > 0 || len(req.RemTags) > 0
 	hasPRs := len(req.AddPRs) > 0 || len(req.RemPRs) > 0
+	hasTouches := len(req.AddTouches) > 0 || len(req.RemTouches) > 0
 	hasDeps := req.Dependencies != nil
-	return hasScalar || hasTags || hasPRs || hasDeps
+	return hasScalar || hasTags || hasPRs || hasTouches || hasDeps
 }
 
 type changeEntry struct {
 	field    string
 	oldValue string
 	newValue string
+}
+
+func listChangeEntry(field string, current, add, remove []string) *changeEntry {
+	if len(add) == 0 && len(remove) == 0 {
+		return nil
+	}
+	newValues := taskfile.ComputeNewTags(current, add, remove)
+	return &changeEntry{
+		field:    field,
+		oldValue: "[" + strings.Join(current, ", ") + "]",
+		newValue: "[" + strings.Join(newValues, ", ") + "]",
+	}
 }
 
 func buildChangeLog(task *model.Task, req taskfile.UpdateRequest) []changeEntry {
@@ -269,22 +294,19 @@ func buildChangeLog(task *model.Task, req taskfile.UpdateRequest) []changeEntry 
 		changes = append(changes, changeEntry{field: "parent", oldValue: oldValues["parent"], newValue: *req.Parent})
 	}
 
-	if len(req.AddTags) > 0 || len(req.RemTags) > 0 {
-		newTags := taskfile.ComputeNewTags(task.Tags, req.AddTags, req.RemTags)
-		changes = append(changes, changeEntry{
-			field:    "tags",
-			oldValue: "[" + strings.Join(task.Tags, ", ") + "]",
-			newValue: "[" + strings.Join(newTags, ", ") + "]",
-		})
-	}
-
-	if len(req.AddPRs) > 0 || len(req.RemPRs) > 0 {
-		newPRs := taskfile.ComputeNewTags(task.PRs, req.AddPRs, req.RemPRs)
-		changes = append(changes, changeEntry{
-			field:    "pr",
-			oldValue: "[" + strings.Join(task.PRs, ", ") + "]",
-			newValue: "[" + strings.Join(newPRs, ", ") + "]",
-		})
+	for _, entry := range []struct {
+		field   string
+		current []string
+		add     []string
+		remove  []string
+	}{
+		{"tags", task.Tags, req.AddTags, req.RemTags},
+		{"pr", task.PRs, req.AddPRs, req.RemPRs},
+		{"touches", task.Touches, req.AddTouches, req.RemTouches},
+	} {
+		if ce := listChangeEntry(entry.field, entry.current, entry.add, entry.remove); ce != nil {
+			changes = append(changes, *ce)
+		}
 	}
 
 	if req.Dependencies != nil {

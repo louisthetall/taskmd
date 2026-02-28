@@ -122,6 +122,8 @@ func resetSetFlags() {
 	setRemoveTags = nil
 	setAddPRs = nil
 	setRemovePRs = nil
+	setAddTouches = nil
+	setRemoveTouches = nil
 	taskDir = "."
 
 	// Reset cobra flag Changed state to avoid test interference
@@ -1577,5 +1579,251 @@ func TestComputeNewTags(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestSet_AddTouches(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "001"
+	setAddTouches = []string{"cli/graph", "cli/output"}
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "touches:") {
+		t.Errorf("Expected touches change in output, got: %s", output)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "001-setup.md"))
+	fileStr := string(content)
+	if !strings.Contains(fileStr, "cli/graph") {
+		t.Errorf("Expected file to contain cli/graph, got:\n%s", fileStr)
+	}
+	if !strings.Contains(fileStr, "cli/output") {
+		t.Errorf("Expected file to contain cli/output, got:\n%s", fileStr)
+	}
+}
+
+func TestSet_RemoveTouches(t *testing.T) {
+	tmpDir := t.TempDir()
+	content := `---
+id: "050"
+title: "Task with touches"
+status: pending
+touches: ["cli/graph", "cli/output", "web/board"]
+created: 2026-02-08
+---
+
+# Task with touches
+`
+	path := filepath.Join(tmpDir, "050-touches.md")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "050"
+	setRemoveTouches = []string{"cli/graph"}
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "touches:") {
+		t.Errorf("Expected touches change in output, got: %s", output)
+	}
+
+	updated, _ := os.ReadFile(path)
+	fileStr := string(updated)
+	if strings.Contains(fileStr, "cli/graph") {
+		t.Error("Expected cli/graph to be removed")
+	}
+	if !strings.Contains(fileStr, "cli/output") {
+		t.Error("Expected cli/output to be preserved")
+	}
+	if !strings.Contains(fileStr, "web/board") {
+		t.Error("Expected web/board to be preserved")
+	}
+}
+
+func TestSet_AddTouches_Deduplication(t *testing.T) {
+	tmpDir := t.TempDir()
+	content := `---
+id: "051"
+title: "Task with existing touches"
+status: pending
+touches: ["cli/graph"]
+created: 2026-02-08
+---
+
+# Task with existing touches
+`
+	path := filepath.Join(tmpDir, "051-touches-dedup.md")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "051"
+	setAddTouches = []string{"cli/graph", "cli/output"}
+
+	_, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	updated, _ := os.ReadFile(path)
+	fileStr := string(updated)
+	// cli/graph should appear exactly once (not duplicated)
+	count := strings.Count(fileStr, "cli/graph")
+	if count != 1 {
+		t.Errorf("Expected cli/graph to appear once, appeared %d times in:\n%s", count, fileStr)
+	}
+	if !strings.Contains(fileStr, "cli/output") {
+		t.Error("Expected cli/output to be added")
+	}
+}
+
+func TestSet_RemoveTouches_NonExistent(t *testing.T) {
+	tmpDir := t.TempDir()
+	content := `---
+id: "052"
+title: "Task with touches"
+status: pending
+touches: ["cli/graph"]
+created: 2026-02-08
+---
+
+# Task with touches
+`
+	path := filepath.Join(tmpDir, "052-touches.md")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "052"
+	setRemoveTouches = []string{"nonexistent/scope"}
+
+	_, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error removing non-existent touches value: %v", err)
+	}
+
+	updated, _ := os.ReadFile(path)
+	fileStr := string(updated)
+	if !strings.Contains(fileStr, "cli/graph") {
+		t.Error("Expected cli/graph to be preserved")
+	}
+}
+
+func TestSet_Touches_DryRun(t *testing.T) {
+	tmpDir := t.TempDir()
+	content := `---
+id: "053"
+title: "Task for dry run"
+status: pending
+touches: ["cli/graph"]
+created: 2026-02-08
+---
+
+# Task for dry run
+`
+	path := filepath.Join(tmpDir, "053-touches-dry.md")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "053"
+	setAddTouches = []string{"cli/output"}
+	setDryRun = true
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "Dry run") {
+		t.Errorf("Expected dry run message, got: %s", output)
+	}
+
+	// File should be unchanged
+	updated, _ := os.ReadFile(path)
+	fileStr := string(updated)
+	if strings.Contains(fileStr, "cli/output") {
+		t.Error("Expected file to be unchanged in dry run mode")
+	}
+}
+
+func TestSet_AddAndRemoveTouches(t *testing.T) {
+	tmpDir := t.TempDir()
+	content := `---
+id: "054"
+title: "Task with touches"
+status: pending
+touches: ["cli/graph", "cli/set"]
+created: 2026-02-08
+---
+
+# Task with touches
+`
+	path := filepath.Join(tmpDir, "054-touches.md")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "054"
+	setAddTouches = []string{"cli/output"}
+	setRemoveTouches = []string{"cli/graph"}
+
+	_, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	updated, _ := os.ReadFile(path)
+	fileStr := string(updated)
+	if strings.Contains(fileStr, "cli/graph") {
+		t.Error("Expected cli/graph to be removed")
+	}
+	if !strings.Contains(fileStr, "cli/set") {
+		t.Error("Expected cli/set to be preserved")
+	}
+	if !strings.Contains(fileStr, "cli/output") {
+		t.Error("Expected cli/output to be added")
+	}
+}
+
+func TestSet_AddTouches_EmptyArray(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "001"
+	setAddTouches = []string{"cli/graph"}
+
+	_, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "001-setup.md"))
+	fileStr := string(content)
+	if !strings.Contains(fileStr, "touches:") {
+		t.Error("Expected touches field to be added")
+	}
+	if !strings.Contains(fileStr, "cli/graph") {
+		t.Error("Expected cli/graph to be added")
 	}
 }

@@ -1,7 +1,7 @@
 ---
 title: "Add --touches flag to the set command"
 id: "231"
-status: pending
+status: completed
 priority: medium
 effort: small
 type: feature
@@ -17,12 +17,12 @@ Allow users to set or modify the `touches` frontmatter field via `taskmd set`, f
 
 ## Tasks
 
-- [ ] Add `--add-touches` repeatable string flag to the set command (appends scope identifiers)
-- [ ] Add `--remove-touches` repeatable string flag to the set command (removes scope identifiers)
-- [ ] Implement the frontmatter update logic for the `touches` array (deduplicate, preserve order)
-- [ ] Support `--dry-run` for touches changes
-- [ ] Add tests covering add, remove, deduplication, and edge cases (empty array, removing non-existent value)
-- [ ] Update set command help text with `--add-touches`/`--remove-touches` examples
+- [x] Add `--add-touches` repeatable string flag to the set command (appends scope identifiers)
+- [x] Add `--remove-touches` repeatable string flag to the set command (removes scope identifiers)
+- [x] Implement the frontmatter update logic for the `touches` array (deduplicate, preserve order)
+- [x] Support `--dry-run` for touches changes
+- [x] Add tests covering add, remove, deduplication, and edge cases (empty array, removing non-existent value)
+- [x] Update set command help text with `--add-touches`/`--remove-touches` examples
 
 ## Acceptance Criteria
 
