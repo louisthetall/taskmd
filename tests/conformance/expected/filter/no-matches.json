@@ -1,0 +1,6 @@
+{
+  "description": "Filter: status=nonexistent (no matching tasks returns empty array, not null)",
+  "filter": "status=nonexistent",
+  "expected_ids": [],
+  "expected_count": 0
+}

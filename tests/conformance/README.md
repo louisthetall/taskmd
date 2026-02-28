@@ -29,6 +29,7 @@ tests/conformance/
     filter/             Expected filter results
       status-pending.json
       tag-api.json
+      no-matches.json
     validate/           Expected validation results
       valid.json
     next/               Expected next-task ranking results
@@ -65,6 +66,7 @@ taskmd list --dir tasks --format json
 # Filter
 taskmd list --dir tasks --format json --filter "status=pending"
 taskmd list --dir tasks --format json --filter "tag=api"
+taskmd list --dir tasks --format json --filter "status=nonexistent"
 
 # Validate
 taskmd validate --dir tasks --format json
