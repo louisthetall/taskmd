@@ -1,7 +1,7 @@
 ---
 title: "Implement minimal feed command"
 id: "01kjmg6sc"
-status: pending
+status: in-progress
 priority: medium
 type: feature
 tags: ["cli", "git"]
