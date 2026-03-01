@@ -10,8 +10,8 @@ taskmd provides:
 1. **[A standardized format for task files](https://driangle.github.io/taskmd/reference/specification)** — Tasks stored as readable `.md` files with YAML frontmatter, version-controlled alongside your code
 2. **[A CLI for managing them](https://driangle.github.io/taskmd/guide/cli)** — Create, update, filter, validate, and visualize tasks from the terminal
 3. **[A web dashboard for visualization](https://driangle.github.io/taskmd/guide/web)** — Kanban board, dependency graphs, and project metrics in your browser
-4. **[A set of AI skills](https://driangle.github.io/taskmd/guide/claude-code-plugin)** — Slash commands for Claude Code that let AI assistants create, update, and work through tasks
-5. **[An MCP server exposing task management tools](https://driangle.github.io/taskmd/guide/claude-code-plugin)** — Direct tool access for AI agents via the Model Context Protocol
+4. **[A set of AI skills](https://driangle.github.io/taskmd/guide/claude-code-plugin)** — Slash commands for AI assistants to create, update, and work through tasks
+5. **[An MCP server exposing task management tools](https://driangle.github.io/taskmd/guide/claude-code-plugin)** — Direct tool access for AI assistants via the Model Context Protocol
 
 Everything runs locally. Task data stays in your repo and is never shared externally.
 
