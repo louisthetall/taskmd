@@ -170,6 +170,8 @@ func resetNextFlags() {
 	nextFilters = []string{}
 	nextQuickWins = false
 	nextCritical = false
+	nextScope = ""
+	nextExact = false
 }
 
 func TestNext_BasicRanking(t *testing.T) {
@@ -1576,5 +1578,330 @@ created: 2026-01-01
 	}
 	if recs[0].ID != "002" {
 		t.Errorf("Expected task 002, got %s", recs[0].ID)
+	}
+}
+
+// createScopeTestTaskFiles creates task files with touches fields for scope tests.
+func createScopeTestTaskFiles(t *testing.T) string {
+	t.Helper()
+	tmpDir := t.TempDir()
+
+	tasks := map[string]string{
+		"001.md": `---
+id: "001"
+title: "Web dashboard"
+status: pending
+priority: high
+effort: small
+touches: ["web", "api"]
+created: 2026-02-01
+---`,
+		"002.md": `---
+id: "002"
+title: "CLI refactor"
+status: pending
+priority: medium
+effort: small
+touches: ["cli"]
+created: 2026-02-02
+---`,
+		"003.md": `---
+id: "003"
+title: "Web styling"
+status: pending
+priority: low
+effort: large
+touches: ["web"]
+created: 2026-02-03
+---`,
+		"004.md": `---
+id: "004"
+title: "No scope task"
+status: pending
+priority: high
+effort: small
+created: 2026-02-04
+---`,
+	}
+
+	for filename, content := range tasks {
+		if err := os.WriteFile(filepath.Join(tmpDir, filename), []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to create test file %s: %v", filename, err)
+		}
+	}
+	return tmpDir
+}
+
+func TestNext_Scope_FiltersCorrectly(t *testing.T) {
+	tmpDir := createScopeTestTaskFiles(t)
+
+	resetNextFlags()
+	nextFormat = "json"
+	nextLimit = 10
+	nextScope = "web"
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	var recs []Recommendation
+	if err := json.Unmarshal([]byte(output), &recs); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	// Only tasks 001 and 003 have touches containing "web"
+	if len(recs) != 2 {
+		t.Errorf("Expected 2 tasks with scope 'web', got %d", len(recs))
+		for _, r := range recs {
+			t.Logf("  %s: %s", r.ID, r.Title)
+		}
+	}
+
+	ids := map[string]bool{}
+	for _, rec := range recs {
+		ids[rec.ID] = true
+	}
+	if !ids["001"] || !ids["003"] {
+		t.Errorf("Expected tasks 001 and 003 for scope 'web', got %v", ids)
+	}
+}
+
+func TestNext_Scope_NoMatches(t *testing.T) {
+	tmpDir := createScopeTestTaskFiles(t)
+
+	resetNextFlags()
+	nextFormat = "table"
+	nextScope = "nonexistent"
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	if !strings.Contains(output, `No actionable tasks found for scope "nonexistent"`) {
+		t.Errorf("Expected scope-specific no-results message, got: %s", output)
+	}
+}
+
+func TestNext_Scope_CombinedWithFilter(t *testing.T) {
+	tmpDir := createScopeTestTaskFiles(t)
+
+	resetNextFlags()
+	nextFormat = "json"
+	nextLimit = 10
+	nextScope = "web"
+	nextFilters = []string{"priority=high"}
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	var recs []Recommendation
+	if err := json.Unmarshal([]byte(output), &recs); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	// Only task 001 matches: scope=web AND priority=high
+	if len(recs) != 1 {
+		t.Fatalf("Expected 1 task with scope=web + priority=high, got %d", len(recs))
+	}
+	if recs[0].ID != "001" {
+		t.Errorf("Expected task 001, got %s", recs[0].ID)
+	}
+}
+
+func TestNext_Scope_CombinedWithQuickWins(t *testing.T) {
+	tmpDir := createScopeTestTaskFiles(t)
+
+	resetNextFlags()
+	nextFormat = "json"
+	nextLimit = 10
+	nextScope = "web"
+	nextQuickWins = true
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	var recs []Recommendation
+	if err := json.Unmarshal([]byte(output), &recs); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	// Only task 001 matches: scope=web AND effort=small
+	// Task 003 has scope=web but effort=large
+	if len(recs) != 1 {
+		t.Fatalf("Expected 1 task with scope=web + quick-wins, got %d", len(recs))
+	}
+	if recs[0].ID != "001" {
+		t.Errorf("Expected task 001, got %s", recs[0].ID)
+	}
+}
+
+func TestNext_Scope_TableFormat(t *testing.T) {
+	tmpDir := createScopeTestTaskFiles(t)
+
+	resetNextFlags()
+	nextFormat = "table"
+	nextScope = "web"
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	if !strings.Contains(output, "Recommended tasks (scope: web):") {
+		t.Errorf("Expected scope label in table output, got: %s", output)
+	}
+}
+
+func TestNext_Scope_WithoutScopeUnchanged(t *testing.T) {
+	tmpDir := createScopeTestTaskFiles(t)
+
+	resetNextFlags()
+	nextFormat = "json"
+	nextLimit = 10
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	var recs []Recommendation
+	if err := json.Unmarshal([]byte(output), &recs); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	// Without --scope, all 4 tasks should be actionable
+	if len(recs) != 4 {
+		t.Errorf("Without scope, expected all 4 actionable tasks, got %d", len(recs))
+	}
+}
+
+// createScopeDepTestTaskFiles creates tasks where a scoped task depends on an unscoped task.
+func createScopeDepTestTaskFiles(t *testing.T) string {
+	t.Helper()
+	tmpDir := t.TempDir()
+
+	tasks := map[string]string{
+		"001.md": `---
+id: "001"
+title: "Setup database"
+status: pending
+priority: high
+effort: small
+created: 2026-02-01
+---`,
+		"002.md": `---
+id: "002"
+title: "Web dashboard"
+status: pending
+priority: medium
+effort: small
+touches: ["web"]
+dependencies: ["001"]
+created: 2026-02-02
+---`,
+		"003.md": `---
+id: "003"
+title: "Unrelated CLI task"
+status: pending
+priority: low
+effort: small
+touches: ["cli"]
+created: 2026-02-03
+---`,
+		"004.md": `---
+id: "004"
+title: "Web styling"
+status: pending
+priority: low
+effort: small
+touches: ["web"]
+created: 2026-02-04
+---`,
+	}
+
+	for filename, content := range tasks {
+		if err := os.WriteFile(filepath.Join(tmpDir, filename), []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to create test file %s: %v", filename, err)
+		}
+	}
+	return tmpDir
+}
+
+func TestNext_Scope_ExpandsDependencies(t *testing.T) {
+	tmpDir := createScopeDepTestTaskFiles(t)
+
+	resetNextFlags()
+	nextFormat = "json"
+	nextLimit = 10
+	nextScope = "web"
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	var recs []Recommendation
+	if err := json.Unmarshal([]byte(output), &recs); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	ids := map[string]bool{}
+	for _, rec := range recs {
+		ids[rec.ID] = true
+	}
+
+	// Task 001 (no touches) should be included because it blocks task 002 (touches web).
+	// Task 004 directly touches web and is actionable.
+	// Task 003 (touches cli) is unrelated and should be excluded.
+	if !ids["001"] {
+		t.Errorf("Expected task 001 (dependency of web task) to be included, got %v", ids)
+	}
+	if !ids["004"] {
+		t.Errorf("Expected task 004 (directly touches web) to be included, got %v", ids)
+	}
+	if ids["003"] {
+		t.Errorf("Task 003 (cli scope) should not appear in web scope results")
+	}
+}
+
+func TestNext_Scope_ExactSkipsExpansion(t *testing.T) {
+	tmpDir := createScopeDepTestTaskFiles(t)
+
+	resetNextFlags()
+	nextFormat = "json"
+	nextLimit = 10
+	nextScope = "web"
+	nextExact = true
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	var recs []Recommendation
+	if err := json.Unmarshal([]byte(output), &recs); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	ids := map[string]bool{}
+	for _, rec := range recs {
+		ids[rec.ID] = true
+	}
+
+	// With --scope-exact, only tasks that directly touch "web" should appear.
+	// Task 001 doesn't touch web — excluded even though it blocks a web task.
+	// Task 002 touches web but is blocked (dep 001 pending) — excluded.
+	// Task 004 touches web and is actionable — included.
+	if ids["001"] {
+		t.Errorf("With --scope-exact, task 001 (no touches) should not appear")
+	}
+	if len(recs) != 1 || recs[0].ID != "004" {
+		t.Errorf("Expected only task 004, got %v", ids)
 	}
 }

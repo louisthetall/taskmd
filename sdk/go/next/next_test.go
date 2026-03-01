@@ -16,6 +16,17 @@ func makeTask(id string, status model.Status, priority model.Priority, deps []st
 	}
 }
 
+func makeTaskWithTouches(id string, status model.Status, priority model.Priority, deps []string, touches []string) *model.Task {
+	return &model.Task{
+		ID:           id,
+		Title:        "Task " + id,
+		Status:       status,
+		Priority:     priority,
+		Dependencies: deps,
+		Touches:      touches,
+	}
+}
+
 func makeTaskWithParent(id string, status model.Status, priority model.Priority, parent string) *model.Task {
 	return &model.Task{
 		ID:       id,
@@ -470,5 +481,146 @@ func TestRecommend_ParentIncludedWhenAllChildrenResolved(t *testing.T) {
 
 	if !found {
 		t.Error("Parent P1 should be recommended when all children are resolved")
+	}
+}
+
+func TestRecommend_ScopeFiltering(t *testing.T) {
+	tasks := []*model.Task{
+		makeTaskWithTouches("001", model.StatusPending, model.PriorityHigh, nil, []string{"web", "api"}),
+		makeTaskWithTouches("002", model.StatusPending, model.PriorityMedium, nil, []string{"cli"}),
+		makeTaskWithTouches("003", model.StatusPending, model.PriorityLow, nil, []string{"web"}),
+		makeTask("004", model.StatusPending, model.PriorityHigh, nil), // no touches
+	}
+
+	recs, err := Recommend(tasks, Options{Limit: 10, Scope: "web"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(recs) != 2 {
+		t.Fatalf("Expected 2 recommendations for scope 'web', got %d", len(recs))
+	}
+
+	ids := map[string]bool{}
+	for _, rec := range recs {
+		ids[rec.ID] = true
+	}
+	if !ids["001"] || !ids["003"] {
+		t.Errorf("Expected tasks 001 and 003, got %v", recs)
+	}
+}
+
+func TestRecommend_ScopeNoMatches(t *testing.T) {
+	tasks := []*model.Task{
+		makeTaskWithTouches("001", model.StatusPending, model.PriorityHigh, nil, []string{"web"}),
+		makeTask("002", model.StatusPending, model.PriorityMedium, nil),
+	}
+
+	recs, err := Recommend(tasks, Options{Limit: 10, Scope: "nonexistent"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(recs) != 0 {
+		t.Errorf("Expected 0 recommendations for non-matching scope, got %d", len(recs))
+	}
+}
+
+func TestRecommend_ScopeWithoutScopeUnchanged(t *testing.T) {
+	tasks := []*model.Task{
+		makeTaskWithTouches("001", model.StatusPending, model.PriorityHigh, nil, []string{"web"}),
+		makeTask("002", model.StatusPending, model.PriorityMedium, nil),
+	}
+
+	recs, err := Recommend(tasks, Options{Limit: 10})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(recs) != 2 {
+		t.Errorf("Without scope, expected all 2 actionable tasks, got %d", len(recs))
+	}
+}
+
+func TestRecommend_ScopeCombinedWithQuickWins(t *testing.T) {
+	tasks := []*model.Task{
+		makeTaskWithTouches("001", model.StatusPending, model.PriorityHigh, nil, []string{"web"}),
+		makeTaskWithTouches("002", model.StatusPending, model.PriorityMedium, nil, []string{"web"}),
+		makeTaskWithTouches("003", model.StatusPending, model.PriorityLow, nil, []string{"cli"}),
+	}
+	tasks[0].Effort = model.EffortLarge
+	tasks[1].Effort = model.EffortSmall
+	tasks[2].Effort = model.EffortSmall
+
+	recs, err := Recommend(tasks, Options{Limit: 10, Scope: "web", QuickWins: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Only task 002 matches: scope=web AND effort=small
+	if len(recs) != 1 {
+		t.Fatalf("Expected 1 recommendation, got %d", len(recs))
+	}
+	if recs[0].ID != "002" {
+		t.Errorf("Expected task 002, got %s", recs[0].ID)
+	}
+}
+
+func TestRecommend_ScopeExpandsDependencies(t *testing.T) {
+	// Task 002 (touches: ["web"]) depends on task 001 (no touches).
+	// With --scope web, task 001 should also appear because it blocks a web task.
+	tasks := []*model.Task{
+		makeTask("001", model.StatusPending, model.PriorityHigh, nil),                                           // no touches, but blocks 002
+		makeTaskWithTouches("002", model.StatusPending, model.PriorityMedium, []string{"001"}, []string{"web"}), // touches web, depends on 001
+		makeTask("003", model.StatusPending, model.PriorityLow, nil),                                            // unrelated, no touches
+	}
+
+	recs, err := Recommend(tasks, Options{Limit: 10, Scope: "web"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Task 001 should be included (blocks a web task via dependency component).
+	// Task 002 is blocked (dep 001 pending), so only 001 is actionable.
+	// Task 003 is unrelated and should be excluded.
+	ids := map[string]bool{}
+	for _, rec := range recs {
+		ids[rec.ID] = true
+	}
+
+	if !ids["001"] {
+		t.Errorf("Expected task 001 (blocking dependency of web task) to be included, got %v", ids)
+	}
+	if ids["003"] {
+		t.Errorf("Task 003 (unrelated) should not appear in scope=web results")
+	}
+}
+
+func TestRecommend_ScopeExactSkipsExpansion(t *testing.T) {
+	// With ScopeExact=true, only tasks that directly touch the scope should appear.
+	// Task 001 blocks a web task but doesn't touch "web" itself.
+	tasks := []*model.Task{
+		makeTask("001", model.StatusPending, model.PriorityHigh, nil),
+		makeTaskWithTouches("002", model.StatusPending, model.PriorityMedium, []string{"001"}, []string{"web"}),
+		makeTaskWithTouches("003", model.StatusPending, model.PriorityLow, nil, []string{"web"}),
+	}
+
+	recs, err := Recommend(tasks, Options{Limit: 10, Scope: "web", ScopeExact: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Only task 003 is actionable AND directly touches web.
+	// Task 002 touches web but is blocked. Task 001 doesn't touch web.
+	ids := map[string]bool{}
+	for _, rec := range recs {
+		ids[rec.ID] = true
+	}
+
+	if ids["001"] {
+		t.Errorf("With ScopeExact, task 001 (no touches) should not appear")
+	}
+	if len(recs) != 1 || recs[0].ID != "003" {
+		t.Errorf("Expected only task 003, got %v", ids)
 	}
 }

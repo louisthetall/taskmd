@@ -20,6 +20,8 @@ var (
 	nextFilters   []string
 	nextQuickWins bool
 	nextCritical  bool
+	nextScope     string
+	nextExact     bool
 )
 
 var nextCmd = &cobra.Command{
@@ -41,7 +43,9 @@ Examples:
   taskmd next --filter tag=cli
   taskmd next --filter priority=high --format json
   taskmd next --quick-wins
-  taskmd next --critical --limit 1`,
+  taskmd next --critical --limit 1
+  taskmd next --scope web/graph
+  taskmd next --scope web/graph --exact`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runNext,
 }
@@ -54,6 +58,8 @@ func init() {
 	nextCmd.Flags().StringArrayVar(&nextFilters, "filter", []string{}, "filter tasks (e.g., --filter tag=cli)")
 	nextCmd.Flags().BoolVar(&nextQuickWins, "quick-wins", false, "show only quick wins (effort: small)")
 	nextCmd.Flags().BoolVar(&nextCritical, "critical", false, "show only critical path tasks")
+	nextCmd.Flags().StringVar(&nextScope, "scope", "", "filter by scope (includes dependency-connected tasks)")
+	nextCmd.Flags().BoolVar(&nextExact, "exact", false, "disable dependency expansion for --scope (only direct matches)")
 }
 
 func runNext(cmd *cobra.Command, args []string) error {
@@ -81,6 +87,8 @@ func runNext(cmd *cobra.Command, args []string) error {
 		Filters:       nextFilters,
 		QuickWins:     nextQuickWins,
 		Critical:      nextCritical,
+		Scope:         nextScope,
+		ScopeExact:    nextExact,
 		ArchivedTasks: archivedTasks,
 	})
 	if err != nil {
@@ -111,7 +119,9 @@ func outputNextTable(recs []Recommendation) error {
 	r := getRenderer()
 
 	if len(recs) == 0 {
-		if nextQuickWins {
+		if nextScope != "" {
+			fmt.Printf("No actionable tasks found for scope %q.\n", nextScope)
+		} else if nextQuickWins {
 			fmt.Println("No quick wins available.")
 		} else if nextCritical {
 			fmt.Println("No critical path tasks available.")
@@ -121,13 +131,17 @@ func outputNextTable(recs []Recommendation) error {
 		return nil
 	}
 
-	if nextQuickWins {
-		fmt.Println(formatLabel("Recommended quick wins:", r))
-	} else if nextCritical {
-		fmt.Println(formatLabel("Recommended critical path tasks:", r))
-	} else {
-		fmt.Println(formatLabel("Recommended tasks:", r))
+	label := "Recommended tasks:"
+	if nextScope != "" {
+		label = fmt.Sprintf("Recommended tasks (scope: %s):", nextScope)
 	}
+	if nextQuickWins {
+		label = "Recommended quick wins:"
+	}
+	if nextCritical {
+		label = "Recommended critical path tasks:"
+	}
+	fmt.Println(formatLabel(label, r))
 	fmt.Println()
 
 	tw := NewTableWriter()

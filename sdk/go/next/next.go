@@ -43,6 +43,8 @@ type Options struct {
 	Filters       []string
 	QuickWins     bool
 	Critical      bool
+	Scope         string
+	ScopeExact    bool
 	ArchivedTasks []*model.Task
 }
 
@@ -160,6 +162,14 @@ func filterActionable(
 	for _, task := range candidates {
 		if IsActionable(task, taskMap, childrenMap) {
 			actionable = append(actionable, task)
+		}
+	}
+
+	if opts.Scope != "" {
+		if opts.ScopeExact {
+			actionable = filterByScope(actionable, opts.Scope)
+		} else {
+			actionable = filterByScopeExpanded(actionable, tasks, opts.Scope)
 		}
 	}
 
@@ -404,6 +414,120 @@ func markCriticalPathDependencies(
 			markCriticalPathDependencies(depID, taskMap, depthMap, targetDepth-1, criticalPath)
 		}
 	}
+}
+
+// filterByScope returns only tasks whose Touches field contains the given scope.
+func filterByScope(tasks []*model.Task, scope string) []*model.Task {
+	var filtered []*model.Task
+	for _, task := range tasks {
+		for _, t := range task.Touches {
+			if t == scope {
+				filtered = append(filtered, task)
+				break
+			}
+		}
+	}
+	return filtered
+}
+
+// filterByScopeExpanded returns tasks related to a scope by expanding via
+// dependency components. It finds seed tasks that touch the scope, identifies
+// their dependency components, then includes any actionable task sharing a
+// component with a seed.
+func filterByScopeExpanded(actionable []*model.Task, allTasks []*model.Task, scope string) []*model.Task {
+	depComponents := buildDepComponents(allTasks)
+
+	// Find seed components from all tasks (not just actionable) that touch the scope.
+	seedComponents := make(map[string]bool)
+	for _, task := range allTasks {
+		for _, s := range task.Touches {
+			if s == scope {
+				if comp, ok := depComponents[task.ID]; ok {
+					seedComponents[comp] = true
+				}
+				break
+			}
+		}
+	}
+
+	// Include actionable tasks that either touch the scope directly or share
+	// a dependency component with a seed.
+	actionableSet := make(map[string]bool, len(actionable))
+	for _, t := range actionable {
+		actionableSet[t.ID] = true
+	}
+
+	var filtered []*model.Task
+	for _, task := range actionable {
+		// Direct match.
+		if touchesScope(task, scope) {
+			filtered = append(filtered, task)
+			continue
+		}
+		// Component expansion.
+		if comp, ok := depComponents[task.ID]; ok && seedComponents[comp] {
+			filtered = append(filtered, task)
+		}
+	}
+	return filtered
+}
+
+func touchesScope(task *model.Task, scope string) bool {
+	for _, s := range task.Touches {
+		if s == scope {
+			return true
+		}
+	}
+	return false
+}
+
+// buildDepComponents computes connected components from dependency edges
+// treated as undirected. Returns a map from task ID to a representative
+// component ID (the lexicographically smallest ID in the component).
+func buildDepComponents(tasks []*model.Task) map[string]string {
+	adj := make(map[string][]string)
+	ids := make(map[string]bool)
+	for _, t := range tasks {
+		ids[t.ID] = true
+		for _, dep := range t.Dependencies {
+			adj[t.ID] = append(adj[t.ID], dep)
+			adj[dep] = append(adj[dep], t.ID)
+		}
+	}
+
+	visited := make(map[string]bool)
+	components := make(map[string]string)
+	for id := range ids {
+		if visited[id] {
+			continue
+		}
+		// BFS to find component members.
+		queue := []string{id}
+		visited[id] = true
+		var members []string
+		for len(queue) > 0 {
+			cur := queue[0]
+			queue = queue[1:]
+			members = append(members, cur)
+			for _, neighbor := range adj[cur] {
+				if !visited[neighbor] {
+					visited[neighbor] = true
+					queue = append(queue, neighbor)
+				}
+			}
+		}
+		// Use lexicographic minimum as representative.
+		rep := members[0]
+		for _, m := range members[1:] {
+			if m < rep {
+				rep = m
+			}
+		}
+		for _, m := range members {
+			components[m] = rep
+		}
+	}
+	return components
 }
 
 func applySpecialFilters(

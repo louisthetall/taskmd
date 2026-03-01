@@ -1,4 +1,7 @@
 dir: ./tasks
+id:
+  strategy: ulid
+  length: 9
 todos:
   exclude:
     - "parser_test.go"
