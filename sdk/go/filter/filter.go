@@ -49,7 +49,7 @@ func matchesAll(task *model.Task, filters []Criteria) bool {
 
 func matches(task *model.Task, field, value string) bool {
 	if v, ok := getFieldValue(task, field); ok {
-		if field == "group" && containsWildcard(value) {
+		if field == "group" && strings.Contains(value, "*") {
 			return MatchScope(value, v)
 		}
 		return v == value
@@ -72,7 +72,7 @@ func matches(task *model.Task, field, value string) bool {
 }
 
 func matchesTouches(touches []string, value string) bool {
-	if containsWildcard(value) {
+	if strings.Contains(value, "*") {
 		for _, t := range touches {
 			if MatchScope(value, t) {
 				return true

@@ -26,21 +26,31 @@ func TestMatchScope(t *testing.T) {
 		{"contains wildcard match", "*web*", "my-web-app", true},
 		{"contains wildcard no match", "*web*", "cli", false},
 
-		// Question mark wildcard
-		{"question mark", "cl?", "cli", true},
-		{"question mark no match", "cl?", "cloo", false},
+		// Star wildcard crosses path separators
+		{"prefix wildcard crosses slash", "cli*", "cli/import", true},
+		{"prefix wildcard crosses slash nested", "cli*", "cli/tracks/foo", true},
+		{"mid wildcard crosses slash", "*import*", "cli/import", true},
+		{"suffix wildcard crosses slash", "*import", "cli/import", true},
 
-		// Bracket wildcard
-		{"bracket", "cl[ij]", "cli", true},
-		{"bracket match", "cl[ij]", "clj", true},
-		{"bracket no match", "cl[ij]", "clk", false},
+		// Mixed literal slash and wildcard in pattern
+		{"slash then wildcard", "cli/*", "cli/import", true},
+		{"slash then wildcard nested no match", "cli/*", "web/import", false},
+		{"partial after slash", "cli/imp*", "cli/import", true},
+		{"partial after slash no match", "cli/imp*", "cli/export", false},
+
+		// Multiple wildcards
+		{"double wildcard", "*cli*import*", "my-cli/import-tool", true},
+		{"double wildcard no match", "*cli*import*", "my-web/export", false},
+
+		// Question mark and brackets treated as literal (not wildcards)
+		{"question mark literal", "cl?", "cl?", true},
+		{"question mark literal no match", "cl?", "cli", false},
+		{"bracket literal", "cl[ij]", "cl[ij]", true},
+		{"bracket literal no match", "cl[ij]", "cli", false},
 
 		// Backward compat: no wildcard uses exact equality
 		{"no wildcard exact", "cli/graph", "cli/graph", true},
 		{"no wildcard no match", "cli/graph", "cli/next", false},
-
-		// Malformed pattern
-		{"malformed bracket", "cli[", "cli", false},
 	}
 
 	for _, tt := range tests {
@@ -53,24 +63,3 @@ func TestMatchScope(t *testing.T) {
 	}
 }
 
-func TestContainsWildcard(t *testing.T) {
-	tests := []struct {
-		input string
-		want  bool
-	}{
-		{"cli", false},
-		{"cli*", true},
-		{"*cli*", true},
-		{"cl?", true},
-		{"cl[ij]", true},
-		{"", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			if got := containsWildcard(tt.input); got != tt.want {
-				t.Errorf("containsWildcard(%q) = %v, want %v", tt.input, got, tt.want)
-			}
-		})
-	}
-}

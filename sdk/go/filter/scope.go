@@ -1,25 +1,39 @@
 package filter
 
-import (
-	"path/filepath"
-	"strings"
-)
+import "strings"
 
 // MatchScope checks whether a scope value matches a pattern.
-// If the pattern contains wildcard characters (*, ?, [), it uses
-// filepath.Match for glob-style matching. Otherwise, it falls back
-// to exact string equality for backward compatibility.
+// The only supported wildcard is '*', which matches zero or more
+// characters including '/'. Scopes are logical identifiers
+// (e.g. "cli/import") so "cli*" matches "cli", "cli/import", etc.
+// Without a wildcard, exact string equality is used.
 func MatchScope(pattern, scope string) bool {
-	if containsWildcard(pattern) {
-		matched, err := filepath.Match(pattern, scope)
-		if err != nil {
-			return false
-		}
-		return matched
+	if !strings.Contains(pattern, "*") {
+		return pattern == scope
 	}
-	return pattern == scope
+	return matchStar(pattern, scope)
 }
 
-func containsWildcard(s string) bool {
-	return strings.ContainsAny(s, "*?[")
+// matchStar matches a pattern containing '*' wildcards against s.
+// Each '*' matches zero or more arbitrary characters (including '/').
+func matchStar(pattern, s string) bool {
+	parts := strings.Split(pattern, "*")
+	// Fast path: single '*' prefix/suffix/contains.
+	if len(parts) == 2 {
+		return strings.HasPrefix(s, parts[0]) && strings.HasSuffix(s, parts[1]) && len(s) >= len(parts[0])+len(parts[1])
+	}
+	// General case: parts must appear in order within s.
+	// First part must be a prefix, last part must be a suffix.
+	if !strings.HasPrefix(s, parts[0]) {
+		return false
+	}
+	s = s[len(parts[0]):]
+	for _, part := range parts[1 : len(parts)-1] {
+		idx := strings.Index(s, part)
+		if idx < 0 {
+			return false
+		}
+		s = s[idx+len(part):]
+	}
+	return strings.HasSuffix(s, parts[len(parts)-1])
 }
