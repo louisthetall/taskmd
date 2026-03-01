@@ -10,3 +10,16 @@ if command -v taskmd >/dev/null 2>&1; then
 else
     echo "Warning: taskmd not found, skipping validation"
 fi
+
+# Run golangci-lint on staged Go files in apps/cli
+if command -v golangci-lint >/dev/null 2>&1; then
+    staged=$(git diff --cached --name-only --diff-filter=ACM | grep '^apps/cli/.*\.go$')
+    if [ -n "$staged" ]; then
+        out=$(cd apps/cli && golangci-lint run 2>&1)
+        if [ $? -ne 0 ]; then
+            echo "$out"
+            echo "golangci-lint failed. Fix the issues above before committing."
+            exit 1
+        fi
+    fi
+fi

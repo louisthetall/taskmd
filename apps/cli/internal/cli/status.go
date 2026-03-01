@@ -123,23 +123,31 @@ func runStatusList() error {
 	}
 
 	if len(filtered) == 0 {
-		switch {
-		case statusStatusline:
-			return nil
-		case statusFormat == "json":
-			return WriteJSON(os.Stdout, []statusOutput{})
-		case statusFormat == "yaml":
-			return WriteYAML(os.Stdout, []statusOutput{})
-		default:
-			fmt.Fprintln(os.Stderr, "No tasks currently in progress.")
-			return nil
-		}
+		return outputStatusListEmpty()
 	}
 
 	if statusStatusline {
 		return outputStatusline(filtered, os.Stdout)
 	}
 
+	return outputStatusListFormatted(tasks, filtered)
+}
+
+func outputStatusListEmpty() error {
+	switch {
+	case statusStatusline:
+		return nil
+	case statusFormat == "json":
+		return WriteJSON(os.Stdout, []statusOutput{})
+	case statusFormat == "yaml":
+		return WriteYAML(os.Stdout, []statusOutput{})
+	default:
+		fmt.Fprintln(os.Stderr, "No tasks currently in progress.")
+		return nil
+	}
+}
+
+func outputStatusListFormatted(tasks, filtered []*model.Task) error {
 	var childrenIndex map[string][]*model.Task
 	if !statusMinimal {
 		childrenIndex = buildChildrenIndex(tasks)
