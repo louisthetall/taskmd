@@ -816,6 +816,126 @@ func TestStatus_NoArgs_JSON(t *testing.T) {
 	}
 }
 
+func TestStatus_Blocked(t *testing.T) {
+	tmpDir := createStatusTestFiles(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+
+	// Task 003 depends on 002 which is in-progress (not completed)
+	output := captureStatusOutput(t, "003")
+
+	if !strings.Contains(output, "Blocked: Yes (blocked by: 002)") {
+		t.Errorf("Expected blocked indicator with 002, got:\n%s", output)
+	}
+}
+
+func TestStatus_Unblocked(t *testing.T) {
+	tmpDir := createStatusTestFiles(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+
+	// Task 002 depends on 001 which is completed
+	output := captureStatusOutput(t, "002")
+
+	if !strings.Contains(output, "Blocked: No") {
+		t.Errorf("Expected 'Blocked: No', got:\n%s", output)
+	}
+}
+
+func TestStatus_NoDependencies_NoBlockedIndicator(t *testing.T) {
+	tmpDir := createStatusTestFiles(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+
+	// Task 001 has no dependencies
+	output := captureStatusOutput(t, "001")
+
+	if strings.Contains(output, "Blocked:") {
+		t.Errorf("Expected no blocked indicator for task without dependencies, got:\n%s", output)
+	}
+}
+
+func TestStatus_Blocked_JSON(t *testing.T) {
+	tmpDir := createStatusTestFiles(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusFormat = "json"
+
+	// Task 003 is blocked (depends on 002 which is in-progress)
+	output := captureStatusOutput(t, "003")
+
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(output), &raw); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	blocked, ok := raw["blocked"]
+	if !ok {
+		t.Fatal("Expected 'blocked' field in JSON output")
+	}
+	if blocked != true {
+		t.Errorf("Expected blocked=true, got %v", blocked)
+	}
+
+	blockedBy, ok := raw["blocked_by"]
+	if !ok {
+		t.Fatal("Expected 'blocked_by' field in JSON output")
+	}
+	arr, ok := blockedBy.([]any)
+	if !ok || len(arr) != 1 || arr[0] != "002" {
+		t.Errorf("Expected blocked_by=[002], got %v", blockedBy)
+	}
+}
+
+func TestStatus_Unblocked_JSON(t *testing.T) {
+	tmpDir := createStatusTestFiles(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusFormat = "json"
+
+	// Task 002 depends on 001 (completed) → unblocked
+	output := captureStatusOutput(t, "002")
+
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(output), &raw); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	blocked, ok := raw["blocked"]
+	if !ok {
+		t.Fatal("Expected 'blocked' field in JSON output")
+	}
+	if blocked != false {
+		t.Errorf("Expected blocked=false, got %v", blocked)
+	}
+
+	if _, ok := raw["blocked_by"]; ok {
+		t.Error("Expected no 'blocked_by' field when unblocked")
+	}
+}
+
+func TestStatus_NoDependencies_JSON(t *testing.T) {
+	tmpDir := createStatusTestFiles(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusFormat = "json"
+
+	// Task 001 has no dependencies
+	output := captureStatusOutput(t, "001")
+
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(output), &raw); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	if _, ok := raw["blocked"]; ok {
+		t.Error("Expected no 'blocked' field for task without dependencies")
+	}
+	if _, ok := raw["blocked_by"]; ok {
+		t.Error("Expected no 'blocked_by' field for task without dependencies")
+	}
+}
+
 func TestStatus_NoArgs_YAML(t *testing.T) {
 	tmpDir := createStatusTestFiles(t)
 	resetStatusFlags()

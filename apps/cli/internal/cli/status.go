@@ -85,6 +85,8 @@ type statusOutput struct {
 	Parent       string        `json:"parent,omitempty" yaml:"parent,omitempty"`
 	Created      string        `json:"created,omitempty" yaml:"created,omitempty"`
 	Dependencies []string      `json:"dependencies" yaml:"dependencies"`
+	Blocked      *bool         `json:"blocked,omitempty" yaml:"blocked,omitempty"`
+	BlockedBy    []string      `json:"blocked_by,omitempty" yaml:"blocked_by,omitempty"`
 	Group        string        `json:"group,omitempty" yaml:"group,omitempty"`
 	FilePath     string        `json:"file_path" yaml:"file_path"`
 	Children     []statusChild `json:"children,omitempty" yaml:"children,omitempty"`
@@ -133,9 +135,11 @@ func runStatusList() error {
 		childrenIndex = buildChildrenIndex(tasks)
 	}
 
+	tasksByID := buildTasksByIDMap(tasks)
+
 	outputs := make([]statusOutput, 0, len(filtered))
 	for _, task := range filtered {
-		outputs = append(outputs, buildStatusOutputFromTask(task, childrenIndex))
+		outputs = append(outputs, buildStatusOutputFromTask(task, childrenIndex, tasksByID))
 	}
 
 	switch statusFormat {
@@ -178,7 +182,8 @@ func runStatusSingle(query string) error {
 		childrenIndex = buildChildrenIndex(tasks)
 	}
 
-	out := buildStatusOutputFromTask(task, childrenIndex)
+	tasksByID := buildTasksByIDMap(tasks)
+	out := buildStatusOutputFromTask(task, childrenIndex, tasksByID)
 
 	switch statusFormat {
 	case "text":
@@ -215,7 +220,11 @@ func outputStatusListText(outputs []statusOutput, w io.Writer) error {
 	return nil
 }
 
-func buildStatusOutputFromTask(task *model.Task, childrenIndex map[string][]*model.Task) statusOutput {
+func buildStatusOutputFromTask(
+	task *model.Task,
+	childrenIndex map[string][]*model.Task,
+	tasksByID map[string]*model.Task,
+) statusOutput {
 	created := ""
 	if !task.Created.IsZero() {
 		created = task.Created.Format("2006-01-02")
@@ -234,10 +243,37 @@ func buildStatusOutputFromTask(task *model.Task, childrenIndex map[string][]*mod
 		Group:        task.Group,
 		FilePath:     task.FilePath,
 	}
+	if len(task.Dependencies) > 0 {
+		out.BlockedBy = resolveBlockingDeps(task.Dependencies, tasksByID)
+		blocked := len(out.BlockedBy) > 0
+		out.Blocked = &blocked
+		if !blocked {
+			out.BlockedBy = nil
+		}
+	}
 	if childrenIndex != nil {
 		out.Children = collectChildrenTree(task.ID, childrenIndex, map[string]bool{task.ID: true})
 	}
 	return out
+}
+
+func resolveBlockingDeps(deps []string, tasksByID map[string]*model.Task) []string {
+	var blocking []string
+	for _, depID := range deps {
+		dep, ok := tasksByID[depID]
+		if !ok || dep.Status != model.StatusCompleted {
+			blocking = append(blocking, depID)
+		}
+	}
+	return blocking
+}
+
+func buildTasksByIDMap(tasks []*model.Task) map[string]*model.Task {
+	m := make(map[string]*model.Task, len(tasks))
+	for _, t := range tasks {
+		m[t.ID] = t
+	}
+	return m
 }
 
 func buildChildrenIndex(tasks []*model.Task) map[string][]*model.Task {
@@ -294,6 +330,13 @@ func outputStatusText(out statusOutput, w io.Writer) error {
 	}
 	if len(out.Dependencies) > 0 {
 		fmt.Fprintf(w, "%s %s\n", formatLabel("Dependencies:", r), strings.Join(out.Dependencies, ", "))
+	}
+	if out.Blocked != nil {
+		if *out.Blocked {
+			fmt.Fprintf(w, "%s Yes (blocked by: %s)\n", formatLabel("Blocked:", r), strings.Join(out.BlockedBy, ", "))
+		} else {
+			fmt.Fprintf(w, "%s No\n", formatLabel("Blocked:", r))
+		}
 	}
 	if out.Group != "" {
 		fmt.Fprintf(w, "%s %s\n", formatLabel("Group:", r), out.Group)
