@@ -78,6 +78,7 @@ func resetStatusFlags() {
 	statusFormat = "text"
 	statusExact = false
 	statusThreshold = 0.6
+	statusMinimal = false
 	taskDir = "."
 }
 
@@ -291,6 +292,216 @@ func TestStatus_EmptyDirectory(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "task not found") {
 		t.Errorf("Expected 'task not found' error, got: %v", err)
+	}
+}
+
+func createStatusTestFilesWithChildren(t *testing.T) string {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+
+	tasks := map[string]string{
+		"010-parent.md": `---
+id: "010"
+title: "Parent task"
+status: in-progress
+tags: []
+dependencies: []
+---
+
+# Parent task
+`,
+		"011-child-a.md": `---
+id: "011"
+title: "Child A"
+status: pending
+parent: "010"
+tags: []
+dependencies: []
+---
+
+# Child A
+`,
+		"012-child-b.md": `---
+id: "012"
+title: "Child B"
+status: completed
+parent: "010"
+tags: []
+dependencies: []
+---
+
+# Child B
+`,
+		"013-grandchild.md": `---
+id: "013"
+title: "Grandchild"
+status: pending
+parent: "011"
+tags: []
+dependencies: []
+---
+
+# Grandchild
+`,
+	}
+
+	for filename, content := range tasks {
+		path := filepath.Join(tmpDir, filename)
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to create test file %s: %v", filename, err)
+		}
+	}
+
+	return tmpDir
+}
+
+func TestStatus_ChildrenTree(t *testing.T) {
+	tmpDir := createStatusTestFilesWithChildren(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+
+	output := captureStatusOutput(t, "010")
+
+	if !strings.Contains(output, "Children:") {
+		t.Error("Expected output to contain 'Children:' section")
+	}
+	if !strings.Contains(output, "011") {
+		t.Error("Expected output to contain child ID '011'")
+	}
+	if !strings.Contains(output, "Child A") {
+		t.Error("Expected output to contain child title 'Child A'")
+	}
+	if !strings.Contains(output, "012") {
+		t.Error("Expected output to contain child ID '012'")
+	}
+	if !strings.Contains(output, "Child B") {
+		t.Error("Expected output to contain child title 'Child B'")
+	}
+	if !strings.Contains(output, "013") {
+		t.Error("Expected output to contain grandchild ID '013'")
+	}
+	if !strings.Contains(output, "Grandchild") {
+		t.Error("Expected output to contain grandchild title 'Grandchild'")
+	}
+}
+
+func TestStatus_ChildrenTree_JSON(t *testing.T) {
+	tmpDir := createStatusTestFilesWithChildren(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusFormat = "json"
+
+	output := captureStatusOutput(t, "010")
+
+	var result statusOutput
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	if len(result.Children) == 0 {
+		t.Fatal("Expected children in JSON output")
+	}
+
+	// Find child with grandchild
+	var foundGrandchild bool
+	for _, child := range result.Children {
+		if child.ID == "011" {
+			if len(child.Children) == 0 {
+				t.Error("Expected child 011 to have grandchild")
+			} else if child.Children[0].ID == "013" {
+				foundGrandchild = true
+			}
+		}
+	}
+	if !foundGrandchild {
+		t.Error("Expected to find grandchild 013 under child 011")
+	}
+}
+
+func TestStatus_ChildrenTree_Circular(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	tasks := map[string]string{
+		"020-a.md": `---
+id: "020"
+title: "Task A"
+status: pending
+parent: "021"
+tags: []
+dependencies: []
+---
+`,
+		"021-b.md": `---
+id: "021"
+title: "Task B"
+status: pending
+parent: "020"
+tags: []
+dependencies: []
+---
+`,
+	}
+
+	for filename, content := range tasks {
+		path := filepath.Join(tmpDir, filename)
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to create test file %s: %v", filename, err)
+		}
+	}
+
+	resetStatusFlags()
+	taskDir = tmpDir
+
+	// Should not hang or panic
+	output := captureStatusOutput(t, "020")
+
+	if !strings.Contains(output, "Task: 020") {
+		t.Error("Expected output to contain 'Task: 020'")
+	}
+}
+
+func TestStatus_MinimalFlag(t *testing.T) {
+	tmpDir := createStatusTestFilesWithChildren(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusMinimal = true
+
+	output := captureStatusOutput(t, "010")
+
+	if strings.Contains(output, "Children:") {
+		t.Error("--minimal should suppress children section")
+	}
+}
+
+func TestStatus_MinimalFlag_JSON(t *testing.T) {
+	tmpDir := createStatusTestFilesWithChildren(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusMinimal = true
+	statusFormat = "json"
+
+	output := captureStatusOutput(t, "010")
+
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(output), &raw); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+	if _, ok := raw["children"]; ok {
+		t.Error("--minimal JSON output should not contain 'children' key")
+	}
+}
+
+func TestStatus_NoChildren(t *testing.T) {
+	tmpDir := createStatusTestFilesWithChildren(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+
+	// Task 012 has no children
+	output := captureStatusOutput(t, "012")
+
+	if strings.Contains(output, "Children:") {
+		t.Error("Task with no children should not show 'Children:' section")
 	}
 }
 

@@ -868,6 +868,8 @@ taskmd verify --task-id 042
 
 Display only the frontmatter metadata of a task, without body content, resolved dependency info, context files, or worklog data. Use this when you just need to quickly check a task's status, priority, or other metadata.
 
+If the task has children (other tasks with a matching `parent` field), a recursive children tree is displayed showing each child's ID, status, and title. Grandchildren and deeper descendants are shown with indentation.
+
 Matching uses the same logic as `get` (ID, title, file path, fuzzy).
 
 ```bash
@@ -885,6 +887,22 @@ taskmd status 042 --format yaml
 
 # Strict lookup (no fuzzy matching)
 taskmd status sho --exact
+
+# Metadata only, skip children tree
+taskmd status 042 --minimal
+```
+
+**Example output (parent task):**
+
+```
+Task: 173
+Title: Build e2e test suite for CLI
+Status: completed
+Children:
+  ├─ 174 [completed] Set up e2e test foundation
+  ├─ 175 [completed] E2e tests for workflows
+  └─ 176 [completed] E2e tests for error handling
+File: cli/173-e2e-test-suite.md
 ```
 
 **Flags:**
@@ -894,6 +912,7 @@ taskmd status sho --exact
 | `--format` | `text` | Output format (`text`, `json`, `yaml`) |
 | `--exact` | `false` | Disable fuzzy matching, exact only |
 | `--threshold` | `0.6` | Fuzzy match sensitivity (0.0-1.0) |
+| `--minimal` | `false` | Show only task metadata, skip children |
 
 ### context - Show File Context
 

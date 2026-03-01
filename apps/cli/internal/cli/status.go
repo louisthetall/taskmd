@@ -17,6 +17,7 @@ var (
 	statusFormat    string
 	statusExact     bool
 	statusThreshold float64
+	statusMinimal   bool
 )
 
 // statusStdinReader is the reader used for interactive selection prompts.
@@ -48,22 +49,32 @@ func init() {
 	statusCmd.Flags().StringVar(&statusFormat, "format", "text", "output format (text, json, yaml)")
 	statusCmd.Flags().BoolVar(&statusExact, "exact", false, "disable fuzzy matching, exact only")
 	statusCmd.Flags().Float64Var(&statusThreshold, "threshold", 0.6, "fuzzy match sensitivity (0.0-1.0)")
+	statusCmd.Flags().BoolVar(&statusMinimal, "minimal", false, "show only task metadata, skip children")
+}
+
+// statusChild represents a child task in the recursive children tree.
+type statusChild struct {
+	ID       string        `json:"id" yaml:"id"`
+	Title    string        `json:"title" yaml:"title"`
+	Status   string        `json:"status" yaml:"status"`
+	Children []statusChild `json:"children,omitempty" yaml:"children,omitempty"`
 }
 
 // statusOutput is the lightweight metadata struct for JSON/YAML output.
 type statusOutput struct {
-	ID           string   `json:"id" yaml:"id"`
-	Title        string   `json:"title" yaml:"title"`
-	Status       string   `json:"status" yaml:"status"`
-	Priority     string   `json:"priority,omitempty" yaml:"priority,omitempty"`
-	Effort       string   `json:"effort,omitempty" yaml:"effort,omitempty"`
-	Tags         []string `json:"tags" yaml:"tags"`
-	Owner        string   `json:"owner,omitempty" yaml:"owner,omitempty"`
-	Parent       string   `json:"parent,omitempty" yaml:"parent,omitempty"`
-	Created      string   `json:"created,omitempty" yaml:"created,omitempty"`
-	Dependencies []string `json:"dependencies" yaml:"dependencies"`
-	Group        string   `json:"group,omitempty" yaml:"group,omitempty"`
-	FilePath     string   `json:"file_path" yaml:"file_path"`
+	ID           string        `json:"id" yaml:"id"`
+	Title        string        `json:"title" yaml:"title"`
+	Status       string        `json:"status" yaml:"status"`
+	Priority     string        `json:"priority,omitempty" yaml:"priority,omitempty"`
+	Effort       string        `json:"effort,omitempty" yaml:"effort,omitempty"`
+	Tags         []string      `json:"tags" yaml:"tags"`
+	Owner        string        `json:"owner,omitempty" yaml:"owner,omitempty"`
+	Parent       string        `json:"parent,omitempty" yaml:"parent,omitempty"`
+	Created      string        `json:"created,omitempty" yaml:"created,omitempty"`
+	Dependencies []string      `json:"dependencies" yaml:"dependencies"`
+	Group        string        `json:"group,omitempty" yaml:"group,omitempty"`
+	FilePath     string        `json:"file_path" yaml:"file_path"`
+	Children     []statusChild `json:"children,omitempty" yaml:"children,omitempty"`
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
@@ -91,7 +102,12 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	out := buildStatusOutputFromTask(task)
+	var childrenIndex map[string][]*model.Task
+	if !statusMinimal {
+		childrenIndex = buildChildrenIndex(tasks)
+	}
+
+	out := buildStatusOutputFromTask(task, childrenIndex)
 
 	switch statusFormat {
 	case "text":
@@ -105,12 +121,12 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 }
 
-func buildStatusOutputFromTask(task *model.Task) statusOutput {
+func buildStatusOutputFromTask(task *model.Task, childrenIndex map[string][]*model.Task) statusOutput {
 	created := ""
 	if !task.Created.IsZero() {
 		created = task.Created.Format("2006-01-02")
 	}
-	return statusOutput{
+	out := statusOutput{
 		ID:           task.ID,
 		Title:        task.Title,
 		Status:       string(task.Status),
@@ -124,6 +140,42 @@ func buildStatusOutputFromTask(task *model.Task) statusOutput {
 		Group:        task.Group,
 		FilePath:     task.FilePath,
 	}
+	if childrenIndex != nil {
+		out.Children = collectChildrenTree(task.ID, childrenIndex, map[string]bool{task.ID: true})
+	}
+	return out
+}
+
+func buildChildrenIndex(tasks []*model.Task) map[string][]*model.Task {
+	index := make(map[string][]*model.Task)
+	for _, t := range tasks {
+		if t.Parent != "" {
+			index[t.Parent] = append(index[t.Parent], t)
+		}
+	}
+	return index
+}
+
+func collectChildrenTree(taskID string, index map[string][]*model.Task, visited map[string]bool) []statusChild {
+	children := index[taskID]
+	if len(children) == 0 {
+		return nil
+	}
+	result := make([]statusChild, 0, len(children))
+	for _, child := range children {
+		if visited[child.ID] {
+			continue
+		}
+		visited[child.ID] = true
+		sc := statusChild{
+			ID:     child.ID,
+			Title:  child.Title,
+			Status: string(child.Status),
+		}
+		sc.Children = collectChildrenTree(child.ID, index, visited)
+		result = append(result, sc)
+	}
+	return result
 }
 
 func outputStatusText(out statusOutput, w io.Writer) error {
@@ -152,8 +204,31 @@ func outputStatusText(out statusOutput, w io.Writer) error {
 	if out.Group != "" {
 		fmt.Fprintf(w, "%s %s\n", formatLabel("Group:", r), out.Group)
 	}
+	if len(out.Children) > 0 {
+		fmt.Fprintf(w, "%s\n", formatLabel("Children:", r))
+		writeChildrenTree(w, out.Children, "  ", r)
+	}
 	fmt.Fprintf(w, "%s %s\n", formatLabel("File:", r), formatDim(out.FilePath, r))
 	return nil
+}
+
+func writeChildrenTree(w io.Writer, children []statusChild, prefix string, r *lipgloss.Renderer) {
+	for i, child := range children {
+		isLast := i == len(children)-1
+		connector := "├─"
+		if isLast {
+			connector = "└─"
+		}
+		fmt.Fprintf(w, "%s%s %s [%s] %s\n", prefix, connector,
+			formatTaskID(child.ID, r), formatStatus(child.Status, r), child.Title)
+		if len(child.Children) > 0 {
+			childPrefix := prefix + "│  "
+			if isLast {
+				childPrefix = prefix + "   "
+			}
+			writeChildrenTree(w, child.Children, childPrefix, r)
+		}
+	}
 }
 
 func printStatusOptionalField(w io.Writer, label, value string, r *lipgloss.Renderer) {
