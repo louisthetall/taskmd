@@ -1,4 +1,4 @@
-.PHONY: install-dev install-dev-full check test lint sync-spec docker-build docker-run
+.PHONY: install-dev install-dev-full check check-lite test lint sync-spec docker-build docker-run
 
 # Install development binary (delegates to apps/cli)
 install-dev:
@@ -8,9 +8,16 @@ install-dev:
 install-dev-full:
 	$(MAKE) -C apps/cli install-dev-full
 
-# Run all checks (CLI tests, lint, vet + web tests + docs build + Docker build)
-check:
-	$(MAKE) -C apps/cli check
+# Quick check: compile and test CLI + SDK
+check-lite:
+	cd apps/cli && go build ./...
+	cd apps/cli && go test ./...
+	cd sdk/go && go build ./...
+	cd sdk/go && go test ./...
+
+# Run all checks (CLI tests, lint, vet + SDK + web tests + docs build + Docker build)
+check: check-lite
+	$(MAKE) -C apps/cli lint
 	cd apps/web && npx vitest run
 	cd apps/docs && pnpm build
 	docker build -t taskmd:ci-check .
@@ -18,6 +25,7 @@ check:
 # Run tests only
 test:
 	$(MAKE) -C apps/cli test
+	cd sdk/go && go test ./...
 
 # Run linter only
 lint:
