@@ -79,6 +79,8 @@ func resetStatusFlags() {
 	statusExact = false
 	statusThreshold = 0.6
 	statusMinimal = false
+	statusStatusline = false
+	statusScope = ""
 	taskDir = "."
 }
 
@@ -528,5 +530,304 @@ func TestStatus_NoBodyInOutput(t *testing.T) {
 	}
 	if _, ok := raw["content"]; ok {
 		t.Error("JSON should not have 'content' field")
+	}
+}
+
+// captureStatusNoArgsOutput runs status with no arguments and captures stdout.
+func captureStatusNoArgsOutput(t *testing.T) (string, error) {
+	t.Helper()
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runStatus(statusCmd, []string{})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	return buf.String(), err
+}
+
+func TestStatus_NoArgs_ZeroInProgress(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmpDir, "001.md"), []byte(`---
+id: "001"
+title: "Done task"
+status: completed
+tags: []
+dependencies: []
+---
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	resetStatusFlags()
+	taskDir = tmpDir
+
+	output, err := captureStatusNoArgsOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if output != "" {
+		t.Errorf("expected empty output, got: %q", output)
+	}
+}
+
+func TestStatus_NoArgs_OneInProgress(t *testing.T) {
+	tmpDir := createStatusTestFiles(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+
+	output, err := captureStatusNoArgsOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "Task: 002") {
+		t.Error("Expected output to contain 'Task: 002'")
+	}
+	if !strings.Contains(output, "Implement authentication") {
+		t.Error("Expected output to contain task title")
+	}
+}
+
+func createStatusTestFilesMultipleInProgress(t *testing.T) string {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+
+	tasks := map[string]string{
+		"001.md": `---
+id: "001"
+title: "First task"
+status: in-progress
+tags: []
+dependencies: []
+---
+`,
+		"002.md": `---
+id: "002"
+title: "Second task"
+status: in-progress
+tags: []
+dependencies: []
+---
+`,
+		"003.md": `---
+id: "003"
+title: "Pending task"
+status: pending
+tags: []
+dependencies: []
+---
+`,
+	}
+
+	for filename, content := range tasks {
+		if err := os.WriteFile(filepath.Join(tmpDir, filename), []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to create test file %s: %v", filename, err)
+		}
+	}
+
+	return tmpDir
+}
+
+func TestStatus_NoArgs_MultipleInProgress(t *testing.T) {
+	tmpDir := createStatusTestFilesMultipleInProgress(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+
+	output, err := captureStatusNoArgsOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "First task") {
+		t.Error("Expected output to contain 'First task'")
+	}
+	if !strings.Contains(output, "Second task") {
+		t.Error("Expected output to contain 'Second task'")
+	}
+	if strings.Contains(output, "Pending task") {
+		t.Error("Should not contain pending task")
+	}
+}
+
+func TestStatus_Statusline_OneTask(t *testing.T) {
+	tmpDir := createStatusTestFiles(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusStatusline = true
+
+	output, err := captureStatusNoArgsOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "#002 Implement authentication\n"
+	if output != expected {
+		t.Errorf("expected %q, got: %q", expected, output)
+	}
+}
+
+func TestStatus_Statusline_MultipleTasks(t *testing.T) {
+	tmpDir := createStatusTestFilesMultipleInProgress(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusStatusline = true
+
+	output, err := captureStatusNoArgsOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "(+1 more)") {
+		t.Errorf("expected '(+1 more)' in output, got: %q", output)
+	}
+}
+
+func TestStatus_Statusline_NoTasks(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmpDir, "001.md"), []byte(`---
+id: "001"
+title: "Done"
+status: completed
+tags: []
+dependencies: []
+---
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusStatusline = true
+
+	output, err := captureStatusNoArgsOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if output != "" {
+		t.Errorf("expected empty output, got: %q", output)
+	}
+}
+
+func TestStatus_Statusline_LongTitle(t *testing.T) {
+	tmpDir := t.TempDir()
+	longTitle := "This is a very long task title that exceeds thirty characters"
+	if err := os.WriteFile(filepath.Join(tmpDir, "001.md"), []byte(`---
+id: "001"
+title: "`+longTitle+`"
+status: in-progress
+tags: []
+dependencies: []
+---
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusStatusline = true
+
+	output, err := captureStatusNoArgsOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := "#001 " + longTitle + "\n"
+	if output != expected {
+		t.Errorf("expected %q, got: %q", expected, output)
+	}
+}
+
+func TestStatus_NoArgs_Scope(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create subdirectories with tasks
+	cliDir := filepath.Join(tmpDir, "cli")
+	webDir := filepath.Join(tmpDir, "web")
+	if err := os.MkdirAll(cliDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(webDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(filepath.Join(cliDir, "001.md"), []byte(`---
+id: "001"
+title: "CLI task"
+status: in-progress
+tags: []
+dependencies: []
+---
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(webDir, "002.md"), []byte(`---
+id: "002"
+title: "Web task"
+status: in-progress
+tags: []
+dependencies: []
+---
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusScope = "cli"
+
+	output, err := captureStatusNoArgsOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "CLI task") {
+		t.Error("Expected output to contain 'CLI task'")
+	}
+	if strings.Contains(output, "Web task") {
+		t.Error("Should not contain 'Web task' when scope is 'cli'")
+	}
+}
+
+func TestStatus_NoArgs_JSON(t *testing.T) {
+	tmpDir := createStatusTestFilesMultipleInProgress(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusFormat = "json"
+
+	output, err := captureStatusNoArgsOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var results []statusOutput
+	if err := json.Unmarshal([]byte(output), &results); err != nil {
+		t.Fatalf("Failed to parse JSON array: %v\nOutput: %s", err, output)
+	}
+
+	if len(results) != 2 {
+		t.Errorf("Expected 2 results, got %d", len(results))
+	}
+}
+
+func TestStatus_NoArgs_YAML(t *testing.T) {
+	tmpDir := createStatusTestFiles(t)
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusFormat = "yaml"
+
+	output, err := captureStatusNoArgsOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "id: \"002\"") {
+		t.Errorf("Expected YAML output to contain in-progress task, got: %s", output)
 	}
 }

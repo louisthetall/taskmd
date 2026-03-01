@@ -12,34 +12,32 @@ import (
 )
 
 var (
-	worklogTaskID string
 	worklogAdd    string
 	worklogFormat string
 )
 
 var worklogCmd = &cobra.Command{
-	Use:   "worklog",
+	Use:   "worklog [task-id]",
 	Short: "View or add worklog entries for a task",
 	Long: `View or add worklog entries for a task.
 
 Examples:
-  taskmd worklog --task-id 015           # view worklog entries
-  taskmd worklog --task-id 015 --add "Started implementation"
-  taskmd worklog --task-id 015 --format json`,
+  taskmd worklog 015                        # view worklog entries
+  taskmd worklog 015 --add "Started implementation"
+  taskmd worklog 015 --format json`,
+	Args: cobra.ExactArgs(1),
 	RunE: runWorklog,
 }
 
 func init() {
 	rootCmd.AddCommand(worklogCmd)
 
-	worklogCmd.Flags().StringVar(&worklogTaskID, "task-id", "", "task ID (required)")
 	worklogCmd.Flags().StringVar(&worklogAdd, "add", "", "append a new worklog entry")
 	worklogCmd.Flags().StringVar(&worklogFormat, "format", "text", "output format (text, json, yaml)")
-
-	_ = worklogCmd.MarkFlagRequired("task-id")
 }
 
-func runWorklog(cmd *cobra.Command, _ []string) error {
+func runWorklog(cmd *cobra.Command, args []string) error {
+	taskID := args[0]
 	flags := GetGlobalFlags()
 	scanDir := ResolveScanDir(nil)
 
@@ -54,29 +52,29 @@ func runWorklog(cmd *cobra.Command, _ []string) error {
 	// Find the task by ID
 	var taskFilePath string
 	for _, t := range result.Tasks {
-		if t.ID == worklogTaskID {
+		if t.ID == taskID {
 			taskFilePath = t.FilePath
 			break
 		}
 	}
 	if taskFilePath == "" {
-		return fmt.Errorf("task not found: %s", worklogTaskID)
+		return fmt.Errorf("task not found: %s", taskID)
 	}
 
-	wlPath := worklog.WorklogPath(taskFilePath, worklogTaskID)
+	wlPath := worklog.WorklogPath(taskFilePath, taskID)
 
 	// Add mode
 	if worklogAdd != "" {
 		if err := worklog.AppendEntry(wlPath, worklogAdd); err != nil {
 			return fmt.Errorf("failed to add worklog entry: %w", err)
 		}
-		fmt.Fprintf(os.Stderr, "Added worklog entry for task %s\n", worklogTaskID)
+		fmt.Fprintf(os.Stderr, "Added worklog entry for task %s\n", taskID)
 		return nil
 	}
 
 	// View mode
 	if !worklog.Exists(wlPath) {
-		fmt.Fprintf(os.Stderr, "No worklog found for task %s\n", worklogTaskID)
+		fmt.Fprintf(os.Stderr, "No worklog found for task %s\n", taskID)
 		return nil
 	}
 

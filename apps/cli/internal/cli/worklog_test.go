@@ -61,20 +61,19 @@ Completed login endpoint.
 }
 
 func resetWorklogFlags() {
-	worklogTaskID = ""
 	worklogAdd = ""
 	worklogFormat = "text"
 	taskDir = "."
 }
 
-func captureWorklogOutput(t *testing.T) (string, error) {
+func captureWorklogOutput(t *testing.T, taskID string) (string, error) {
 	t.Helper()
 
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	err := runWorklog(worklogCmd, nil)
+	err := runWorklog(worklogCmd, []string{taskID})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -88,9 +87,7 @@ func TestWorklog_ViewEntries(t *testing.T) {
 	tmpDir := createWorklogTestFilesWithWorklog(t)
 	resetWorklogFlags()
 	taskDir = tmpDir
-	worklogTaskID = "015"
-
-	output, err := captureWorklogOutput(t)
+	output, err := captureWorklogOutput(t, "015")
 	if err != nil {
 		t.Fatalf("runWorklog failed: %v", err)
 	}
@@ -116,10 +113,9 @@ func TestWorklog_ViewJSON(t *testing.T) {
 	tmpDir := createWorklogTestFilesWithWorklog(t)
 	resetWorklogFlags()
 	taskDir = tmpDir
-	worklogTaskID = "015"
 	worklogFormat = "json"
 
-	output, err := captureWorklogOutput(t)
+	output, err := captureWorklogOutput(t, "015")
 	if err != nil {
 		t.Fatalf("runWorklog failed: %v", err)
 	}
@@ -141,10 +137,9 @@ func TestWorklog_ViewYAML(t *testing.T) {
 	tmpDir := createWorklogTestFilesWithWorklog(t)
 	resetWorklogFlags()
 	taskDir = tmpDir
-	worklogTaskID = "015"
 	worklogFormat = "yaml"
 
-	output, err := captureWorklogOutput(t)
+	output, err := captureWorklogOutput(t, "015")
 	if err != nil {
 		t.Fatalf("runWorklog failed: %v", err)
 	}
@@ -161,14 +156,13 @@ func TestWorklog_NoWorklogExists(t *testing.T) {
 	tmpDir := createWorklogTestFiles(t) // no worklog created
 	resetWorklogFlags()
 	taskDir = tmpDir
-	worklogTaskID = "015"
 
 	// Capture stderr too
 	oldStderr := os.Stderr
 	rErr, wErr, _ := os.Pipe()
 	os.Stderr = wErr
 
-	_, err := captureWorklogOutput(t)
+	_, err := captureWorklogOutput(t, "015")
 
 	wErr.Close()
 	os.Stderr = oldStderr
@@ -188,9 +182,8 @@ func TestWorklog_TaskNotFound(t *testing.T) {
 	tmpDir := createWorklogTestFiles(t)
 	resetWorklogFlags()
 	taskDir = tmpDir
-	worklogTaskID = "999"
 
-	_, err := captureWorklogOutput(t)
+	_, err := captureWorklogOutput(t, "999")
 	if err == nil {
 		t.Fatal("Expected error for non-existent task")
 	}
@@ -203,7 +196,6 @@ func TestWorklog_AddEntry(t *testing.T) {
 	tmpDir := createWorklogTestFiles(t)
 	resetWorklogFlags()
 	taskDir = tmpDir
-	worklogTaskID = "015"
 	worklogAdd = "Started implementation of auth module"
 
 	// Capture stderr for the success message
@@ -211,7 +203,7 @@ func TestWorklog_AddEntry(t *testing.T) {
 	rErr, wErr, _ := os.Pipe()
 	os.Stderr = wErr
 
-	_, err := captureWorklogOutput(t)
+	_, err := captureWorklogOutput(t, "015")
 
 	wErr.Close()
 	os.Stderr = oldStderr
@@ -243,10 +235,9 @@ func TestWorklog_AddThenView(t *testing.T) {
 	tmpDir := createWorklogTestFiles(t)
 	resetWorklogFlags()
 	taskDir = tmpDir
-	worklogTaskID = "015"
 	worklogAdd = "First entry"
 
-	_, err := captureWorklogOutput(t)
+	_, err := captureWorklogOutput(t, "015")
 	if err != nil {
 		t.Fatalf("First add failed: %v", err)
 	}
@@ -255,7 +246,7 @@ func TestWorklog_AddThenView(t *testing.T) {
 	worklogAdd = ""
 	worklogFormat = "json"
 
-	output, err := captureWorklogOutput(t)
+	output, err := captureWorklogOutput(t, "015")
 	if err != nil {
 		t.Fatalf("View after add failed: %v", err)
 	}
@@ -274,10 +265,9 @@ func TestWorklog_UnsupportedFormat(t *testing.T) {
 	tmpDir := createWorklogTestFilesWithWorklog(t)
 	resetWorklogFlags()
 	taskDir = tmpDir
-	worklogTaskID = "015"
 	worklogFormat = "csv"
 
-	_, err := captureWorklogOutput(t)
+	_, err := captureWorklogOutput(t, "015")
 	if err == nil {
 		t.Fatal("Expected error for unsupported format")
 	}

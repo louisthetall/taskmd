@@ -928,20 +928,19 @@ View or add timestamped worklog entries for a task. Worklog files are stored at 
 **Basic usage:**
 ```bash
 # View worklog entries
-taskmd worklog --task-id 015
+taskmd worklog 015
 
 # Add a new entry
-taskmd worklog --task-id 015 --add "Started implementation"
+taskmd worklog 015 --add "Started implementation"
 
 # JSON output
-taskmd worklog --task-id 015 --format json
+taskmd worklog 015 --format json
 ```
 
 **Flags:**
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--task-id` | *(required)* | Task ID |
 | `--add` | | Append a new worklog entry with the given text |
 | `--format` | `text` | Output format (`text`, `json`, `yaml`) |
 

@@ -12,7 +12,6 @@ Complete reference for using taskmd from the command line.
 | [`get`](#get-view-task-details) | Get detailed information about a specific task |
 | [`set`](#set-update-task-fields) | Set a task's frontmatter fields |
 | [`next`](#next-find-what-to-work-on) | Recommend what task to work on next |
-| [`current`](#current-show-current-task) | Show the current in-progress task (for statuslines) |
 | [`validate`](#validate-check-task-files) | Lint and validate tasks |
 | [`graph`](#graph-visualize-dependencies) | Export task dependency graph |
 | [`board`](#board-kanban-view) | Display tasks grouped in a kanban-like board view |
@@ -29,7 +28,7 @@ Complete reference for using taskmd from the command line.
 | [`search`](#search-full-text-search) | Full-text search across task titles and bodies |
 | [`templates`](#templates-manage-task-templates) | List and manage task templates |
 | [`verify`](#verify-run-verification-checks) | Run verification checks for a task |
-| [`status`](#status-lightweight-task-metadata) | Get lightweight metadata for a task |
+| [`status`](#status-show-in-progress-tasks-or-task-metadata) | Show in-progress tasks or get metadata for a specific task |
 | [`context`](#context-show-file-context) | Show file context for a task |
 | [`worklog`](#worklog-view-or-add-worklog-entries) | View or add worklog entries for a task |
 | [`import`](#import-import-tasks-from-external-sources) | Import tasks from external sources |
@@ -218,55 +217,6 @@ taskmd next --format json
 | `--quick-wins` | `false` | Show only quick wins (effort: small) |
 | `--critical` | `false` | Show only critical path tasks |
 
-### current - Show Current Task
-
-Display the current in-progress task in a compact, single-line format. Designed for embedding in statuslines (Claude Code, tmux, starship, shell prompts).
-
-```bash
-# Show the current task
-taskmd current
-# Output: #135 Windows installation support
-
-# Nothing printed if no task is in-progress (exit code 0)
-taskmd current
-```
-
-Titles longer than 30 characters are automatically truncated with `...`.
-
-**Statusline examples:**
-
-Use `$(taskmd current)` anywhere you want to display the active task:
-
-::: code-group
-
-```bash [Claude Code statusline]
-# In your ~/.claude/statusline-command.sh:
-current_task=$(taskmd current 2>/dev/null)
-if [ -n "$current_task" ]; then
-  line="${line} | ${current_task}"
-fi
-```
-
-```bash [tmux status-right]
-# In your ~/.tmux.conf:
-set -g status-right '#(taskmd current 2>/dev/null)'
-```
-
-```bash [Shell prompt (zsh)]
-# In your ~/.zshrc:
-RPROMPT='$(taskmd current 2>/dev/null)'
-```
-
-```bash [Starship custom module]
-# In your ~/.config/starship.toml:
-[custom.task]
-command = "taskmd current"
-when = "taskmd current"
-format = "[$output]($style) "
-style = "dimmed yellow"
-```
-
-:::
 
 ### graph - Visualize Dependencies
 
@@ -864,15 +814,24 @@ taskmd verify --task-id 042
 - `0` - All executable checks passed
 - `1` - One or more executable checks failed
 
-### status - Lightweight Task Metadata
+### status - Show In-Progress Tasks or Task Metadata
 
-Display only the frontmatter metadata of a task, without body content, resolved dependency info, context files, or worklog data. Use this when you just need to quickly check a task's status, priority, or other metadata.
+Without arguments, shows all in-progress tasks. With a query argument, displays the frontmatter metadata of a specific task (without body content, resolved dependency info, context files, or worklog data).
 
 If the task has children (other tasks with a matching `parent` field), a recursive children tree is displayed showing each child's ID, status, and title. Grandchildren and deeper descendants are shown with indentation.
 
 Matching uses the same logic as `get` (ID, title, file path, fuzzy).
 
 ```bash
+# Show all in-progress tasks
+taskmd status
+
+# Compact output for shell statuslines
+taskmd status --statusline
+
+# Filter by scope
+taskmd status --scope cli
+
 # Look up by task ID
 taskmd status 042
 
@@ -905,6 +864,43 @@ Children:
 File: cli/173-e2e-test-suite.md
 ```
 
+**Statusline examples:**
+
+The `--statusline` flag outputs a compact format suitable for embedding in Claude Code's statusline. If multiple tasks are in progress, the first is shown with `(+N more)`.
+
+Use `$(taskmd status --statusline)` anywhere you want to display the active task:
+
+::: code-group
+
+```bash [Claude Code statusline]
+# In your ~/.claude/statusline-command.sh:
+current_task=$(taskmd status --statusline 2>/dev/null)
+if [ -n "$current_task" ]; then
+  line="${line} | ${current_task}"
+fi
+```
+
+```bash [tmux status-right]
+# In your ~/.tmux.conf:
+set -g status-right '#(taskmd status --statusline 2>/dev/null)'
+```
+
+```bash [Shell prompt (zsh)]
+# In your ~/.zshrc:
+RPROMPT='$(taskmd status --statusline 2>/dev/null)'
+```
+
+```bash [Starship custom module]
+# In your ~/.config/starship.toml:
+[custom.task]
+command = "taskmd status --statusline"
+when = "taskmd status --statusline"
+format = "[$output]($style) "
+style = "dimmed yellow"
+```
+
+:::
+
 **Flags:**
 
 | Flag | Default | Description |
@@ -913,6 +909,8 @@ File: cli/173-e2e-test-suite.md
 | `--exact` | `false` | Disable fuzzy matching, exact only |
 | `--threshold` | `0.6` | Fuzzy match sensitivity (0.0-1.0) |
 | `--minimal` | `false` | Show only task metadata, skip children |
+| `--statusline` | `false` | Compact output for Claude Code statusline (no-args mode) |
+| `--scope` | | Filter by group/directory (no-args mode) |
 
 ### context - Show File Context
 
@@ -955,23 +953,22 @@ View or add timestamped worklog entries for a task. Worklog files are stored at 
 
 ```bash
 # View worklog entries
-taskmd worklog --task-id 015
+taskmd worklog 015
 
 # Add a new entry
-taskmd worklog --task-id 015 --add "Started implementation"
+taskmd worklog 015 --add "Started implementation"
 
 # JSON output
-taskmd worklog --task-id 015 --format json
+taskmd worklog 015 --format json
 
 # YAML output
-taskmd worklog --task-id 015 --format yaml
+taskmd worklog 015 --format yaml
 ```
 
 **Flags:**
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--task-id` | *(required)* | Task ID |
 | `--add` | | Append a new worklog entry with the given text |
 | `--format` | `text` | Output format (`text`, `json`, `yaml`) |
 

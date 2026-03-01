@@ -49,6 +49,21 @@ What this task accomplishes.
 | `tags` | No | Array of lowercase, hyphen-separated strings |
 | `created` | No | `YYYY-MM-DD` date |
 
+### Scopes (`touches`)
+
+The `touches` field declares which code areas a task modifies (e.g., `touches: ["cli/graph", "cli/output"]`). Scopes are defined in `.taskmd.yaml` (typically one directory above the tasks directory):
+
+```yaml
+scopes:
+  cli/graph:
+    paths: ["apps/cli/internal/graph/"]
+  cli/output:
+    paths: ["apps/cli/internal/cli/output.go"]
+    description: "Shared output formatting"
+```
+
+When scopes are configured, `touches` values not listed in `.taskmd.yaml` produce a validation warning. When no scopes config exists, all values are accepted.
+
 ### File Naming
 
 Files follow the pattern `NNN-descriptive-title.md` (e.g., `015-add-user-auth.md`).
@@ -215,10 +230,10 @@ before I can implement the password verification step.
 
 ```bash
 # View a task's worklog
-taskmd worklog --task-id 015
+taskmd worklog 015
 
 # Append a new entry
-taskmd worklog --task-id 015 --add "Completed login endpoint. Blocked on task 012 for user model."
+taskmd worklog 015 --add "Completed login endpoint. Blocked on task 012 for user model."
 ```
 
 ## Validation

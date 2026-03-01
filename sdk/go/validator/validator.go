@@ -474,7 +474,7 @@ func (v *Validator) ValidateTouchesAgainstScopes(tasks []*model.Task, knownScope
 			if !knownScopes[scope] && !reported[scope] {
 				reported[scope] = true
 				result.AddIssue(LevelWarning, task.ID, task.FilePath,
-					fmt.Sprintf("touches references undefined scope: '%s'", scope))
+					fmt.Sprintf("touches references undefined scope: '%s'. Add it to the scopes list in .taskmd.yaml", scope))
 			}
 		}
 	}

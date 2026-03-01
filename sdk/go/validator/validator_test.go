@@ -934,7 +934,7 @@ func TestValidateTouches_UndefinedScope(t *testing.T) {
 	// Verify the first occurrence is reported (task 001 for unknown/scope)
 	found := false
 	for _, issue := range result.Issues {
-		if issue.TaskID == "001" && issue.Message == "touches references undefined scope: 'unknown/scope'" {
+		if issue.TaskID == "001" && issue.Message == "touches references undefined scope: 'unknown/scope'. Add it to the scopes list in .taskmd.yaml" {
 			found = true
 		}
 	}

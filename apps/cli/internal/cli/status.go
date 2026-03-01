@@ -14,10 +14,12 @@ import (
 )
 
 var (
-	statusFormat    string
-	statusExact     bool
-	statusThreshold float64
-	statusMinimal   bool
+	statusFormat     string
+	statusExact      bool
+	statusThreshold  float64
+	statusMinimal    bool
+	statusStatusline bool
+	statusScope      string
 )
 
 // statusStdinReader is the reader used for interactive selection prompts.
@@ -25,21 +27,30 @@ var (
 var statusStdinReader io.Reader = os.Stdin
 
 var statusCmd = &cobra.Command{
-	Use:   "status <query>",
-	Short: "Get lightweight metadata for a task (no body, no resolved deps)",
-	Long: `Status displays only the frontmatter metadata of a task, without body content,
-resolved dependency info, context files, or worklog data. Use this when you just
-need to quickly check a task's status, priority, or other metadata.
+	Use:   "status [query]",
+	Short: "Show in-progress tasks or get metadata for a specific task",
+	Long: `Without arguments, status shows all in-progress tasks.
+With a query argument, it displays the frontmatter metadata of a specific task
+(without body content, resolved dependency info, context files, or worklog data).
 
 Matching uses the same logic as 'get' (ID, title, file path, fuzzy).
 
 Examples:
+  # Show all in-progress tasks
+  taskmd status
+
+  # Compact output for shell statuslines
+  taskmd status --statusline
+
+  # Filter by scope
+  taskmd status --scope cli
+
+  # Look up a specific task
   taskmd status 042
   taskmd status "Setup project"
   taskmd status 042 --format json
-  taskmd status 042 --format yaml
   taskmd status sho --exact`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	RunE: runStatus,
 }
 
@@ -50,6 +61,8 @@ func init() {
 	statusCmd.Flags().BoolVar(&statusExact, "exact", false, "disable fuzzy matching, exact only")
 	statusCmd.Flags().Float64Var(&statusThreshold, "threshold", 0.6, "fuzzy match sensitivity (0.0-1.0)")
 	statusCmd.Flags().BoolVar(&statusMinimal, "minimal", false, "show only task metadata, skip children")
+	statusCmd.Flags().BoolVar(&statusStatusline, "statusline", false, "compact output for Claude Code statusline")
+	statusCmd.Flags().StringVar(&statusScope, "scope", "", "filter by group/directory")
 }
 
 // statusChild represents a child task in the recursive children tree.
@@ -78,9 +91,67 @@ type statusOutput struct {
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
-	flags := GetGlobalFlags()
-	query := args[0]
+	if len(args) == 0 {
+		return runStatusList()
+	}
+	return runStatusSingle(args[0])
+}
 
+func runStatusList() error {
+	flags := GetGlobalFlags()
+	scanDir := ResolveScanDir(nil)
+
+	taskScanner := scanner.NewScanner(scanDir, flags.Verbose, flags.IgnoreDirs)
+	result, err := taskScanner.Scan()
+	if err != nil {
+		return fmt.Errorf("scan failed: %w", err)
+	}
+
+	tasks := result.Tasks
+	makeFilePathsRelative(tasks, scanDir)
+
+	filters := []string{"status=in-progress"}
+	if statusScope != "" {
+		filters = append(filters, "group="+statusScope)
+	}
+
+	filtered, err := applyFilters(tasks, filters)
+	if err != nil {
+		return fmt.Errorf("filter failed: %w", err)
+	}
+
+	if len(filtered) == 0 {
+		return nil
+	}
+
+	if statusStatusline {
+		return outputStatusline(filtered, os.Stdout)
+	}
+
+	var childrenIndex map[string][]*model.Task
+	if !statusMinimal {
+		childrenIndex = buildChildrenIndex(tasks)
+	}
+
+	outputs := make([]statusOutput, 0, len(filtered))
+	for _, task := range filtered {
+		outputs = append(outputs, buildStatusOutputFromTask(task, childrenIndex))
+	}
+
+	switch statusFormat {
+	case "text":
+		return outputStatusListText(outputs, os.Stdout)
+	case "json":
+		return WriteJSON(os.Stdout, outputs)
+	case "yaml":
+		return WriteYAML(os.Stdout, outputs)
+	default:
+		return fmt.Errorf("unsupported format: %s (supported: text, json, yaml)", statusFormat)
+	}
+}
+
+func runStatusSingle(query string) error {
+	flags := GetGlobalFlags()
 	scanDir := ResolveScanDir(nil)
 
 	taskScanner := scanner.NewScanner(scanDir, flags.Verbose, flags.IgnoreDirs)
@@ -119,6 +190,29 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	default:
 		return fmt.Errorf("unsupported format: %s (supported: text, json, yaml)", statusFormat)
 	}
+}
+
+func outputStatusline(tasks []*model.Task, w io.Writer) error {
+	task := tasks[0]
+	line := fmt.Sprintf("#%s %s", task.ID, task.Title)
+	if len(tasks) > 1 {
+		line += fmt.Sprintf(" (+%d more)", len(tasks)-1)
+	}
+
+	fmt.Fprintln(w, line)
+	return nil
+}
+
+func outputStatusListText(outputs []statusOutput, w io.Writer) error {
+	for i, out := range outputs {
+		if i > 0 {
+			fmt.Fprintln(w)
+		}
+		if err := outputStatusText(out, w); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func buildStatusOutputFromTask(task *model.Task, childrenIndex map[string][]*model.Task) statusOutput {

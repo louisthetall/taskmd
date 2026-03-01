@@ -215,10 +215,10 @@ before I can implement the password verification step.
 
 ```bash
 # View a task's worklog
-taskmd worklog --task-id 015
+taskmd worklog 015
 
 # Append a new entry
-taskmd worklog --task-id 015 --add "Completed login endpoint. Blocked on task 012 for user model."
+taskmd worklog 015 --add "Completed login endpoint. Blocked on task 012 for user model."
 ```
 
 ## Validation
