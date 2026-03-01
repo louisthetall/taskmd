@@ -123,7 +123,17 @@ func runStatusList() error {
 	}
 
 	if len(filtered) == 0 {
-		return nil
+		switch {
+		case statusStatusline:
+			return nil
+		case statusFormat == "json":
+			return WriteJSON(os.Stdout, []statusOutput{})
+		case statusFormat == "yaml":
+			return WriteYAML(os.Stdout, []statusOutput{})
+		default:
+			fmt.Fprintln(os.Stderr, "No tasks currently in progress.")
+			return nil
+		}
 	}
 
 	if statusStatusline {

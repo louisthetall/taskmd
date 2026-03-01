@@ -551,6 +551,30 @@ func captureStatusNoArgsOutput(t *testing.T) (string, error) {
 	return buf.String(), err
 }
 
+func captureStatusNoArgsOutputWithStderr(t *testing.T) (string, string, error) {
+	t.Helper()
+
+	oldStdout := os.Stdout
+	rOut, wOut, _ := os.Pipe()
+	os.Stdout = wOut
+
+	oldStderr := os.Stderr
+	rErr, wErr, _ := os.Pipe()
+	os.Stderr = wErr
+
+	err := runStatus(statusCmd, []string{})
+
+	wOut.Close()
+	os.Stdout = oldStdout
+	wErr.Close()
+	os.Stderr = oldStderr
+
+	var bufOut, bufErr bytes.Buffer
+	bufOut.ReadFrom(rOut)
+	bufErr.ReadFrom(rErr)
+	return bufOut.String(), bufErr.String(), err
+}
+
 func TestStatus_NoArgs_ZeroInProgress(t *testing.T) {
 	tmpDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tmpDir, "001.md"), []byte(`---
@@ -567,12 +591,67 @@ dependencies: []
 	resetStatusFlags()
 	taskDir = tmpDir
 
+	stdout, stderr, err := captureStatusNoArgsOutputWithStderr(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if stdout != "" {
+		t.Errorf("expected empty stdout, got: %q", stdout)
+	}
+	if !strings.Contains(stderr, "No tasks currently in progress") {
+		t.Errorf("expected informational message on stderr, got: %q", stderr)
+	}
+}
+
+func TestStatus_NoArgs_ZeroInProgress_JSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmpDir, "001.md"), []byte(`---
+id: "001"
+title: "Done task"
+status: completed
+tags: []
+dependencies: []
+---
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusFormat = "json"
+
 	output, err := captureStatusNoArgsOutput(t)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if output != "" {
-		t.Errorf("expected empty output, got: %q", output)
+	if strings.TrimSpace(output) != "[]" {
+		t.Errorf("expected empty JSON array, got: %q", output)
+	}
+}
+
+func TestStatus_NoArgs_ZeroInProgress_YAML(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmpDir, "001.md"), []byte(`---
+id: "001"
+title: "Done task"
+status: completed
+tags: []
+dependencies: []
+---
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	resetStatusFlags()
+	taskDir = tmpDir
+	statusFormat = "yaml"
+
+	output, err := captureStatusNoArgsOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.TrimSpace(output) != "[]" {
+		t.Errorf("expected empty YAML array, got: %q", output)
 	}
 }
 

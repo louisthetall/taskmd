@@ -859,7 +859,21 @@ If the task has children (other tasks with a matching `parent` field), a recursi
 
 Matching uses the same logic as `get` (ID, title, file path, fuzzy).
 
-**Basic usage:**
+**Without arguments**, `status` shows all in-progress tasks. If no tasks are in progress, it prints an informational message to stderr. With `--format json` or `--format yaml`, it returns an empty array instead.
+
+```bash
+# Show all in-progress tasks
+taskmd status
+
+# Compact output for shell statuslines (silent when no tasks)
+taskmd status --statusline
+
+# Filter by scope
+taskmd status --scope cli
+```
+
+**With a query argument**, it displays metadata for a specific task:
+
 ```bash
 # Look up by task ID
 taskmd status 042
@@ -885,6 +899,8 @@ taskmd status 042 --minimal
 | `--exact` | `false` | Disable fuzzy matching, exact only |
 | `--threshold` | `0.6` | Fuzzy match sensitivity (0.0-1.0) |
 | `--minimal` | `false` | Show only task metadata, skip children |
+| `--statusline` | `false` | Compact output for shell statuslines |
+| `--scope` | | Filter by group/directory; supports wildcards |
 
 ### context - Show File Context
 
