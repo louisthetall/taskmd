@@ -24,6 +24,7 @@ The user's query is in `$ARGUMENTS` (a task ID like `077` or a task name/keyword
    - Use `EnterPlanMode` for non-trivial implementation tasks
    - Check off subtasks (`- [x]`) in the task file as you complete them
    - Append worklog entries when you make key decisions, hit blockers, or complete significant subtasks
+   - In the Plan, include a reference to the original task ID, and task file path.
 6. **Write a final worklog entry** summarizing what was done, decisions made, and any open items
 7. **Mark the task as done**:
    - Check `.taskmd.yaml` for `workflow: pr-review` -- if set, use the PR-review workflow below
@@ -45,6 +46,7 @@ Started implementation of the search feature.
 rather than adding Elasticsearch -- simpler and sufficient for our scale.
 
 **Completed:**
+
 - [x] Added search query parser
 - [x] Created search index
 
