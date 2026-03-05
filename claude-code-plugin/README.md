@@ -62,7 +62,8 @@ Use `--scope user` instead of `--scope project` to install across all projects.
 | update-task | `/taskmd:update-task <description>` | Update a task's fields (status, priority, title, tags, etc.) |
 | list-tasks | `/taskmd:list-tasks` | List tasks with optional filters |
 | validate | `/taskmd:validate` | Validate task files for errors |
-| divide-and-conquer | `/taskmd:divide-and-conquer <ID>` | Split a large task into smaller sub-tasks |
+| split-task | `/taskmd:split-task <ID>` | Split a large task into smaller sub-tasks |
+| divide-and-conquer | `/taskmd:divide-and-conquer <ID>` | Execute a task using parallel subagents for independent workstreams |
 | import-todos | `/taskmd:import-todos` | Discover TODO/FIXME comments and convert them into task files |
 
 ## Usage Examples
@@ -90,13 +91,16 @@ Use `--scope user` instead of `--scope project` to install across all projects.
 /taskmd:validate
 
 # Split a large task into smaller ones
-/taskmd:divide-and-conquer 045
+/taskmd:split-task 045
 
 # Force-split even if it seems small enough
-/taskmd:divide-and-conquer 045 --force
+/taskmd:split-task 045 --force
 
 # Look up a specific task
 /taskmd:get-task 042
+
+# Execute a task with parallel subagents
+/taskmd:divide-and-conquer 045
 
 # Import TODOs from code as tasks
 /taskmd:import-todos

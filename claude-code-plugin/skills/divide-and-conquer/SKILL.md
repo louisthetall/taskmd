@@ -1,69 +1,75 @@
 ---
 name: divide-and-conquer
-description: Split a large task into smaller sub-tasks. Accepts a task ID, evaluates complexity, and creates sibling task files if warranted.
-allowed-tools: Bash, Read, Glob, Write
+description: Pick up a task and execute it using subagents to parallelize independent workstreams. Use when the user wants to work on a task with maximum concurrency.
+allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Task, Agent, EnterPlanMode
 ---
 
 # Divide and Conquer
 
-Evaluate a task's complexity and, if warranted, split it into smaller, focused sub-tasks.
+Pick up a task and execute it by splitting the work into independent workstreams that run in parallel via subagents.
 
 ## Instructions
 
-The user's query is in `$ARGUMENTS` (a task ID like `077`, optionally followed by `--force` to skip the complexity check).
+The user's query is in `$ARGUMENTS` (a task ID like `077` or a task name/keyword).
 
 1. **Look up the task**: Run `taskmd get $ARGUMENTS` to find the task
    - If not found, run `taskmd list` to show available tasks and ask the user which one they meant
 2. **Read the task file** with the `Read` tool to get the full description, subtasks, and acceptance criteria
-3. **Assess complexity** to decide whether the task should be divided. Consider:
-   - **Effort field**: `large` effort tasks are good candidates; `small` tasks almost never need splitting
-   - **Subtask count**: Tasks with 5+ checkbox items that span distinct concerns are candidates
-   - **Scope breadth**: Tasks that touch multiple unrelated areas (e.g., backend + frontend + docs) are candidates
-   - **Independence**: Subtasks that can be worked on in parallel by different people are candidates
-   - A task is **NOT** a good candidate if:
-     - It has `small` or `medium` effort with fewer than 5 subtasks
-     - Its subtasks are tightly coupled sequential steps of a single feature
-     - Splitting would create trivial tasks that aren't worth tracking individually
+3. **Mark the task as in-progress**: Run `taskmd set <ID> --status in-progress`
+4. **Start a worklog entry** (if worklogs are enabled):
+   - Check `.taskmd.yaml` for `worklogs: false` -- if set, skip worklog steps
+   - Otherwise, find or create the worklog file at `tasks/<group>/.worklogs/<ID>.md` (or `tasks/.worklogs/<ID>.md` for root tasks)
+   - Append a timestamped entry noting your approach and initial findings
+5. **Plan and identify workstreams**:
+   - Use `EnterPlanMode` to design the overall approach
+   - In the plan, include a reference to the original task ID and task file path
+   - Analyze the task and break it into **independent workstreams** — pieces of work that can proceed in parallel without depending on each other's output
+   - Examples of independent workstreams:
+     - Implementation code vs. tests vs. documentation
+     - Changes to separate packages or modules
+     - Backend changes vs. frontend changes
+   - If the task is simple enough that parallelization adds no benefit, just do it directly (skip to step 7)
+6. **Launch subagents in parallel**:
+   - Use the `Agent` tool to launch one subagent per independent workstream
+   - Give each subagent a clear, self-contained prompt describing exactly what to do, including relevant file paths and context
+   - Launch all independent subagents in a **single message** so they run concurrently
+   - Use `isolation: "worktree"` for subagents that modify files, to avoid conflicts
+   - Wait for all subagents to complete
+7. **Coordinate and integrate**:
+   - Review all subagent results for correctness
+   - If subagents ran in worktrees, merge their changes (review diffs, resolve any conflicts)
+   - If any subagent failed, handle the failure directly rather than re-launching
+   - Run tests and linting to verify the integrated result
+   - Check off subtasks (`- [x]`) in the task file as they are completed
+   - Append worklog entries when you make key decisions, hit blockers, or complete significant subtasks
+8. **Write a final worklog entry** summarizing what was done, which workstreams ran in parallel, decisions made, and any open items
+9. **Mark the task as done**:
+   - Check `.taskmd.yaml` for `workflow: pr-review` -- if set, use the PR-review workflow below
+   - **Solo workflow** (default): Run `taskmd set <ID> --status completed --verify`
+     - The `--verify` flag will run any verification checks defined in the task before applying the status change
+     - If verification fails, fix the issues and try again
+   - **PR-review workflow**: Open a PR, then run `taskmd set <ID> --status in-review --add-pr <PR-URL>` and stop
 
-4. **If the task is NOT complex enough**:
-   - Explain why the task doesn't warrant splitting (be specific about which criteria it fails)
-   - Do NOT create any files
-   - Only proceed if `$ARGUMENTS` contains `--force` or the user explicitly insists
+## Worklog Format
 
-5. **If the task IS complex enough** (or `--force` is used):
-   a. **Read the specification**: Look for `docs/taskmd_specification.md` or `docs/TASKMD_SPEC.md` for the correct format
-   b. **Determine available IDs** by scanning `tasks/**/*.md` with `Glob`:
-      - Extract numeric IDs from filenames (pattern: `NNN-description.md`)
-      - Allocate the next N sequential IDs for the sub-tasks
-   c. **Design the split**: Group the original task's work into 2-5 focused sub-tasks where each:
-      - Has a single clear responsibility
-      - Can be independently verified
-      - Includes relevant subtasks and acceptance criteria from the original
-   d. **Create sub-task files** as siblings of the original task file (same directory), each with:
+Each worklog entry uses a timestamp heading followed by free-form notes:
 
-      ```yaml
-      ---
-      id: "<NNN>"
-      title: "<focused title>"
-      status: pending
-      priority: <inherit from parent>
-      effort: <estimated for this slice>
-      tags: <inherit relevant tags from parent>
-      parent: "<original task ID>"
-      created: <today's date YYYY-MM-DD>
-      ---
-      ```
+```markdown
+## 2026-02-15T10:30:00Z
 
-      Followed by a markdown body with:
-      - An H1 heading matching the title
-      - An `## Objective` section describing this slice's goal
-      - A `## Tasks` section with checkbox items (pulled or refined from the original)
-      - An `## Acceptance Criteria` section
+Started divide-and-conquer execution of the search feature task.
 
-   e. **Update the original task** (only the markdown body, not the frontmatter status):
-      - Add a `## Sub-tasks` section listing the created sub-task IDs and titles
-      - Keep the original content intact for reference
+**Workstreams identified:**
 
-6. **Report** the result:
-   - List each created sub-task file with its ID and title
-   - Summarize how the work was divided
+1. Core search implementation (subagent — worktree)
+2. Test suite (subagent — worktree)
+3. Documentation updates (subagent)
+
+**Completed:**
+
+- [x] All subagents finished successfully
+- [x] Merged worktree changes
+- [x] Tests passing after integration
+
+**Decisions:** Used full-text search with SQLite rather than Elasticsearch.
+```
