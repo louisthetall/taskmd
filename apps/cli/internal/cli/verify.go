@@ -228,12 +228,36 @@ func formatVerifyStatus(status verify.StepStatus, r *lipgloss.Renderer) string {
 	}
 }
 
-// resolveProjectRoot returns the directory containing .taskmd.yaml, or cwd as fallback.
+// resolveProjectRoot returns the absolute path of the directory containing .taskmd.yaml, or cwd as fallback.
+// It first checks viper's loaded config, then walks up from cwd to find .taskmd.yaml.
 func resolveProjectRoot() string {
 	configFile := viper.ConfigFileUsed()
 	if configFile != "" {
+		abs, err := filepath.Abs(filepath.Dir(configFile))
+		if err == nil {
+			return abs
+		}
 		return filepath.Dir(configFile)
 	}
+
+	// Walk up from cwd to find .taskmd.yaml
+	dir, err := filepath.Abs(".")
+	if err != nil {
+		return "."
+	}
+	for {
+		candidate := filepath.Join(dir, ".taskmd.yaml")
+		if _, err := os.Stat(candidate); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	// Fallback to cwd
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "."

@@ -38,6 +38,11 @@ func TestTemplatesList_BuiltinTemplates(t *testing.T) {
 	resetTemplatesFlags()
 	taskDir = tmpDir
 
+	// Change to tmpDir so resolveProjectRoot() doesn't find the real project root
+	oldDir, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(oldDir)
+
 	output, err := captureTemplatesListOutput(t)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -95,6 +100,11 @@ func TestTemplatesList_YAMLFormat(t *testing.T) {
 	resetTemplatesFlags()
 	taskDir = tmpDir
 	templatesFormat = "yaml"
+
+	// Change to tmpDir so resolveProjectRoot() doesn't find the real project root
+	oldDir, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(oldDir)
 
 	output, err := captureTemplatesListOutput(t)
 	if err != nil {
@@ -163,6 +173,11 @@ func TestTemplatesList_NoTemplates(t *testing.T) {
 	tmpDir := t.TempDir()
 	resetTemplatesFlags()
 	taskDir = tmpDir
+
+	// Change to tmpDir so resolveProjectRoot() doesn't find the real project root
+	oldDir, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(oldDir)
 
 	// Clear built-in templates
 	oldBuiltins := template.BuiltinTemplates

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/viper"
+
 	"github.com/driangle/taskmd/sdk/go/verify"
 )
 
@@ -433,6 +435,35 @@ func TestVerify_All(t *testing.T) {
 	}
 	if !strings.Contains(output, "2 passed") {
 		t.Errorf("expected '2 passed' in output, got: %s", output)
+	}
+}
+
+func TestResolveProjectRoot_ReturnsAbsolutePath(t *testing.T) {
+	// resolveProjectRoot uses viper.ConfigFileUsed() to determine the project root.
+	// It should always return an absolute path regardless of how viper found the config.
+	root := resolveProjectRoot()
+
+	if !filepath.IsAbs(root) {
+		t.Errorf("expected absolute path from resolveProjectRoot(), got relative: %s", root)
+	}
+}
+
+func TestResolveProjectRoot_MatchesConfigDir(t *testing.T) {
+	// When viper has a config file, resolveProjectRoot should return
+	// the absolute path to the directory containing that config file.
+	configFile := viper.ConfigFileUsed()
+	if configFile == "" {
+		t.Skip("no config file loaded, skipping")
+	}
+
+	root := resolveProjectRoot()
+	expectedDir, err := filepath.Abs(filepath.Dir(configFile))
+	if err != nil {
+		t.Fatalf("failed to get abs path: %v", err)
+	}
+
+	if root != expectedDir {
+		t.Errorf("expected %s, got %s", expectedDir, root)
 	}
 }
 
