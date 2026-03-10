@@ -31,6 +31,7 @@ var (
 	addEdit      bool
 	addTemplate  string
 	addSlug      string
+	addMilestone string
 )
 
 var addCmd = &cobra.Command{
@@ -72,6 +73,7 @@ func init() {
 	addCmd.Flags().BoolVar(&addEdit, "edit", false, "open the new task in $EDITOR")
 	addCmd.Flags().StringVar(&addTemplate, "template", "", "use a task template (e.g. bug, feature, chore)")
 	addCmd.Flags().StringVar(&addSlug, "slug", "", "custom filename slug (default: auto-generated from title)")
+	addCmd.Flags().StringVar(&addMilestone, "milestone", "", "milestone name")
 
 	_ = addCmd.RegisterFlagCompletionFunc("priority", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return validPriorityValues, cobra.ShellCompDirectiveNoFileComp
@@ -232,6 +234,9 @@ func buildTemplateOverrides(cmd *cobra.Command) map[string]string {
 		tags := parseTags()
 		overrides["tags"] = taskfile.FormatInlineTags(tags)[len("tags: "):]
 	}
+	if cmd.Flags().Changed("milestone") {
+		overrides["milestone"] = addMilestone
+	}
 	if cmd.Flags().Changed("depends-on") {
 		deps := parseDependsOn()
 		overrides["dependencies"] = formatDependencies(deps)[len("dependencies: "):]
@@ -269,6 +274,9 @@ func buildTaskFileContent(id, title string) string {
 	}
 	if addParent != "" {
 		fmt.Fprintf(&b, "parent: %q\n", addParent)
+	}
+	if addMilestone != "" {
+		fmt.Fprintf(&b, "milestone: %s\n", addMilestone)
 	}
 
 	deps := parseDependsOn()

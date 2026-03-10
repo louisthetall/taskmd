@@ -22,10 +22,11 @@ func resetAddFlags() {
 	addEdit = false
 	addTemplate = ""
 	addSlug = ""
+	addMilestone = ""
 	taskDir = "."
 
 	// Reset cobra flag "changed" state for template override tests
-	for _, name := range []string{"priority", "status", "effort", "tags", "owner", "depends-on", "parent"} {
+	for _, name := range []string{"priority", "status", "effort", "tags", "owner", "depends-on", "parent", "milestone"} {
 		if f := addCmd.Flags().Lookup(name); f != nil {
 			f.Changed = false
 		}
@@ -728,5 +729,50 @@ func TestAdd_TemplateFlag_WithTagsOverride(t *testing.T) {
 
 	if !strings.Contains(fileStr, `["ui", "frontend"]`) {
 		t.Errorf("expected tags override, got:\n%s", fileStr)
+	}
+}
+
+func TestAdd_WithMilestone(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetAddFlags()
+	taskDir = tmpDir
+	addMilestone = "v0.2"
+
+	_, err := captureAddOutput(t, "Milestone task")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	files, _ := filepath.Glob(filepath.Join(tmpDir, "001-*.md"))
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(files))
+	}
+
+	content, _ := os.ReadFile(files[0])
+	fileStr := string(content)
+
+	if !strings.Contains(fileStr, "milestone: v0.2") {
+		t.Errorf("expected milestone: v0.2 in frontmatter, got:\n%s", fileStr)
+	}
+}
+
+func TestAdd_MilestoneOmittedWhenEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetAddFlags()
+	taskDir = tmpDir
+
+	_, err := captureAddOutput(t, "No milestone task")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	files, _ := filepath.Glob(filepath.Join(tmpDir, "001-*.md"))
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(files))
+	}
+
+	content, _ := os.ReadFile(files[0])
+	if strings.Contains(string(content), "milestone:") {
+		t.Error("milestone should not appear in frontmatter when not set")
 	}
 }

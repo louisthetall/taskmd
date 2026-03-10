@@ -1,7 +1,7 @@
 ---
 title: "Support milestone in set and add commands"
 id: "01kka731b"
-status: pending
+status: completed
 priority: high
 type: feature
 dependencies: ["01kka72zy"]
@@ -18,12 +18,12 @@ Allow users to set and modify the `milestone` field on tasks via `taskmd set` an
 
 ## Tasks
 
-- [ ] Add `--milestone` flag to `taskmd set` command
-- [ ] Implement writing milestone to task frontmatter via set
-- [ ] Add `--milestone` flag to `taskmd add` command
-- [ ] Include milestone in task creation when specified
-- [ ] Add tests for set milestone (add, change, clear)
-- [ ] Add tests for add with milestone
+- [x] Add `--milestone` flag to `taskmd set` command
+- [x] Implement writing milestone to task frontmatter via set
+- [x] Add `--milestone` flag to `taskmd add` command
+- [x] Include milestone in task creation when specified
+- [x] Add tests for set milestone (add, change, clear)
+- [x] Add tests for add with milestone
 
 ## Acceptance Criteria
 

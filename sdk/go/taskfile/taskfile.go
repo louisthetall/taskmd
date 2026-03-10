@@ -24,6 +24,7 @@ type UpdateRequest struct {
 	RemPRs       []string  // remove PR URLs
 	AddTouches   []string  // add scope identifiers to touches
 	RemTouches   []string  // remove scope identifiers from touches
+	Milestone    *string
 	Dependencies *[]string // replace dependencies entirely
 	Body         *string
 }
@@ -156,6 +157,9 @@ func buildScalarUpdates(req UpdateRequest) []scalarUpdate {
 	}
 	if req.Parent != nil {
 		updates = append(updates, scalarUpdate{key: "parent", value: *req.Parent})
+	}
+	if req.Milestone != nil {
+		updates = append(updates, scalarUpdate{key: "milestone", value: *req.Milestone})
 	}
 	return updates
 }

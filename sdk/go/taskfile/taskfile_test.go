@@ -562,6 +562,79 @@ created: 2026-01-01
 	}
 }
 
+func TestUpdateTaskFile_Milestone_Set(t *testing.T) {
+	path := createTestFile(t, noTagsTask)
+
+	err := UpdateTaskFile(path, UpdateRequest{Milestone: strPtr("v0.2")})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if !strings.Contains(s, "milestone: v0.2") {
+		t.Errorf("expected milestone to be set, got:\n%s", s)
+	}
+	// Other fields preserved
+	if !strings.Contains(s, "status: pending") {
+		t.Error("expected status preserved")
+	}
+}
+
+func TestUpdateTaskFile_Milestone_Update(t *testing.T) {
+	task := `---
+id: "010"
+title: "Task with milestone"
+status: pending
+milestone: v0.1
+created: 2026-02-08
+---
+
+# Task with milestone
+`
+	path := createTestFile(t, task)
+
+	err := UpdateTaskFile(path, UpdateRequest{Milestone: strPtr("v0.2")})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if !strings.Contains(s, "milestone: v0.2") {
+		t.Errorf("expected milestone to be updated, got:\n%s", s)
+	}
+	if strings.Contains(s, "milestone: v0.1") {
+		t.Error("expected old milestone to be replaced")
+	}
+}
+
+func TestUpdateTaskFile_Milestone_Clear(t *testing.T) {
+	task := `---
+id: "011"
+title: "Task with milestone"
+status: pending
+milestone: v0.1
+created: 2026-02-08
+---
+
+# Task with milestone
+`
+	path := createTestFile(t, task)
+
+	err := UpdateTaskFile(path, UpdateRequest{Milestone: strPtr("")})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	// Milestone line should still exist but be empty
+	if strings.Contains(s, "milestone: v0.1") {
+		t.Error("expected milestone to be cleared")
+	}
+}
+
 func TestFindFrontmatterBounds(t *testing.T) {
 	tests := []struct {
 		name      string

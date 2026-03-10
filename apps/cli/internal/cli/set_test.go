@@ -115,6 +115,7 @@ func resetSetFlags() {
 	setOwner = ""
 	setParent = ""
 	setDependsOn = ""
+	setMilestone = ""
 	setDone = false
 	setDryRun = false
 	setVerify = false
@@ -127,7 +128,7 @@ func resetSetFlags() {
 	taskDir = "."
 
 	// Reset cobra flag Changed state to avoid test interference
-	for _, name := range []string{"status", "parent", "depends-on"} {
+	for _, name := range []string{"status", "parent", "depends-on", "milestone"} {
 		if f := setCmd.Flags().Lookup(name); f != nil {
 			f.Changed = false
 		}
@@ -1825,5 +1826,113 @@ func TestSet_AddTouches_EmptyArray(t *testing.T) {
 	}
 	if !strings.Contains(fileStr, "cli/graph") {
 		t.Error("Expected cli/graph to be added")
+	}
+}
+
+func TestSet_Milestone_Add(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "001"
+	setMilestone = "v0.2"
+
+	setCmd.Flags().Set("milestone", "v0.2")
+	defer func() { setCmd.Flags().Lookup("milestone").Changed = false }()
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "milestone:") {
+		t.Errorf("Expected milestone change in output, got: %s", output)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "001-setup.md"))
+	fileStr := string(content)
+	if !strings.Contains(fileStr, "milestone: v0.2") {
+		t.Errorf("Expected file to contain milestone: v0.2, got:\n%s", fileStr)
+	}
+}
+
+func TestSet_Milestone_Change(t *testing.T) {
+	tmpDir := t.TempDir()
+	content := `---
+id: "060"
+title: "Task with milestone"
+status: pending
+milestone: v0.1
+created: 2026-02-08
+---
+
+# Task with milestone
+`
+	path := filepath.Join(tmpDir, "060-milestone.md")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "060"
+	setMilestone = "v0.2"
+
+	setCmd.Flags().Set("milestone", "v0.2")
+	defer func() { setCmd.Flags().Lookup("milestone").Changed = false }()
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "milestone: v0.1 -> v0.2") {
+		t.Errorf("Expected milestone change in output, got: %s", output)
+	}
+
+	updated, _ := os.ReadFile(path)
+	fileStr := string(updated)
+	if !strings.Contains(fileStr, "milestone: v0.2") {
+		t.Errorf("Expected milestone to be updated, got:\n%s", fileStr)
+	}
+}
+
+func TestSet_Milestone_Clear(t *testing.T) {
+	tmpDir := t.TempDir()
+	content := `---
+id: "061"
+title: "Task with milestone"
+status: pending
+milestone: v0.1
+created: 2026-02-08
+---
+
+# Task with milestone
+`
+	path := filepath.Join(tmpDir, "061-milestone.md")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "061"
+	setMilestone = ""
+
+	setCmd.Flags().Set("milestone", "")
+	defer func() { setCmd.Flags().Lookup("milestone").Changed = false }()
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "milestone:") {
+		t.Errorf("Expected milestone change in output, got: %s", output)
+	}
+
+	updated, _ := os.ReadFile(path)
+	fileStr := string(updated)
+	if !strings.Contains(fileStr, "milestone: ") || strings.Contains(fileStr, "milestone: v0.1") {
+		t.Errorf("Expected milestone to be cleared, got:\n%s", fileStr)
 	}
 }
