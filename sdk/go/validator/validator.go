@@ -61,10 +61,18 @@ func (vr *ValidationResult) AddIssue(level ValidationLevel, taskID, filePath, me
 // Extracted in the CLI layer so the validator stays viper-free.
 type ConfigData struct {
 	Scopes     map[string]ScopeConfig
+	Milestones []MilestoneConfig
 	TopKeys    []string
 	ConfigPath string
 	Workflow   string
 	ID         *IDConfig
+}
+
+// MilestoneConfig holds the configuration for a single milestone entry.
+type MilestoneConfig struct {
+	Name        string // milestone identifier
+	Description string // optional human-readable description
+	Due         string // optional due date (YYYY-MM-DD)
 }
 
 // IDConfig holds the configuration for task ID generation.
@@ -425,15 +433,16 @@ func scopeLabel(name, description string) string {
 }
 
 var knownConfigKeys = map[string]bool{
-	"dir":      true,
-	"task-dir": true,
-	"web":      true,
-	"scopes":   true,
-	"sync":     true,
-	"ignore":   true,
-	"workflow": true,
-	"todos":    true,
-	"id":       true,
+	"dir":        true,
+	"task-dir":   true,
+	"web":        true,
+	"scopes":     true,
+	"sync":       true,
+	"ignore":     true,
+	"workflow":   true,
+	"todos":      true,
+	"id":         true,
+	"milestones": true,
 }
 
 // checkUnknownConfigKeys warns about unrecognized top-level config keys.
@@ -476,6 +485,31 @@ func (v *Validator) ValidateTouchesAgainstScopes(tasks []*model.Task, knownScope
 				result.AddIssue(LevelWarning, task.ID, task.FilePath,
 					fmt.Sprintf("touches references undefined scope: '%s'. Add it to the scopes list in .taskmd.yaml", scope))
 			}
+		}
+	}
+
+	return result
+}
+
+// ValidateMilestonesAgainstConfig warns when tasks reference milestones not defined in config.
+// Skips validation if knownMilestones is nil or empty.
+func (v *Validator) ValidateMilestonesAgainstConfig(tasks []*model.Task, knownMilestones map[string]bool) *ValidationResult {
+	result := &ValidationResult{
+		Issues: make([]ValidationIssue, 0),
+	}
+	if len(knownMilestones) == 0 {
+		return result
+	}
+
+	reported := make(map[string]bool)
+	for _, task := range tasks {
+		if task.Milestone == "" {
+			continue
+		}
+		if !knownMilestones[task.Milestone] && !reported[task.Milestone] {
+			reported[task.Milestone] = true
+			result.AddIssue(LevelWarning, task.ID, task.FilePath,
+				fmt.Sprintf("milestone references undefined milestone: '%s'. Add it to the milestones list in .taskmd.yaml", task.Milestone))
 		}
 	}
 

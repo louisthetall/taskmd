@@ -204,6 +204,14 @@ func validateConfig(v *validator.Validator, validationResult *validator.Validati
 		}
 		mergeValidationResults(validationResult, v.ValidateTouchesAgainstScopes(tasks, knownScopes))
 	}
+
+	if configData != nil && len(configData.Milestones) > 0 {
+		knownMilestones := make(map[string]bool, len(configData.Milestones))
+		for _, ms := range configData.Milestones {
+			knownMilestones[ms.Name] = true
+		}
+		mergeValidationResults(validationResult, v.ValidateMilestonesAgainstConfig(tasks, knownMilestones))
+	}
 }
 
 // loadConfigForValidation extracts config data from viper for validation.
@@ -239,6 +247,10 @@ func loadConfigForValidation() *validator.ConfigData {
 
 	if viper.InConfig("id") {
 		config.ID = parseIDConfig(viper.Get("id"))
+	}
+
+	if viper.InConfig("milestones") {
+		config.Milestones = parseMilestonesConfig(viper.Get("milestones"))
 	}
 
 	return config
@@ -281,6 +293,36 @@ func toInt(v any) int {
 	default:
 		return 0
 	}
+}
+
+// parseMilestonesConfig converts raw viper milestones data into typed MilestoneConfig entries.
+func parseMilestonesConfig(raw any) []validator.MilestoneConfig {
+	if raw == nil {
+		return nil
+	}
+	items, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+	milestones := make([]validator.MilestoneConfig, 0, len(items))
+	for _, item := range items {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		mc := validator.MilestoneConfig{}
+		if name, ok := m["name"].(string); ok {
+			mc.Name = name
+		}
+		if desc, ok := m["description"].(string); ok {
+			mc.Description = desc
+		}
+		if due, ok := m["due"].(string); ok {
+			mc.Due = due
+		}
+		milestones = append(milestones, mc)
+	}
+	return milestones
 }
 
 // parseScopeEntries converts raw viper scope data into typed ScopeConfig entries.

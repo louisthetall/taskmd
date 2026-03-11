@@ -41,6 +41,7 @@ Description and subtasks go here.
 | `created` | date | No | `YYYY-MM-DD` |
 | `verify` | array | No | List of typed verification checks (see below) |
 | `pr` | array | No | List of pull request URLs |
+| `milestone` | string | No | Free-form milestone name (e.g., `"v0.2"`, `"2026-Q1"`) |
 | `external_id` | string | No | Identifier from an external system (e.g., `"PROJ-123"`, `"42"`) |
 
 ## Frontmatter Schema
@@ -198,6 +199,27 @@ verify:
 pr: ["https://github.com/owner/repo/pull/42"]
 ```
 
+**`milestone`** — Free-form string assigning a task to a time-based grouping such as a sprint, phase, iteration, or release (e.g., `"v0.2"`, `"2026-Q1"`, `"beta-launch"`). Used for filtering and display.
+
+```yaml
+milestone: "v0.2"
+```
+
+Milestones can optionally be defined in `.taskmd.yaml` with metadata:
+
+```yaml
+# .taskmd.yaml
+milestones:
+  - name: "v0.2"
+    description: "Core CLI features"
+    due: 2026-04-01
+  - name: "v0.3"
+    description: "Web dashboard"
+    due: 2026-06-01
+```
+
+When milestones are configured, a task referencing a milestone not in the list produces a warning. When no milestones config exists, all values are accepted silently.
+
 **`external_id`** — Identifier from an external system (e.g., a GitHub issue number or Jira issue key). Used to trace synced tasks back to their source. Written by the sync engine; not typically set manually.
 
 ```yaml
@@ -351,6 +373,7 @@ tags:
   - auth
   - security
   - api
+milestone: "v0.2"
 created: 2026-02-08
 ---
 

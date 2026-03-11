@@ -689,6 +689,49 @@ func TestIsAlphanumericID(t *testing.T) {
 	}
 }
 
+func TestParseTaskContent_Milestone(t *testing.T) {
+	content := []byte(`---
+id: "050"
+title: "Milestone Task"
+status: pending
+milestone: "v0.2"
+---
+
+# Milestone Task
+
+Body content.
+`)
+
+	task, err := ParseTaskContent("050-milestone-task.md", content)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if task.Milestone != "v0.2" {
+		t.Errorf("expected milestone 'v0.2', got '%s'", task.Milestone)
+	}
+}
+
+func TestParseTaskContent_MilestoneEmpty(t *testing.T) {
+	content := []byte(`---
+id: "051"
+title: "No Milestone Task"
+status: pending
+---
+
+# No Milestone Task
+`)
+
+	task, err := ParseTaskContent("051-no-milestone-task.md", content)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if task.Milestone != "" {
+		t.Errorf("expected empty milestone, got '%s'", task.Milestone)
+	}
+}
+
 // Helper function
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) &&
