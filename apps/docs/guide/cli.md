@@ -453,6 +453,12 @@ taskmd set 042 --done
 
 # Preview changes without writing
 taskmd set 042 --priority critical --dry-run
+
+# Set milestone
+taskmd set 042 --milestone v0.2
+
+# Clear milestone
+taskmd set 042 --milestone ""
 ```
 
 **Flags:**
@@ -466,6 +472,7 @@ taskmd set 042 --priority critical --dry-run
 | `--effort` | | New effort (`small`, `medium`, `large`) |
 | `--owner` | | Owner/assignee |
 | `--parent` | | Parent task ID (empty string to clear) |
+| `--milestone` | | Milestone name (empty string to clear) |
 | `--done` | `false` | Alias for `--status completed` |
 | `--dry-run` | `false` | Preview changes without writing to disk |
 | `--add-tag` | | Add a tag (repeatable) |
@@ -694,6 +701,9 @@ taskmd add "Quick fix" --edit
 # With dependencies
 taskmd add "Deploy to staging" --depends-on 041,042
 
+# Create with milestone
+taskmd add "Implement OAuth" --milestone v0.2
+
 # Custom filename slug
 taskmd add "Fix the login bug" --slug fix-login
 
@@ -712,6 +722,7 @@ taskmd add "Automated task" --format json
 | `--owner` | | Task owner/assignee |
 | `--depends-on` | | Comma-separated dependency task IDs |
 | `--parent` | | Parent task ID |
+| `--milestone` | | Milestone name |
 | `--group` | | Subdirectory to create the task in |
 | `--slug` | | Custom filename slug (default: auto-generated from title) |
 | `--format` | `plain` | Output format (`plain`, `json`) |
