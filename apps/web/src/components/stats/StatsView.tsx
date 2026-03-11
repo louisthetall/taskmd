@@ -27,6 +27,12 @@ export function StatsView({ stats }: StatsViewProps) {
         <BreakdownCard title="By Effort" data={stats.tasks_by_effort} linkParam="effort" />
       </div>
 
+      {stats.tasks_by_milestone && Object.keys(stats.tasks_by_milestone).length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <BreakdownCard title="By Milestone" data={stats.tasks_by_milestone} />
+        </div>
+      )}
+
       <div className="bg-white rounded-lg border border-gray-200 p-4 dark:bg-gray-800 dark:border-gray-700">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Tags</h3>
         {!stats.tags_by_count || stats.tags_by_count.length === 0 ? (

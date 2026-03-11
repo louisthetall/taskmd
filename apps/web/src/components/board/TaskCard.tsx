@@ -80,11 +80,18 @@ export function TaskCard({ task, sourceGroup, canDrag, focused = false }: TaskCa
           {task.id}
         </span>
       </div>
-      {task.priority && (
-        <span className={`mt-1.5 inline-block text-xs text-gray-500 dark:text-gray-400 ${canDrag ? "ml-5" : ""}`}>
-          {task.priority}
-        </span>
-      )}
+      <div className={`flex items-center gap-2 mt-1.5 ${canDrag ? "ml-5" : ""}`}>
+        {task.priority && (
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {task.priority}
+          </span>
+        )}
+        {task.milestone && (
+          <span className="px-1.5 py-0.5 text-xs rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">
+            {task.milestone}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ export interface Task {
   type: string;
   dependencies: string[] | null;
   tags: string[] | null;
+  milestone: string;
   group: string;
   owner: string;
   parent: string;
@@ -35,6 +36,7 @@ export interface BoardTask {
   priority?: string;
   effort?: string;
   type?: string;
+  milestone?: string;
   tags?: string[];
 }
 
@@ -67,6 +69,7 @@ export interface Stats {
   tasks_by_status: Record<string, number>;
   tasks_by_priority: Record<string, number>;
   tasks_by_effort: Record<string, number>;
+  tasks_by_milestone: Record<string, number>;
   blocked_tasks_count: number;
   critical_path_length: number;
   max_dependency_depth: number;
@@ -107,6 +110,7 @@ export interface TaskUpdateRequest {
   priority?: string;
   effort?: string;
   type?: string;
+  milestone?: string;
   owner?: string;
   parent?: string;
   tags?: string[];

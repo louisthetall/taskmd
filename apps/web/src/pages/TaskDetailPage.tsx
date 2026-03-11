@@ -106,6 +106,7 @@ export function TaskDetailPage() {
                 <Field label="Priority" value={task.priority} />
               )}
               {task.effort && <Field label="Effort" value={task.effort} />}
+              {task.milestone && <Field label="Milestone" value={task.milestone} />}
               {task.owner && <Field label="Owner" value={task.owner} />}
               {task.group && <Field label="Group" value={task.group} />}
               {task.parent && (

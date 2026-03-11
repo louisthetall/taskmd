@@ -10,6 +10,7 @@ function makeStats(overrides: Partial<Stats> = {}): Stats {
     tasks_by_status: { pending: 10, "in-progress": 5, completed: 27 },
     tasks_by_priority: { critical: 2, high: 8, medium: 20, low: 12 },
     tasks_by_effort: { small: 15, medium: 18, large: 9 },
+    tasks_by_milestone: {},
     blocked_tasks_count: 3,
     critical_path_length: 7,
     max_dependency_depth: 4,

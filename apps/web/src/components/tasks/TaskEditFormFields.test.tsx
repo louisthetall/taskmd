@@ -107,6 +107,8 @@ describe("FieldGrid", () => {
 describe("MetadataFields", () => {
   function renderMetadataFields(overrides = {}) {
     const defaults = {
+      milestone: "",
+      onMilestoneChange: vi.fn(),
       owner: "",
       onOwnerChange: vi.fn(),
       parent: "",
@@ -119,16 +121,18 @@ describe("MetadataFields", () => {
     return { ...render(<MetadataFields {...props} />), props };
   }
 
-  it("renders all three input fields with labels", () => {
+  it("renders all four input fields with labels", () => {
     renderMetadataFields();
+    expect(screen.getByText("Milestone")).toBeInTheDocument();
     expect(screen.getByText("Owner")).toBeInTheDocument();
     expect(screen.getByText("Parent")).toBeInTheDocument();
     expect(screen.getByText("Tags (comma-separated)")).toBeInTheDocument();
-    expect(document.querySelectorAll("input")).toHaveLength(3);
+    expect(document.querySelectorAll("input")).toHaveLength(4);
   });
 
   it("renders correct placeholders", () => {
     renderMetadataFields();
+    expect(screen.getByPlaceholderText("e.g. v1.0")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("e.g. alice")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("e.g. 045")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("e.g. backend, api, feature")).toBeInTheDocument();

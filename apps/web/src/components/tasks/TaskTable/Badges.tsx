@@ -30,6 +30,16 @@ export function TypeBadge({ type: taskType }: { type: string }) {
   );
 }
 
+export function MilestoneBadge({ milestone }: { milestone: string }) {
+  return (
+    <span
+      className="px-2 py-0.5 text-xs font-medium rounded-full bg-teal-100 text-teal-700 ring-1 ring-teal-300 dark:bg-teal-900/30 dark:text-teal-300 dark:ring-teal-700"
+    >
+      {milestone}
+    </span>
+  );
+}
+
 export function BlockedStatusBadge({
   dependencies,
   taskStatusMap,

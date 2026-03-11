@@ -7,6 +7,7 @@ export interface FilterState {
   selectedTypes: Set<string>;
   selectedTags: Set<string>;
   selectedEffort: Set<string>;
+  selectedMilestones: Set<string>;
   globalFilter: string;
 }
 
@@ -23,6 +24,10 @@ export function applyFilters(tasks: Task[], filters: FilterState): Task[] {
     if (filters.selectedEffort.size < EFFORTS.length) {
       if (!task.effort || !filters.selectedEffort.has(task.effort)) return false;
     }
+    if (filters.selectedMilestones.size > 0) {
+      if (!task.milestone || !filters.selectedMilestones.has(task.milestone))
+        return false;
+    }
     return true;
   });
 }
@@ -34,6 +39,7 @@ export function hasActiveFilters(filters: FilterState): boolean {
     filters.selectedTypes.size !== TYPES.length ||
     filters.selectedTags.size > 0 ||
     filters.selectedEffort.size !== EFFORTS.length ||
+    filters.selectedMilestones.size > 0 ||
     filters.globalFilter !== ""
   );
 }
@@ -45,6 +51,7 @@ export function defaultFilterState(): FilterState {
     selectedTypes: new Set(TYPES),
     selectedTags: new Set<string>(),
     selectedEffort: new Set(EFFORTS),
+    selectedMilestones: new Set<string>(),
     globalFilter: "",
   };
 }

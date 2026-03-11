@@ -10,7 +10,7 @@ import { ErrorState } from "../components/shared/ErrorState.tsx";
 import type { BoardGroup } from "../api/types.ts";
 import { STATUSES, PRIORITIES, EFFORTS, TYPES } from "../components/tasks/TaskTable/constants.ts";
 
-const groupByOptions = ["status", "priority", "effort", "type", "group", "tag"];
+const groupByOptions = ["status", "priority", "effort", "type", "group", "tag", "milestone"];
 
 const groupByToField: Record<string, string> = {
   status: "status",

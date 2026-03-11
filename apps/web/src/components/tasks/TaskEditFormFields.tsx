@@ -74,6 +74,8 @@ export function FieldGrid({
 }
 
 interface MetadataFieldsProps {
+  milestone: string;
+  onMilestoneChange: (v: string) => void;
   owner: string;
   onOwnerChange: (v: string) => void;
   parent: string;
@@ -84,13 +86,26 @@ interface MetadataFieldsProps {
 }
 
 export function MetadataFields({
+  milestone, onMilestoneChange,
   owner, onOwnerChange,
   parent, onParentChange,
   tags, onTagsChange,
   inputClasses,
 }: MetadataFieldsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div>
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+          Milestone
+        </label>
+        <input
+          type="text"
+          value={milestone}
+          onChange={(e) => onMilestoneChange(e.target.value)}
+          placeholder="e.g. v1.0"
+          className={inputClasses}
+        />
+      </div>
       <div>
         <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
           Owner
