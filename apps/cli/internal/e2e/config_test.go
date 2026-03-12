@@ -94,12 +94,12 @@ func TestConfig_ProjectVerbose(t *testing.T) {
 
 func TestConfig_HomeFallback(t *testing.T) {
 	// When no project-level config exists, the home-level config should
-	// be used as a fallback.
+	// be used as a fallback. task-dir resolves relative to the config file.
 	root := t.TempDir()
 	homeDir := t.TempDir()
 
-	// Create tasks in a subdirectory.
-	tasksDir := filepath.Join(root, "home-tasks")
+	// Create tasks relative to the home directory (where the config lives).
+	tasksDir := filepath.Join(homeDir, "home-tasks")
 	writeTask(t, tasksDir, "001-gamma.md", "001", "Gamma Task", "pending", nil)
 
 	// Put the config in the home directory, not the project directory.
@@ -317,6 +317,113 @@ func TestConfig_ExplicitConfigFlag(t *testing.T) {
 	}
 	if strings.Contains(result.Stdout, "Project Task") {
 		t.Errorf("expected project config to NOT be used with --config, got:\n%s", result.Stdout)
+	}
+}
+
+// --- Subdirectory discovery tests ---
+
+func TestConfig_SubdirectoryDiscovery(t *testing.T) {
+	// Running taskmd from a subdirectory should walk up and find .taskmd.yaml
+	// at the project root, then resolve task-dir relative to that config.
+	root := t.TempDir()
+
+	// Create config at project root pointing to "my-tasks".
+	tasksDir := filepath.Join(root, "my-tasks")
+	writeTask(t, tasksDir, "001-alpha.md", "001", "Alpha Task", "pending", nil)
+	writeConfig(t, root, "task-dir: my-tasks\n")
+
+	// Create a subdirectory to run from.
+	subDir := filepath.Join(root, "src", "pkg")
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatalf("failed to create subdir: %v", err)
+	}
+
+	// Run from the subdirectory — should walk up and find config + tasks.
+	result := mustRun(t, subDir, "list")
+
+	if !strings.Contains(result.Stdout, "Alpha Task") {
+		t.Errorf("expected subdirectory discovery to find tasks, got:\n%s\nstderr: %s", result.Stdout, result.Stderr)
+	}
+}
+
+func TestConfig_SubdirectorySetCommand(t *testing.T) {
+	// The set command should also work from a subdirectory.
+	root := t.TempDir()
+
+	tasksDir := filepath.Join(root, "tasks")
+	writeTask(t, tasksDir, "001-todo.md", "001", "Todo Task", "pending", nil)
+	writeConfig(t, root, "task-dir: tasks\n")
+
+	subDir := filepath.Join(root, "apps", "cli")
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatalf("failed to create subdir: %v", err)
+	}
+
+	// Run set from subdirectory.
+	result := run(t, subDir, "set", "001", "--status", "in-progress")
+	if result.ExitCode != 0 {
+		t.Fatalf("expected exit 0, got %d\nstdout: %s\nstderr: %s",
+			result.ExitCode, result.Stdout, result.Stderr)
+	}
+
+	// Verify the task was updated by listing from subdirectory.
+	listResult := mustRun(t, subDir, "list")
+	if !strings.Contains(listResult.Stdout, "in-progress") {
+		t.Errorf("expected task to be in-progress after set, got:\n%s", listResult.Stdout)
+	}
+}
+
+func TestConfig_SubdirectoryStopsAtGit(t *testing.T) {
+	// Walk-up should stop at .git boundaries.
+	// Create an outer project with config, a nested project with .git and
+	// no config, and verify the nested project does NOT pick up the outer config.
+	outer := t.TempDir()
+
+	// Outer project has config + tasks.
+	outerTasks := filepath.Join(outer, "outer-tasks")
+	writeTask(t, outerTasks, "001-outer.md", "001", "Outer Task", "pending", nil)
+	writeConfig(t, outer, "task-dir: outer-tasks\n")
+
+	// Inner project has a .git dir (boundary) but no config.
+	inner := filepath.Join(outer, "nested", "project")
+	if err := os.MkdirAll(filepath.Join(inner, ".git"), 0o755); err != nil {
+		t.Fatalf("failed to create inner .git: %v", err)
+	}
+
+	// Running from inside the inner project should NOT find the outer config.
+	// With no config and default task-dir ".", it should scan the inner dir
+	// which has no tasks — resulting in an empty list (no "Outer Task").
+	result := run(t, inner, "list")
+
+	if strings.Contains(result.Stdout, "Outer Task") {
+		t.Errorf("expected .git boundary to prevent walk-up, but found outer task:\n%s", result.Stdout)
+	}
+}
+
+func TestConfig_SubdirectoryDefaultTaskDir(t *testing.T) {
+	// When config has no task-dir (defaults to "."), running from a subdirectory
+	// should still find the config and scan relative to the config location.
+	root := t.TempDir()
+
+	// Config with no task-dir setting — tasks are at the root.
+	writeTask(t, root, "001-root.md", "001", "Root Task", "pending", nil)
+	writeConfig(t, root, "# empty config\n")
+
+	subDir := filepath.Join(root, "deep", "sub")
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatalf("failed to create subdir: %v", err)
+	}
+
+	// From subdir, the config is found but task-dir defaults to "." which
+	// is relative to cwd. Since there's no task-dir in config, the default
+	// "." means cwd, which has no tasks.
+	result := run(t, subDir, "list")
+
+	// This should NOT find tasks (default "." is relative to cwd, not config).
+	// This test documents the expected behavior: only explicit task-dir
+	// in config gets resolved relative to config.
+	if strings.Contains(result.Stdout, "Root Task") {
+		t.Errorf("expected default task-dir to use cwd, not config dir, got:\n%s", result.Stdout)
 	}
 }
 

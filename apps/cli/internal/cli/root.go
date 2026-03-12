@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -103,10 +104,26 @@ func initConfig() {
 		// Use config file from the flag
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Add current directory (project-level config takes precedence)
-		viper.AddConfigPath(".")
+		// Walk up from cwd, adding each ancestor as a config search path.
+		// Nearest directory is added first (highest priority in viper).
+		// Stop at .git boundary or filesystem root.
+		dir, err := filepath.Abs(".")
+		if err == nil {
+			for {
+				viper.AddConfigPath(dir)
+				// Stop if we hit a .git directory (project boundary)
+				if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+					break
+				}
+				parent := filepath.Dir(dir)
+				if parent == dir {
+					break
+				}
+				dir = parent
+			}
+		}
 
-		// Add home directory (global config)
+		// Add home directory as final fallback
 		home, err := os.UserHomeDir()
 		if err == nil {
 			viper.AddConfigPath(home)
@@ -148,6 +165,23 @@ func GetGlobalFlags() GlobalFlags {
 	}
 }
 
+// resolveRelativeToConfig resolves a relative path against the config file's directory.
+// If the path is absolute, or no config file is loaded, it is returned unchanged.
+func resolveRelativeToConfig(dir string) string {
+	if filepath.IsAbs(dir) {
+		return dir
+	}
+	configFile := viper.ConfigFileUsed()
+	if configFile == "" {
+		return dir
+	}
+	configDir, err := filepath.Abs(filepath.Dir(configFile))
+	if err != nil {
+		return dir
+	}
+	return filepath.Join(configDir, dir)
+}
+
 // resolveTaskDir determines the task directory using proper precedence.
 func resolveTaskDir() string {
 	// Check if --task-dir or --dir was explicitly passed on the CLI
@@ -165,10 +199,10 @@ func resolveTaskDir() string {
 	// We must bypass viper's pflag binding (which returns the flag default)
 	// by checking the config file values directly via viper.InConfig.
 	if viper.InConfig("task-dir") {
-		return viper.GetString("task-dir")
+		return resolveRelativeToConfig(viper.GetString("task-dir"))
 	}
 	if viper.InConfig("dir") {
-		return viper.GetString("dir")
+		return resolveRelativeToConfig(viper.GetString("dir"))
 	}
 
 	// Fall back to the taskDir variable (set directly in tests)

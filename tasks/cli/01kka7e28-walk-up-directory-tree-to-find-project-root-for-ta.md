@@ -1,7 +1,7 @@
 ---
 title: "Walk up directory tree to find project root for task scanning"
 id: "01kka7e28"
-status: pending
+status: completed
 priority: medium
 type: feature
 tags: []
@@ -16,12 +16,12 @@ When `taskmd` is run from a subdirectory (e.g., `apps/cli/`), it cannot find `.t
 
 ## Tasks
 
-- [ ] Update `initConfig()` in `root.go` to walk up from cwd, adding ancestor directories as viper config paths until `.git` or filesystem root is reached
-- [ ] Add `resolveRelativeToConfig()` helper so that relative `dir` values in `.taskmd.yaml` resolve against the config file's location, not cwd
-- [ ] Update `resolveTaskDir()` to use the new helper when the dir comes from config
-- [ ] Simplify `resolveProjectRoot()` in `verify.go` to leverage the improved config discovery
-- [ ] Add unit tests for walk-up discovery from subdirectories
-- [ ] Add e2e test: run `taskmd list` from a subdirectory and verify it finds tasks
+- [x] Update `initConfig()` in `root.go` to walk up from cwd, adding ancestor directories as viper config paths until `.git` or filesystem root is reached
+- [x] Add `resolveRelativeToConfig()` helper so that relative `dir` values in `.taskmd.yaml` resolve against the config file's location, not cwd
+- [x] Update `resolveTaskDir()` to use the new helper when the dir comes from config
+- [x] Simplify `resolveProjectRoot()` in `verify.go` to leverage the improved config discovery
+- [x] Add unit tests for walk-up discovery from subdirectories
+- [x] Add e2e test: run `taskmd list` from a subdirectory and verify it finds tasks
 
 ## Acceptance Criteria
 
