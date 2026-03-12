@@ -492,6 +492,8 @@ taskmd set 042 --milestone ""
 | `--remove-tag` | | Remove a tag (repeatable) |
 | `--add-pr` | | Add a PR URL (repeatable) |
 | `--remove-pr` | | Remove a PR URL (repeatable) |
+| `--add-touches` | | Add a scope identifier to touches (repeatable) |
+| `--remove-touches` | | Remove a scope identifier from touches (repeatable) |
 | `--type` | | Work type (`feature`, `bug`, `improvement`, `chore`, `docs`) |
 | `--depends-on` | | Set dependencies (comma-separated IDs, e.g. `010,015`) |
 | `--verify` | `false` | Run verification checks before completing a task |
@@ -506,6 +508,15 @@ taskmd set 042 --remove-tag deprecated
 
 # Add and remove in one command
 taskmd set 042 --add-tag v2 --remove-tag v1
+```
+
+**Scope (touches) management:**
+```bash
+# Add scopes
+taskmd set 042 --add-touches cli/graph --add-touches cli/output
+
+# Remove a scope
+taskmd set 042 --remove-touches cli/graph
 ```
 
 ### tags - List Tags

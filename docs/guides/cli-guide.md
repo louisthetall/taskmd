@@ -27,7 +27,7 @@ sudo mv taskmd /usr/local/bin/
 ### Option 2: Install with Go
 
 ```bash
-go install github.com/yourusername/md-task-tracker/cmd/taskmd@latest
+go install github.com/driangle/taskmd/cmd/taskmd@latest
 ```
 
 Requirements:
@@ -37,8 +37,8 @@ Requirements:
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/md-task-tracker.git
-cd md-task-tracker/apps/cli
+git clone https://github.com/driangle/taskmd.git
+cd taskmd/apps/cli
 
 # Build CLI only
 make build
@@ -1249,6 +1249,8 @@ taskmd set 042 --milestone ""
 | `--remove-tag string` | | Remove a tag (repeatable) |
 | `--add-pr string` | | Add a PR URL (repeatable) |
 | `--remove-pr string` | | Remove a PR URL (repeatable) |
+| `--add-touches string` | | Add a scope identifier to touches (repeatable) |
+| `--remove-touches string` | | Remove a scope identifier from touches (repeatable) |
 | `--type string` | | Work type (`feature`, `bug`, `improvement`, `chore`, `docs`) |
 | `--depends-on string` | | Set dependencies (comma-separated IDs, e.g. `010,015`) |
 | `--verify` | `false` | Run verification checks before completing a task |
@@ -1263,6 +1265,15 @@ taskmd set 042 --remove-tag deprecated
 
 # Add and remove in one command
 taskmd set 042 --add-tag v2 --remove-tag v1
+```
+
+**Scope (touches) management:**
+```bash
+# Add scopes
+taskmd set 042 --add-touches cli/graph --add-touches cli/output
+
+# Remove a scope
+taskmd set 042 --remove-touches cli/graph
 ```
 
 **Examples:**

@@ -44,6 +44,7 @@ export default defineConfig({
         items: [
           { text: 'Task Specification', link: '/reference/specification' },
           { text: 'Configuration', link: '/reference/configuration' },
+          { text: 'Operations', link: '/reference/taskmd_operations' },
         ],
       },
       {

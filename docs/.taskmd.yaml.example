@@ -30,6 +30,43 @@ web:
 # Set to false to disable worklog behavior in agent workflows.
 worklogs: true
 
+# Additional directories to skip when scanning (beyond built-in skip list)
+# ignore:
+#   - "tmp"
+#   - "cache"
+
+# Workflow mode: "solo" (default) or "pr-review"
+# workflow: solo
+
+# Glob patterns to exclude from TODO/FIXME scanning
+# todos:
+#   exclude:
+#     - "**/*_test.go"
+
+# Web: start in read-only mode (disables editing)
+# web:
+#   readonly: false
+
+# ID generation strategy
+# id:
+#   strategy: sequential    # sequential, prefixed, random, or ulid
+#   padding: 3              # zero-padding width for sequential
+#   # prefix: "dr"          # prefix for prefixed strategy
+#   # length: 6             # length for random/ulid strategies
+
+# Scope definitions for the 'touches' field (used by tracks command)
+# scopes:
+#   cli/graph:
+#     description: "Graph visualization"
+#     paths:
+#       - "apps/cli/internal/graph/"
+
+# Milestone definitions
+# milestones:
+#   - name: "v0.2"
+#     description: "Core CLI features"
+#     due: 2026-04-01
+
 # Sync configuration - fetch tasks from external sources
 # Run 'taskmd sync down' to pull tasks, or 'taskmd sync down --dry-run' to preview changes.
 # sync:
@@ -69,7 +106,6 @@ worklogs: true
 #       filters:
 #         jql: 'status != "Done"'        # Additional JQL filter (ANDed with project)
 
-# Note: Only 'dir', 'web.port', 'web.auto_open_browser', 'worklogs', and 'sync' are
-# supported in config files. Other flags like 'format', 'verbose', and 'quiet' are
-# intentionally CLI-only to keep config files focused on project-specific settings
-# rather than per-invocation preferences.
+# Note: Only project-level settings are supported in config files. Per-invocation
+# preferences like 'format', 'verbose', and 'quiet' are intentionally CLI-only.
+# See the full list of supported options in the configuration reference.
