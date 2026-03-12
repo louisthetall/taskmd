@@ -693,7 +693,7 @@ status: pending
 	}
 }
 
-func TestBoardCommand_GroupByMilestone(t *testing.T) {
+func TestBoardCommand_GroupByPhase(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	tasks := map[string]string{
@@ -701,19 +701,19 @@ func TestBoardCommand_GroupByMilestone(t *testing.T) {
 id: "001"
 title: "V0.2 feature"
 status: pending
-milestone: v0.2
+phase: v0.2
 ---
 `,
 		"002.md": `---
 id: "002"
 title: "V0.3 feature"
 status: pending
-milestone: v0.3
+phase: v0.3
 ---
 `,
 		"003.md": `---
 id: "003"
-title: "No milestone"
+title: "No phase"
 status: pending
 ---
 `,
@@ -723,7 +723,7 @@ status: pending
 	}
 
 	resetBoardFlags()
-	boardGroupBy = "milestone"
+	boardGroupBy = "phase"
 
 	output := captureBoardOutput(t, tmpDir)
 
@@ -734,7 +734,7 @@ status: pending
 		t.Error("Expected output to contain '## v0.3' header")
 	}
 	if !strings.Contains(output, "## (none)") {
-		t.Error("Expected output to contain '## (none)' header for tasks without milestone")
+		t.Error("Expected output to contain '## (none)' header for tasks without phase")
 	}
 }
 

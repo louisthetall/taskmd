@@ -81,17 +81,17 @@ This is the task body.
 	}
 }
 
-func TestParseTaskContent_Milestone(t *testing.T) {
+func TestParseTaskContent_Phase(t *testing.T) {
 	content := []byte(`---
 id: "050"
-title: "Milestone Task"
+title: "Phase Task"
 status: pending
-milestone: "v0.2"
+phase: "v0.2"
 ---
 
-# Milestone Task
+# Phase Task
 
-A task with a milestone.
+A task with a phase.
 `)
 
 	task, err := ParseTaskContent("test.md", content)
@@ -99,15 +99,15 @@ A task with a milestone.
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if task.Milestone != "v0.2" {
-		t.Errorf("expected milestone 'v0.2', got '%s'", task.Milestone)
+	if task.Phase != "v0.2" {
+		t.Errorf("expected phase 'v0.2', got '%s'", task.Phase)
 	}
 }
 
-func TestParseTaskContent_NoMilestone(t *testing.T) {
+func TestParseTaskContent_NoPhase(t *testing.T) {
 	content := []byte(`---
 id: "051"
-title: "No Milestone"
+title: "No Phase"
 status: pending
 ---
 
@@ -119,8 +119,8 @@ Body.
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if task.Milestone != "" {
-		t.Errorf("expected empty milestone, got '%s'", task.Milestone)
+	if task.Phase != "" {
+		t.Errorf("expected empty phase, got '%s'", task.Phase)
 	}
 }
 

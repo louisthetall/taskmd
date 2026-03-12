@@ -22,11 +22,11 @@ func resetAddFlags() {
 	addEdit = false
 	addTemplate = ""
 	addSlug = ""
-	addMilestone = ""
+	addPhase = ""
 	taskDir = "."
 
 	// Reset cobra flag "changed" state for template override tests
-	for _, name := range []string{"priority", "status", "effort", "tags", "owner", "depends-on", "parent", "milestone"} {
+	for _, name := range []string{"priority", "status", "effort", "tags", "owner", "depends-on", "parent", "phase"} {
 		if f := addCmd.Flags().Lookup(name); f != nil {
 			f.Changed = false
 		}
@@ -732,13 +732,13 @@ func TestAdd_TemplateFlag_WithTagsOverride(t *testing.T) {
 	}
 }
 
-func TestAdd_WithMilestone(t *testing.T) {
+func TestAdd_WithPhase(t *testing.T) {
 	tmpDir := t.TempDir()
 	resetAddFlags()
 	taskDir = tmpDir
-	addMilestone = "v0.2"
+	addPhase = "v0.2"
 
-	_, err := captureAddOutput(t, "Milestone task")
+	_, err := captureAddOutput(t, "Phase task")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -751,17 +751,17 @@ func TestAdd_WithMilestone(t *testing.T) {
 	content, _ := os.ReadFile(files[0])
 	fileStr := string(content)
 
-	if !strings.Contains(fileStr, "milestone: v0.2") {
-		t.Errorf("expected milestone: v0.2 in frontmatter, got:\n%s", fileStr)
+	if !strings.Contains(fileStr, "phase: v0.2") {
+		t.Errorf("expected phase: v0.2 in frontmatter, got:\n%s", fileStr)
 	}
 }
 
-func TestAdd_MilestoneOmittedWhenEmpty(t *testing.T) {
+func TestAdd_PhaseOmittedWhenEmpty(t *testing.T) {
 	tmpDir := t.TempDir()
 	resetAddFlags()
 	taskDir = tmpDir
 
-	_, err := captureAddOutput(t, "No milestone task")
+	_, err := captureAddOutput(t, "No phase task")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -772,7 +772,7 @@ func TestAdd_MilestoneOmittedWhenEmpty(t *testing.T) {
 	}
 
 	content, _ := os.ReadFile(files[0])
-	if strings.Contains(string(content), "milestone:") {
-		t.Error("milestone should not appear in frontmatter when not set")
+	if strings.Contains(string(content), "phase:") {
+		t.Error("phase should not appear in frontmatter when not set")
 	}
 }

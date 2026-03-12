@@ -15,13 +15,13 @@ import (
 )
 
 var (
-	listFormat    string
-	listFilters   []string
-	listSort      string
-	listColumns   string
-	listLimit     int
-	listScope     string
-	listMilestone string
+	listFormat  string
+	listFilters []string
+	listSort    string
+	listColumns string
+	listLimit   int
+	listScope   string
+	listPhase   string
 )
 
 // listCmd represents the list command
@@ -62,7 +62,7 @@ func init() {
 	listCmd.Flags().StringVar(&listColumns, "columns", "id,title,status,priority,file", "comma-separated list of columns to display")
 	listCmd.Flags().IntVar(&listLimit, "limit", 0, "maximum number of tasks to display (0 = unlimited)")
 	listCmd.Flags().StringVar(&listScope, "scope", "", "filter by scope; supports wildcards (e.g. cli, cli*)")
-	listCmd.Flags().StringVar(&listMilestone, "milestone", "", "filter by milestone")
+	listCmd.Flags().StringVar(&listPhase, "phase", "", "filter by phase")
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -123,9 +123,9 @@ func applyListFiltersAndSort(tasks []*model.Task) ([]*model.Task, error) {
 		tasks = filterTasksByScope(tasks, listScope)
 	}
 
-	// Apply milestone filter
-	if listMilestone != "" {
-		tasks = filterTasksByMilestone(tasks, listMilestone)
+	// Apply phase filter
+	if listPhase != "" {
+		tasks = filterTasksByPhase(tasks, listPhase)
 	}
 
 	// Apply sorting
@@ -273,11 +273,11 @@ func makeFilePathsRelative(tasks []*model.Task, baseDir string) {
 	}
 }
 
-// filterTasksByMilestone returns tasks whose milestone matches the given value.
-func filterTasksByMilestone(tasks []*model.Task, milestone string) []*model.Task {
+// filterTasksByPhase returns tasks whose phase matches the given value.
+func filterTasksByPhase(tasks []*model.Task, phase string) []*model.Task {
 	var filtered []*model.Task
 	for _, task := range tasks {
-		if task.Milestone == milestone {
+		if task.Phase == phase {
 			filtered = append(filtered, task)
 		}
 	}
@@ -326,8 +326,8 @@ func getScalarColumnValue(task *model.Task, column string) string {
 		return task.Owner
 	case "parent":
 		return task.Parent
-	case "milestone":
-		return task.Milestone
+	case "phase":
+		return task.Phase
 	case "file":
 		return task.FilePath
 	default:

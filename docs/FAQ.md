@@ -172,7 +172,7 @@ Always use the task ID (from the `id` field), not the filename. Dependencies ind
 
 ### Q: How should I organize task files?
 
-**A:** For small projects (< 50 tasks), a flat `tasks/` directory works well. For larger projects, use subdirectories by feature area (`tasks/cli/`, `tasks/web/`) or by milestone. Use consistent naming like `NNN-descriptive-title.md` for easy sorting.
+**A:** For small projects (< 50 tasks), a flat `tasks/` directory works well. For larger projects, use subdirectories by feature area (`tasks/cli/`, `tasks/web/`) or by phase. Use consistent naming like `NNN-descriptive-title.md` for easy sorting.
 
 ### Q: What's a good task naming convention?
 

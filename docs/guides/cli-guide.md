@@ -741,8 +741,8 @@ taskmd add "Quick fix" --edit
 # With dependencies
 taskmd add "Deploy to staging" --depends-on 041,042
 
-# Create with milestone
-taskmd add "Implement OAuth" --milestone v0.2
+# Create with phase
+taskmd add "Implement OAuth" --phase v0.2
 ```
 
 **Flags:**
@@ -756,7 +756,7 @@ taskmd add "Implement OAuth" --milestone v0.2
 | `--owner` | | Task owner/assignee |
 | `--depends-on` | | Comma-separated dependency task IDs |
 | `--parent` | | Parent task ID |
-| `--milestone` | | Milestone name |
+| `--phase` | | Phase name |
 | `--group` | | Subdirectory to create the task in |
 | `--slug` | | Custom filename slug (default: auto-generated from title) |
 | `--format` | `plain` | Output format (`plain`, `json`) |
@@ -1211,7 +1211,7 @@ taskmd get 042 --format json | jq '.dependencies'
 
 ### set - Update Task Fields
 
-Modify a task's frontmatter fields (status, priority, effort, tags, owner, parent, milestone) by ID.
+Modify a task's frontmatter fields (status, priority, effort, tags, owner, parent, phase) by ID.
 
 **Basic usage:**
 ```bash
@@ -1224,11 +1224,11 @@ taskmd set 042 --priority high --effort large
 # Mark as completed (shortcut)
 taskmd set 042 --done
 
-# Set milestone
-taskmd set 042 --milestone v0.2
+# Set phase
+taskmd set 042 --phase v0.2
 
-# Clear milestone
-taskmd set 042 --milestone ""
+# Clear phase
+taskmd set 042 --phase ""
 ```
 
 **Flags:**
@@ -1242,7 +1242,7 @@ taskmd set 042 --milestone ""
 | `--effort string` | | New effort (`small`, `medium`, `large`) |
 | `--owner string` | | Owner/assignee of the task |
 | `--parent string` | | Parent task ID (empty string to clear) |
-| `--milestone string` | | Milestone name (empty string to clear) |
+| `--phase string` | | Phase name (empty string to clear) |
 | `--done` | `false` | Alias for `--status completed` |
 | `--dry-run` | `false` | Preview changes without writing to disk |
 | `--add-tag string` | | Add a tag (repeatable) |

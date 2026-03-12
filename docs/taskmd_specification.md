@@ -35,7 +35,7 @@ Description and subtasks go here.
 | `tags` | array | No | Lowercase, hyphen-separated strings |
 | `group` | string | No | Logical grouping (derived from directory if omitted) |
 | `owner` | string | No | Free-form assignee name or identifier |
-| `milestone` | string | No | Free-form milestone name (e.g., `"v0.2"`, `"2026-Q1"`) |
+| `phase` | string | No | Free-form phase name (e.g., `"v0.2"`, `"2026-Q1"`) |
 | `touches` | array | No | Abstract scope identifiers (e.g., `["cli/graph", "cli/output"]`) |
 | `context` | array | No | Explicit file paths relevant to the task (e.g., `["docs/api.md"]`) |
 | `parent` | string | No | Single task ID (e.g., `"045"`) |
@@ -120,13 +120,13 @@ tags:
 
 **`owner`** — Free-form string for assigning a task to a person or team. Used for filtering and display; no validation is applied.
 
-**`milestone`** — Free-form string identifying the milestone, sprint, or release a task belongs to. Used for time-based grouping and filtering.
+**`phase`** — Free-form string identifying the phase, sprint, or release a task belongs to. Used for time-based grouping and filtering.
 
 ```yaml
-milestone: "v0.2"
+phase: "v0.2"
 ```
 
-When milestones are configured in `.taskmd.yaml`, tasks referencing an undefined milestone produce a warning. When no milestones config exists, all values are accepted silently.
+When phases are configured in `.taskmd.yaml`, tasks referencing an undefined phase produce a warning. When no phases config exists, all values are accepted silently.
 
 **`touches`** — List of abstract scope identifiers declaring which code areas a task modifies. Used by the `tracks` command to detect spatial overlap and assign tasks to parallel work tracks. Two tasks that share a scope should not be worked on simultaneously (risk of merge conflicts).
 
@@ -272,17 +272,17 @@ The parser automatically derives task IDs from filenames based on these patterns
 - **Random**: 3-8 lowercase alphanumeric chars with at least one digit — `a3f9x2-slug.md` → ID `a3f9x2`
 - **ULID**: Crockford Base32 string (timestamp + random) — `01h5a3mpk2-slug.md` → ID `01h5a3mpk2`
 
-## Milestones
+## Phases
 
-Milestones represent time-based groupings such as sprints, phases, iterations, or releases. Each task can belong to at most one milestone via the `milestone` frontmatter field.
+Phases represent time-based groupings such as sprints, iterations, or releases. Each task can belong to at most one phase via the `phase` frontmatter field.
 
 ### Configuration
 
-Milestones can optionally be defined in `.taskmd.yaml` with metadata:
+Phases can optionally be defined in `.taskmd.yaml` with metadata:
 
 ```yaml
 # .taskmd.yaml
-milestones:
+phases:
   - name: "v0.2"
     description: "Core CLI features"
     due: 2026-04-01
@@ -293,11 +293,11 @@ milestones:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | Yes | Milestone identifier (matches the task's `milestone` field) |
+| `name` | Yes | Phase identifier (matches the task's `phase` field) |
 | `description` | No | Human-readable description |
 | `due` | No | Target date in `YYYY-MM-DD` format |
 
-When milestones are configured, validation warns if a task references a milestone not in the list. When no milestones config exists, all `milestone` values are accepted silently.
+When phases are configured, validation warns if a task references a phase not in the list. When no phases config exists, all `phase` values are accepted silently.
 
 ## File Organization
 
@@ -381,7 +381,7 @@ status: in-progress
 priority: high
 effort: large
 type: feature
-milestone: "v1.0"
+phase: "v1.0"
 dependencies: ["012", "013"]
 parent: "012"
 tags:

@@ -151,7 +151,7 @@ type Task struct {
 	Context      []string     `yaml:"context" json:"context,omitempty"`
 	Group        string       `yaml:"group" json:"group,omitempty"`
 	Owner        string       `yaml:"owner" json:"owner,omitempty"`
-	Milestone    string       `yaml:"milestone,omitempty" json:"milestone,omitempty"`
+	Phase        string       `yaml:"phase,omitempty" json:"phase,omitempty"`
 	Parent       string       `yaml:"parent,omitempty" json:"parent,omitempty"`
 	Created      FlexibleTime `yaml:"created" json:"created"`
 	Verify       []VerifyStep `yaml:"verify,omitempty" json:"verify,omitempty"`

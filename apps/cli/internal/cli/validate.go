@@ -206,12 +206,12 @@ func validateConfig(v *validator.Validator, validationResult *validator.Validati
 		mergeValidationResults(validationResult, v.ValidateTouchesAgainstScopes(tasks, knownScopes))
 	}
 
-	if configData != nil && len(configData.Milestones) > 0 {
-		knownMilestones := make(map[string]bool, len(configData.Milestones))
-		for _, m := range configData.Milestones {
-			knownMilestones[m.Name] = true
+	if configData != nil && len(configData.Phases) > 0 {
+		knownPhases := make(map[string]bool, len(configData.Phases))
+		for _, m := range configData.Phases {
+			knownPhases[m.Name] = true
 		}
-		mergeValidationResults(validationResult, v.ValidateMilestonesAgainstConfig(tasks, knownMilestones))
+		mergeValidationResults(validationResult, v.ValidatePhasesAgainstConfig(tasks, knownPhases))
 	}
 }
 
@@ -250,8 +250,8 @@ func loadConfigForValidation() *validator.ConfigData {
 		config.ID = parseIDConfig(viper.Get("id"))
 	}
 
-	if viper.InConfig("milestones") {
-		config.Milestones = parseMilestonesConfig(viper.Get("milestones"))
+	if viper.InConfig("phases") {
+		config.Phases = parsePhasesConfig(viper.Get("phases"))
 	}
 
 	return config
@@ -282,8 +282,8 @@ func parseIDConfig(raw any) *validator.IDConfig {
 	return cfg
 }
 
-// parseMilestonesConfig converts raw viper milestones data into typed MilestoneConfig entries.
-func parseMilestonesConfig(raw any) []validator.MilestoneConfig {
+// parsePhasesConfig converts raw viper phases data into typed PhaseConfig entries.
+func parsePhasesConfig(raw any) []validator.PhaseConfig {
 	if raw == nil {
 		return nil
 	}
@@ -292,13 +292,13 @@ func parseMilestonesConfig(raw any) []validator.MilestoneConfig {
 		return nil
 	}
 
-	milestones := make([]validator.MilestoneConfig, 0, len(items))
+	phases := make([]validator.PhaseConfig, 0, len(items))
 	for _, item := range items {
 		m, ok := item.(map[string]any)
 		if !ok {
 			continue
 		}
-		mc := validator.MilestoneConfig{}
+		mc := validator.PhaseConfig{}
 		if name, ok := m["name"].(string); ok {
 			mc.Name = name
 		}
@@ -313,9 +313,9 @@ func parseMilestonesConfig(raw any) []validator.MilestoneConfig {
 				mc.Due = ft
 			}
 		}
-		milestones = append(milestones, mc)
+		phases = append(phases, mc)
 	}
-	return milestones
+	return phases
 }
 
 // toInt converts a viper numeric value (int, int64, float64) to int.

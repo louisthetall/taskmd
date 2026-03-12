@@ -19,7 +19,7 @@ type Metrics struct {
 	TasksByPriority        map[model.Priority]int `json:"tasks_by_priority"`
 	TasksByEffort          map[model.Effort]int   `json:"tasks_by_effort"`
 	TasksByType            map[model.TaskType]int `json:"tasks_by_type"`
-	TasksByMilestone       map[string]int         `json:"tasks_by_milestone"`
+	TasksByPhase           map[string]int         `json:"tasks_by_phase"`
 	BlockedTasksCount      int                    `json:"blocked_tasks_count"`
 	CriticalPathLength     int                    `json:"critical_path_length"`
 	MaxDependencyDepth     int                    `json:"max_dependency_depth"`
@@ -34,7 +34,7 @@ func Calculate(tasks []*model.Task) *Metrics {
 		TasksByPriority:  make(map[model.Priority]int),
 		TasksByEffort:    make(map[model.Effort]int),
 		TasksByType:      make(map[model.TaskType]int),
-		TasksByMilestone: make(map[string]int),
+		TasksByPhase: make(map[string]int),
 	}
 
 	// Build task map for dependency lookups
@@ -60,9 +60,9 @@ func Calculate(tasks []*model.Task) *Metrics {
 		// Count by type
 		m.TasksByType[task.Type]++
 
-		// Count by milestone
-		if task.Milestone != "" {
-			m.TasksByMilestone[task.Milestone]++
+		// Count by phase
+		if task.Phase != "" {
+			m.TasksByPhase[task.Phase]++
 		}
 
 		// Count blocked tasks (tasks with dependencies)

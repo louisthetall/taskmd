@@ -61,15 +61,15 @@ func (vr *ValidationResult) AddIssue(level ValidationLevel, taskID, filePath, me
 // Extracted in the CLI layer so the validator stays viper-free.
 type ConfigData struct {
 	Scopes     map[string]ScopeConfig
-	Milestones []MilestoneConfig
+	Phases     []PhaseConfig
 	TopKeys    []string
 	ConfigPath string
 	Workflow   string
 	ID         *IDConfig
 }
 
-// MilestoneConfig holds the configuration for a single milestone entry.
-type MilestoneConfig struct {
+// PhaseConfig holds the configuration for a single phase entry.
+type PhaseConfig struct {
 	Name        string
 	Description string
 	Due         model.FlexibleTime
@@ -442,7 +442,7 @@ var knownConfigKeys = map[string]bool{
 	"workflow":   true,
 	"todos":      true,
 	"id":         true,
-	"milestones": true,
+	"phases":     true,
 }
 
 // checkUnknownConfigKeys warns about unrecognized top-level config keys.
@@ -491,25 +491,25 @@ func (v *Validator) ValidateTouchesAgainstScopes(tasks []*model.Task, knownScope
 	return result
 }
 
-// ValidateMilestonesAgainstConfig warns when tasks reference milestones not defined in config.
-// Skips validation if knownMilestones is nil or empty.
-func (v *Validator) ValidateMilestonesAgainstConfig(tasks []*model.Task, knownMilestones map[string]bool) *ValidationResult {
+// ValidatePhasesAgainstConfig warns when tasks reference phases not defined in config.
+// Skips validation if knownPhases is nil or empty.
+func (v *Validator) ValidatePhasesAgainstConfig(tasks []*model.Task, knownPhases map[string]bool) *ValidationResult {
 	result := &ValidationResult{
 		Issues: make([]ValidationIssue, 0),
 	}
-	if len(knownMilestones) == 0 {
+	if len(knownPhases) == 0 {
 		return result
 	}
 
 	reported := make(map[string]bool)
 	for _, task := range tasks {
-		if task.Milestone == "" {
+		if task.Phase == "" {
 			continue
 		}
-		if !knownMilestones[task.Milestone] && !reported[task.Milestone] {
-			reported[task.Milestone] = true
+		if !knownPhases[task.Phase] && !reported[task.Phase] {
+			reported[task.Phase] = true
 			result.AddIssue(LevelWarning, task.ID, task.FilePath,
-				fmt.Sprintf("milestone references undefined milestone: '%s'. Add it to the milestones list in .taskmd.yaml", task.Milestone))
+				fmt.Sprintf("phase references undefined phase: '%s'. Add it to the phases list in .taskmd.yaml", task.Phase))
 		}
 	}
 

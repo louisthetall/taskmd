@@ -61,8 +61,8 @@ worklogs: true
 #     paths:
 #       - "apps/cli/internal/graph/"
 
-# Milestone definitions
-# milestones:
+# Phase definitions
+# phases:
 #   - name: "v0.2"
 #     description: "Core CLI features"
 #     due: 2026-04-01

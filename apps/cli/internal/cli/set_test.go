@@ -115,7 +115,7 @@ func resetSetFlags() {
 	setOwner = ""
 	setParent = ""
 	setDependsOn = ""
-	setMilestone = ""
+	setPhase = ""
 	setDone = false
 	setDryRun = false
 	setVerify = false
@@ -128,7 +128,7 @@ func resetSetFlags() {
 	taskDir = "."
 
 	// Reset cobra flag Changed state to avoid test interference
-	for _, name := range []string{"status", "parent", "depends-on", "milestone"} {
+	for _, name := range []string{"status", "parent", "depends-on", "phase"} {
 		if f := setCmd.Flags().Lookup(name); f != nil {
 			f.Changed = false
 		}
@@ -1829,45 +1829,45 @@ func TestSet_AddTouches_EmptyArray(t *testing.T) {
 	}
 }
 
-func TestSet_Milestone_Add(t *testing.T) {
+func TestSet_Phase_Add(t *testing.T) {
 	tmpDir := createSetTestFiles(t)
 	resetSetFlags()
 	taskDir = tmpDir
 	setTaskID = "001"
-	setMilestone = "v0.2"
+	setPhase = "v0.2"
 
-	setCmd.Flags().Set("milestone", "v0.2")
-	defer func() { setCmd.Flags().Lookup("milestone").Changed = false }()
+	setCmd.Flags().Set("phase", "v0.2")
+	defer func() { setCmd.Flags().Lookup("phase").Changed = false }()
 
 	output, err := captureSetOutput(t)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !strings.Contains(output, "milestone:") {
-		t.Errorf("Expected milestone change in output, got: %s", output)
+	if !strings.Contains(output, "phase:") {
+		t.Errorf("Expected phase change in output, got: %s", output)
 	}
 
 	content, _ := os.ReadFile(filepath.Join(tmpDir, "001-setup.md"))
 	fileStr := string(content)
-	if !strings.Contains(fileStr, "milestone: v0.2") {
-		t.Errorf("Expected file to contain milestone: v0.2, got:\n%s", fileStr)
+	if !strings.Contains(fileStr, "phase: v0.2") {
+		t.Errorf("Expected file to contain phase: v0.2, got:\n%s", fileStr)
 	}
 }
 
-func TestSet_Milestone_Change(t *testing.T) {
+func TestSet_Phase_Change(t *testing.T) {
 	tmpDir := t.TempDir()
 	content := `---
 id: "060"
-title: "Task with milestone"
+title: "Task with phase"
 status: pending
-milestone: v0.1
+phase: v0.1
 created: 2026-02-08
 ---
 
-# Task with milestone
+# Task with phase
 `
-	path := filepath.Join(tmpDir, "060-milestone.md")
+	path := filepath.Join(tmpDir, "060-phase.md")
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -1875,40 +1875,40 @@ created: 2026-02-08
 	resetSetFlags()
 	taskDir = tmpDir
 	setTaskID = "060"
-	setMilestone = "v0.2"
+	setPhase = "v0.2"
 
-	setCmd.Flags().Set("milestone", "v0.2")
-	defer func() { setCmd.Flags().Lookup("milestone").Changed = false }()
+	setCmd.Flags().Set("phase", "v0.2")
+	defer func() { setCmd.Flags().Lookup("phase").Changed = false }()
 
 	output, err := captureSetOutput(t)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !strings.Contains(output, "milestone: v0.1 -> v0.2") {
-		t.Errorf("Expected milestone change in output, got: %s", output)
+	if !strings.Contains(output, "phase: v0.1 -> v0.2") {
+		t.Errorf("Expected phase change in output, got: %s", output)
 	}
 
 	updated, _ := os.ReadFile(path)
 	fileStr := string(updated)
-	if !strings.Contains(fileStr, "milestone: v0.2") {
-		t.Errorf("Expected milestone to be updated, got:\n%s", fileStr)
+	if !strings.Contains(fileStr, "phase: v0.2") {
+		t.Errorf("Expected phase to be updated, got:\n%s", fileStr)
 	}
 }
 
-func TestSet_Milestone_Clear(t *testing.T) {
+func TestSet_Phase_Clear(t *testing.T) {
 	tmpDir := t.TempDir()
 	content := `---
 id: "061"
-title: "Task with milestone"
+title: "Task with phase"
 status: pending
-milestone: v0.1
+phase: v0.1
 created: 2026-02-08
 ---
 
-# Task with milestone
+# Task with phase
 `
-	path := filepath.Join(tmpDir, "061-milestone.md")
+	path := filepath.Join(tmpDir, "061-phase.md")
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -1916,23 +1916,23 @@ created: 2026-02-08
 	resetSetFlags()
 	taskDir = tmpDir
 	setTaskID = "061"
-	setMilestone = ""
+	setPhase = ""
 
-	setCmd.Flags().Set("milestone", "")
-	defer func() { setCmd.Flags().Lookup("milestone").Changed = false }()
+	setCmd.Flags().Set("phase", "")
+	defer func() { setCmd.Flags().Lookup("phase").Changed = false }()
 
 	output, err := captureSetOutput(t)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !strings.Contains(output, "milestone:") {
-		t.Errorf("Expected milestone change in output, got: %s", output)
+	if !strings.Contains(output, "phase:") {
+		t.Errorf("Expected phase change in output, got: %s", output)
 	}
 
 	updated, _ := os.ReadFile(path)
 	fileStr := string(updated)
-	if !strings.Contains(fileStr, "milestone: ") || strings.Contains(fileStr, "milestone: v0.1") {
-		t.Errorf("Expected milestone to be cleared, got:\n%s", fileStr)
+	if !strings.Contains(fileStr, "phase: ") || strings.Contains(fileStr, "phase: v0.1") {
+		t.Errorf("Expected phase to be cleared, got:\n%s", fileStr)
 	}
 }

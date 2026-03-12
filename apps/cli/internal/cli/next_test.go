@@ -172,7 +172,7 @@ func resetNextFlags() {
 	nextCritical = false
 	nextScope = ""
 	nextExact = false
-	nextMilestone = ""
+	nextPhase = ""
 }
 
 func TestNext_BasicRanking(t *testing.T) {
@@ -1907,7 +1907,7 @@ func TestNext_Scope_ExactSkipsExpansion(t *testing.T) {
 	}
 }
 
-func createNextMilestoneTestFiles(t *testing.T) string {
+func createNextPhaseTestFiles(t *testing.T) string {
 	t.Helper()
 	tmpDir := t.TempDir()
 
@@ -1917,18 +1917,18 @@ id: "001"
 title: "V0.2 task"
 status: pending
 priority: medium
-milestone: v0.2
+phase: v0.2
 ---`,
 		"002.md": `---
 id: "002"
 title: "V0.3 task"
 status: pending
 priority: medium
-milestone: v0.3
+phase: v0.3
 ---`,
 		"003.md": `---
 id: "003"
-title: "No milestone task"
+title: "No phase task"
 status: pending
 priority: medium
 ---`,
@@ -1942,12 +1942,12 @@ priority: medium
 	return tmpDir
 }
 
-func TestNext_MilestoneFilter(t *testing.T) {
-	tmpDir := createNextMilestoneTestFiles(t)
+func TestNext_PhaseFilter(t *testing.T) {
+	tmpDir := createNextPhaseTestFiles(t)
 	resetNextFlags()
 	nextFormat = "json"
 	nextLimit = 10
-	nextMilestone = "v0.2"
+	nextPhase = "v0.2"
 
 	output, err := captureNextOutput(t, []string{tmpDir})
 	if err != nil {
@@ -1960,19 +1960,19 @@ func TestNext_MilestoneFilter(t *testing.T) {
 	}
 
 	if len(recs) != 1 {
-		t.Fatalf("Expected 1 recommendation for milestone v0.2, got %d", len(recs))
+		t.Fatalf("Expected 1 recommendation for phase v0.2, got %d", len(recs))
 	}
 	if recs[0].ID != "001" {
 		t.Errorf("Expected task 001, got %s", recs[0].ID)
 	}
 }
 
-func TestNext_MilestoneFilterNoMatch(t *testing.T) {
-	tmpDir := createNextMilestoneTestFiles(t)
+func TestNext_PhaseFilterNoMatch(t *testing.T) {
+	tmpDir := createNextPhaseTestFiles(t)
 	resetNextFlags()
 	nextFormat = "json"
 	nextLimit = 10
-	nextMilestone = "v9.9"
+	nextPhase = "v9.9"
 
 	output, err := captureNextOutput(t, []string{tmpDir})
 	if err != nil {
@@ -1985,6 +1985,6 @@ func TestNext_MilestoneFilterNoMatch(t *testing.T) {
 	}
 
 	if len(recs) != 0 {
-		t.Errorf("Expected 0 recommendations for non-existent milestone, got %d", len(recs))
+		t.Errorf("Expected 0 recommendations for non-existent phase, got %d", len(recs))
 	}
 }

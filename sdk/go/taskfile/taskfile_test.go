@@ -562,18 +562,18 @@ created: 2026-01-01
 	}
 }
 
-func TestUpdateTaskFile_Milestone_Set(t *testing.T) {
+func TestUpdateTaskFile_Phase_Set(t *testing.T) {
 	path := createTestFile(t, noTagsTask)
 
-	err := UpdateTaskFile(path, UpdateRequest{Milestone: strPtr("v0.2")})
+	err := UpdateTaskFile(path, UpdateRequest{Phase: strPtr("v0.2")})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	content, _ := os.ReadFile(path)
 	s := string(content)
-	if !strings.Contains(s, "milestone: v0.2") {
-		t.Errorf("expected milestone to be set, got:\n%s", s)
+	if !strings.Contains(s, "phase: v0.2") {
+		t.Errorf("expected phase to be set, got:\n%s", s)
 	}
 	// Other fields preserved
 	if !strings.Contains(s, "status: pending") {
@@ -581,57 +581,57 @@ func TestUpdateTaskFile_Milestone_Set(t *testing.T) {
 	}
 }
 
-func TestUpdateTaskFile_Milestone_Update(t *testing.T) {
+func TestUpdateTaskFile_Phase_Update(t *testing.T) {
 	task := `---
 id: "010"
-title: "Task with milestone"
+title: "Task with phase"
 status: pending
-milestone: v0.1
+phase: v0.1
 created: 2026-02-08
 ---
 
-# Task with milestone
+# Task with phase
 `
 	path := createTestFile(t, task)
 
-	err := UpdateTaskFile(path, UpdateRequest{Milestone: strPtr("v0.2")})
+	err := UpdateTaskFile(path, UpdateRequest{Phase: strPtr("v0.2")})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	content, _ := os.ReadFile(path)
 	s := string(content)
-	if !strings.Contains(s, "milestone: v0.2") {
-		t.Errorf("expected milestone to be updated, got:\n%s", s)
+	if !strings.Contains(s, "phase: v0.2") {
+		t.Errorf("expected phase to be updated, got:\n%s", s)
 	}
-	if strings.Contains(s, "milestone: v0.1") {
-		t.Error("expected old milestone to be replaced")
+	if strings.Contains(s, "phase: v0.1") {
+		t.Error("expected old phase to be replaced")
 	}
 }
 
-func TestUpdateTaskFile_Milestone_Clear(t *testing.T) {
+func TestUpdateTaskFile_Phase_Clear(t *testing.T) {
 	task := `---
 id: "011"
-title: "Task with milestone"
+title: "Task with phase"
 status: pending
-milestone: v0.1
+phase: v0.1
 created: 2026-02-08
 ---
 
-# Task with milestone
+# Task with phase
 `
 	path := createTestFile(t, task)
 
-	err := UpdateTaskFile(path, UpdateRequest{Milestone: strPtr("")})
+	err := UpdateTaskFile(path, UpdateRequest{Phase: strPtr("")})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	content, _ := os.ReadFile(path)
 	s := string(content)
-	// Milestone line should still exist but be empty
-	if strings.Contains(s, "milestone: v0.1") {
-		t.Error("expected milestone to be cleared")
+	// Phase line should still exist but be empty
+	if strings.Contains(s, "phase: v0.1") {
+		t.Error("expected phase to be cleared")
 	}
 }
 

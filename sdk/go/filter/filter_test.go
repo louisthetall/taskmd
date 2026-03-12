@@ -171,16 +171,16 @@ func TestApply_ParentFilter(t *testing.T) {
 	})
 }
 
-func TestApply_MilestoneFilter(t *testing.T) {
+func TestApply_PhaseFilter(t *testing.T) {
 	tasks := []*model.Task{
-		{ID: "001", Title: "Task A", Milestone: "v0.2"},
-		{ID: "002", Title: "Task B", Milestone: "v0.3"},
-		{ID: "003", Title: "Task C", Milestone: "v0.2"},
+		{ID: "001", Title: "Task A", Phase: "v0.2"},
+		{ID: "002", Title: "Task B", Phase: "v0.3"},
+		{ID: "003", Title: "Task C", Phase: "v0.2"},
 		{ID: "004", Title: "Task D"},
 	}
 
 	t.Run("exact match", func(t *testing.T) {
-		filtered, err := Apply(tasks, []string{"milestone=v0.2"})
+		filtered, err := Apply(tasks, []string{"phase=v0.2"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -193,7 +193,7 @@ func TestApply_MilestoneFilter(t *testing.T) {
 	})
 
 	t.Run("no match", func(t *testing.T) {
-		filtered, err := Apply(tasks, []string{"milestone=v1.0"})
+		filtered, err := Apply(tasks, []string{"phase=v1.0"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

@@ -836,9 +836,9 @@ func TestParseIDConfig_ViperIntTypes(t *testing.T) {
 	}
 }
 
-// --- parseMilestonesConfig tests ---
+// --- parsePhasesConfig tests ---
 
-func TestParseMilestonesConfig_FullConfig(t *testing.T) {
+func TestParsePhasesConfig_FullConfig(t *testing.T) {
 	raw := []any{
 		map[string]any{
 			"name":        "v0.2",
@@ -851,53 +851,53 @@ func TestParseMilestonesConfig_FullConfig(t *testing.T) {
 		},
 	}
 
-	milestones := parseMilestonesConfig(raw)
-	if len(milestones) != 2 {
-		t.Fatalf("expected 2 milestones, got %d", len(milestones))
+	phases := parsePhasesConfig(raw)
+	if len(phases) != 2 {
+		t.Fatalf("expected 2 phases, got %d", len(phases))
 	}
-	if milestones[0].Name != "v0.2" {
-		t.Errorf("Name = %q, want %q", milestones[0].Name, "v0.2")
+	if phases[0].Name != "v0.2" {
+		t.Errorf("Name = %q, want %q", phases[0].Name, "v0.2")
 	}
-	if milestones[0].Description != "Core CLI features" {
-		t.Errorf("Description = %q, want %q", milestones[0].Description, "Core CLI features")
+	if phases[0].Description != "Core CLI features" {
+		t.Errorf("Description = %q, want %q", phases[0].Description, "Core CLI features")
 	}
-	if milestones[0].Due.IsZero() {
+	if phases[0].Due.IsZero() {
 		t.Error("expected non-zero due date for v0.2")
 	}
-	if milestones[1].Name != "v0.3" {
-		t.Errorf("Name = %q, want %q", milestones[1].Name, "v0.3")
+	if phases[1].Name != "v0.3" {
+		t.Errorf("Name = %q, want %q", phases[1].Name, "v0.3")
 	}
-	if !milestones[1].Due.IsZero() {
+	if !phases[1].Due.IsZero() {
 		t.Error("expected zero due date for v0.3 (no due set)")
 	}
 }
 
-func TestParseMilestonesConfig_Nil(t *testing.T) {
-	milestones := parseMilestonesConfig(nil)
-	if milestones != nil {
-		t.Errorf("expected nil, got %+v", milestones)
+func TestParsePhasesConfig_Nil(t *testing.T) {
+	phases := parsePhasesConfig(nil)
+	if phases != nil {
+		t.Errorf("expected nil, got %+v", phases)
 	}
 }
 
-func TestParseMilestonesConfig_NotASlice(t *testing.T) {
-	milestones := parseMilestonesConfig("not-a-slice")
-	if milestones != nil {
-		t.Errorf("expected nil for non-slice input, got %+v", milestones)
+func TestParsePhasesConfig_NotASlice(t *testing.T) {
+	phases := parsePhasesConfig("not-a-slice")
+	if phases != nil {
+		t.Errorf("expected nil for non-slice input, got %+v", phases)
 	}
 }
 
-func TestParseMilestonesConfig_SkipsNonMapEntries(t *testing.T) {
+func TestParsePhasesConfig_SkipsNonMapEntries(t *testing.T) {
 	raw := []any{
 		"not-a-map",
 		map[string]any{"name": "v0.2"},
 	}
 
-	milestones := parseMilestonesConfig(raw)
-	if len(milestones) != 1 {
-		t.Fatalf("expected 1 milestone (skipping non-map), got %d", len(milestones))
+	phases := parsePhasesConfig(raw)
+	if len(phases) != 1 {
+		t.Fatalf("expected 1 phase (skipping non-map), got %d", len(phases))
 	}
-	if milestones[0].Name != "v0.2" {
-		t.Errorf("Name = %q, want %q", milestones[0].Name, "v0.2")
+	if phases[0].Name != "v0.2" {
+		t.Errorf("Name = %q, want %q", phases[0].Name, "v0.2")
 	}
 }
 

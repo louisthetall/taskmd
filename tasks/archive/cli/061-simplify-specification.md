@@ -122,7 +122,7 @@ updated: 2026-01-20T14:22:00Z
 due: 2026-02-01
 started: 2026-01-16T09:00:00Z
 completed: null
-milestone: v1.0
+phase: v1.0
 area: backend
 component: api
 version: 1.0.0

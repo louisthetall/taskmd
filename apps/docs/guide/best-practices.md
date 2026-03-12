@@ -301,24 +301,24 @@ taskmd tracks
 
 This is especially useful for teams or when running multiple AI assistants in parallel. Each track can be assigned to a different developer or AI session without risking merge conflicts.
 
-## Milestones
+## Phases
 
-### What Milestones Are For
+### What Phases Are For
 
-Milestones group tasks by time-based targets — releases, sprints, project phases, or deadlines. Unlike tags (which categorize by topic), milestones answer "when does this need to be done?"
+Phases group tasks by time-based targets — releases, sprints, project stages, or deadlines. Unlike tags (which categorize by topic), phases answer "when does this need to be done?"
 
 Common uses:
 - **Releases**: `v0.2`, `v1.0`
 - **Sprints**: `sprint-3`, `2026-Q2`
-- **Project phases**: `alpha`, `beta`, `launch`
+- **Project stages**: `alpha`, `beta`, `launch`
 
-### Configuring Milestones
+### Configuring Phases
 
-Define milestones in `.taskmd.yaml` to enable validation and due-date-aware ranking:
+Define phases in `.taskmd.yaml` to enable validation and due-date-aware ranking:
 
 ```yaml
 # .taskmd.yaml
-milestones:
+phases:
   - name: "v0.2"
     description: "Core CLI features"
     due: 2026-04-01
@@ -327,45 +327,45 @@ milestones:
     due: 2026-06-01
 ```
 
-When milestones are configured, `taskmd validate` warns if a task references an undefined milestone. Without configuration, all milestone values are accepted silently.
+When phases are configured, `taskmd validate` warns if a task references an undefined phase. Without configuration, all phase values are accepted silently.
 
-### Assigning Tasks to Milestones
+### Assigning Tasks to Phases
 
-Set a task's milestone in frontmatter or via the CLI:
+Set a task's phase in frontmatter or via the CLI:
 
 ```yaml
 # In the task file
-milestone: "v0.2"
+phase: "v0.2"
 ```
 
 ```bash
 # Via CLI
-taskmd set 042 --milestone v0.2
-taskmd add --title "New feature" --milestone v0.2
+taskmd set 042 --phase v0.2
+taskmd add --title "New feature" --phase v0.2
 ```
 
-### Filtering and Viewing by Milestone
+### Filtering and Viewing by Phase
 
 ```bash
-# List tasks in a milestone
-taskmd list --milestone v0.2
+# List tasks in a phase
+taskmd list --phase v0.2
 
-# Next task for a milestone
-taskmd next --milestone v0.2
+# Next task for a phase
+taskmd next --phase v0.2
 
-# Board grouped by milestone
-taskmd board --group-by milestone
+# Board grouped by phase
+taskmd board --group-by phase
 
-# Stats grouped by milestone
-taskmd stats --group-by milestone
+# Stats grouped by phase
+taskmd stats --group-by phase
 ```
 
 ### Tips
 
-- **Start with milestones when you have deadlines.** If everything is "someday," tags work fine. Once you have a release date, milestones make priorities concrete.
-- **Keep milestone names short.** They appear in tables and boards. `v0.2` is better than `Version 0.2 - Core CLI Features Release`.
-- **Add `due` dates** to get milestone-aware ranking in `taskmd next`. Tasks in milestones with closer due dates score higher.
-- **Review milestone progress** with `taskmd board --group-by milestone` to see which milestones are on track.
+- **Start with phases when you have deadlines.** If everything is "someday," tags work fine. Once you have a release date, phases make priorities concrete.
+- **Keep phase names short.** They appear in tables and boards. `v0.2` is better than `Version 0.2 - Core CLI Features Release`.
+- **Add `due` dates** to get phase-aware ranking in `taskmd next`. Tasks in phases with closer due dates score higher.
+- **Review phase progress** with `taskmd board --group-by phase` to see which phases are on track.
 
 ## CI/CD Integration
 

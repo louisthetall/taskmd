@@ -113,7 +113,7 @@ taskmd list --sort priority --limit 5
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--filter` | | Filter tasks (repeatable, AND logic) |
-| `--milestone` | | Filter tasks by milestone name |
+| `--phase` | | Filter tasks by phase name |
 | `--sort` | | Sort by field (`id`, `title`, `status`, `priority`, `effort`, `created`) |
 | `--columns` | `id,title,status,priority,file` | Comma-separated list of columns to display |
 | `--limit` | `0` | Maximum number of tasks to display (0 = unlimited) |
@@ -136,8 +136,8 @@ taskmd list --sort priority --limit 5
 # Export to JSON for scripting
 taskmd list --format json > tasks.json
 
-# Filter by milestone
-taskmd list --milestone v0.2
+# Filter by phase
+taskmd list --phase v0.2
 ```
 
 ### validate - Check Task Files
@@ -187,7 +187,7 @@ taskmd scores tasks based on:
 - **Critical path**: Tasks on the critical path score higher
 - **Downstream impact**: Tasks blocking many others score higher
 - **Effort**: Smaller tasks get a boost (quick wins)
-- **Milestone proximity**: Tasks in milestones with nearer due dates score higher
+- **Phase proximity**: Tasks in phases with nearer due dates score higher
 - **Actionability**: Only tasks with satisfied dependencies
 
 ```bash
@@ -209,8 +209,8 @@ taskmd next --quick-wins
 # Show only critical path tasks
 taskmd next --critical --limit 1
 
-# Next task for a specific milestone
-taskmd next --milestone v0.2
+# Next task for a specific phase
+taskmd next --phase v0.2
 
 # JSON for automation
 taskmd next --format json
@@ -223,7 +223,7 @@ taskmd next --format json
 | `--format` | `table` | Output format (`table`, `json`, `yaml`) |
 | `--limit` | `5` | Maximum number of recommendations |
 | `--filter` | | Filter tasks (repeatable, e.g. `--filter tag=cli`) |
-| `--milestone` | | Filter recommendations by milestone name |
+| `--phase` | | Filter recommendations by phase name |
 | `--quick-wins` | `false` | Show only quick wins (effort: small) |
 | `--critical` | `false` | Show only critical path tasks |
 
@@ -323,7 +323,7 @@ taskmd stats --format json
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--format` | `table` | Output format (`table`, `json`, `yaml`) |
-| `--group-by` | | Group stats by field (e.g., `milestone`) |
+| `--group-by` | | Group stats by field (e.g., `phase`) |
 
 **Metrics provided:**
 - Total tasks and count by status
@@ -352,8 +352,8 @@ taskmd board --group-by effort
 # Group by tag
 taskmd board --group-by tag
 
-# Group by milestone
-taskmd board --group-by milestone
+# Group by phase
+taskmd board --group-by phase
 
 # Output formats
 taskmd board --format md    # Markdown (default)
@@ -369,7 +369,7 @@ taskmd board --out board.md
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--format` | `md` | Output format (`md`, `txt`, `json`) |
-| `--group-by` | `status` | Field to group by (`status`, `priority`, `effort`, `type`, `group`, `tag`, `milestone`) |
+| `--group-by` | `status` | Field to group by (`status`, `priority`, `effort`, `type`, `group`, `tag`, `phase`) |
 | `--out`, `-o` | | Write output to file |
 
 ### snapshot - Machine-Readable Export
@@ -467,11 +467,11 @@ taskmd set 042 --done
 # Preview changes without writing
 taskmd set 042 --priority critical --dry-run
 
-# Set milestone
-taskmd set 042 --milestone v0.2
+# Set phase
+taskmd set 042 --phase v0.2
 
-# Clear milestone
-taskmd set 042 --milestone ""
+# Clear phase
+taskmd set 042 --phase ""
 ```
 
 **Flags:**
@@ -485,7 +485,7 @@ taskmd set 042 --milestone ""
 | `--effort` | | New effort (`small`, `medium`, `large`) |
 | `--owner` | | Owner/assignee |
 | `--parent` | | Parent task ID (empty string to clear) |
-| `--milestone` | | Milestone name (empty string to clear) |
+| `--phase` | | Phase name (empty string to clear) |
 | `--done` | `false` | Alias for `--status completed` |
 | `--dry-run` | `false` | Preview changes without writing to disk |
 | `--add-tag` | | Add a tag (repeatable) |
@@ -725,8 +725,8 @@ taskmd add "Quick fix" --edit
 # With dependencies
 taskmd add "Deploy to staging" --depends-on 041,042
 
-# Create with milestone
-taskmd add "Implement OAuth" --milestone v0.2
+# Create with phase
+taskmd add "Implement OAuth" --phase v0.2
 
 # Custom filename slug
 taskmd add "Fix the login bug" --slug fix-login
@@ -746,7 +746,7 @@ taskmd add "Automated task" --format json
 | `--owner` | | Task owner/assignee |
 | `--depends-on` | | Comma-separated dependency task IDs |
 | `--parent` | | Parent task ID |
-| `--milestone` | | Milestone name |
+| `--phase` | | Phase name |
 | `--group` | | Subdirectory to create the task in |
 | `--slug` | | Custom filename slug (default: auto-generated from title) |
 | `--format` | `plain` | Output format (`plain`, `json`) |

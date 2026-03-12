@@ -275,15 +275,15 @@ func TestGroupTasks_Tag(t *testing.T) {
 	}
 }
 
-func TestGroupTasks_Milestone(t *testing.T) {
+func TestGroupTasks_Phase(t *testing.T) {
 	tasks := []*model.Task{
-		{ID: "001", Title: "V0.2 task", Milestone: "v0.2"},
-		{ID: "002", Title: "V0.3 task", Milestone: "v0.3"},
-		{ID: "003", Title: "V0.2 task 2", Milestone: "v0.2"},
-		{ID: "004", Title: "No milestone"},
+		{ID: "001", Title: "V0.2 task", Phase: "v0.2"},
+		{ID: "002", Title: "V0.3 task", Phase: "v0.3"},
+		{ID: "003", Title: "V0.2 task 2", Phase: "v0.2"},
+		{ID: "004", Title: "No phase"},
 	}
 
-	result, err := GroupTasks(tasks, "milestone")
+	result, err := GroupTasks(tasks, "phase")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

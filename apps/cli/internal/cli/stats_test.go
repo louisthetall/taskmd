@@ -218,7 +218,7 @@ func TestOutputStatsTable_EmptyBreakdowns(t *testing.T) {
 	}
 }
 
-func createStatsMilestoneTestFiles(t *testing.T) string {
+func createStatsPhaseTestFiles(t *testing.T) string {
 	t.Helper()
 	tmpDir := t.TempDir()
 
@@ -228,25 +228,25 @@ id: "001"
 title: "V0.2 task A"
 status: pending
 priority: high
-milestone: v0.2
+phase: v0.2
 ---`,
 		"002.md": `---
 id: "002"
 title: "V0.2 task B"
 status: completed
 priority: medium
-milestone: v0.2
+phase: v0.2
 ---`,
 		"003.md": `---
 id: "003"
 title: "V0.3 task"
 status: pending
 priority: low
-milestone: v0.3
+phase: v0.3
 ---`,
 		"004.md": `---
 id: "004"
-title: "No milestone"
+title: "No phase"
 status: pending
 priority: medium
 ---`,
@@ -260,32 +260,32 @@ priority: medium
 	return tmpDir
 }
 
-func TestRunStats_GroupByMilestone_Table(t *testing.T) {
-	tmpDir := createStatsMilestoneTestFiles(t)
+func TestRunStats_GroupByPhase_Table(t *testing.T) {
+	tmpDir := createStatsPhaseTestFiles(t)
 	resetStatsFlags()
-	statsGroupBy = "milestone"
+	statsGroupBy = "phase"
 
 	output, err := captureStatsOutput(t, []string{tmpDir})
 	if err != nil {
 		t.Fatalf("runStats failed: %v", err)
 	}
 
-	if !strings.Contains(output, "BY MILESTONE:") {
-		t.Errorf("expected BY MILESTONE section in output:\n%s", output)
+	if !strings.Contains(output, "BY PHASE:") {
+		t.Errorf("expected BY PHASE section in output:\n%s", output)
 	}
 	if !strings.Contains(output, "v0.2:") {
-		t.Errorf("expected v0.2 milestone in output:\n%s", output)
+		t.Errorf("expected v0.2 phase in output:\n%s", output)
 	}
 	if !strings.Contains(output, "v0.3:") {
-		t.Errorf("expected v0.3 milestone in output:\n%s", output)
+		t.Errorf("expected v0.3 phase in output:\n%s", output)
 	}
 }
 
-func TestRunStats_GroupByMilestone_JSON(t *testing.T) {
-	tmpDir := createStatsMilestoneTestFiles(t)
+func TestRunStats_GroupByPhase_JSON(t *testing.T) {
+	tmpDir := createStatsPhaseTestFiles(t)
 	resetStatsFlags()
 	statsFormat = "json"
-	statsGroupBy = "milestone"
+	statsGroupBy = "phase"
 
 	output, err := captureStatsOutput(t, []string{tmpDir})
 	if err != nil {
@@ -297,16 +297,16 @@ func TestRunStats_GroupByMilestone_JSON(t *testing.T) {
 		t.Fatalf("failed to parse JSON: %v\noutput: %s", err, output)
 	}
 
-	if m.TasksByMilestone["v0.2"] != 2 {
-		t.Errorf("tasks_by_milestone[v0.2] = %d, want 2", m.TasksByMilestone["v0.2"])
+	if m.TasksByPhase["v0.2"] != 2 {
+		t.Errorf("tasks_by_phase[v0.2] = %d, want 2", m.TasksByPhase["v0.2"])
 	}
-	if m.TasksByMilestone["v0.3"] != 1 {
-		t.Errorf("tasks_by_milestone[v0.3] = %d, want 1", m.TasksByMilestone["v0.3"])
+	if m.TasksByPhase["v0.3"] != 1 {
+		t.Errorf("tasks_by_phase[v0.3] = %d, want 1", m.TasksByPhase["v0.3"])
 	}
 }
 
 func TestRunStats_InvalidGroupBy(t *testing.T) {
-	tmpDir := createStatsMilestoneTestFiles(t)
+	tmpDir := createStatsPhaseTestFiles(t)
 	resetStatsFlags()
 	statsGroupBy = "invalid"
 
@@ -319,17 +319,17 @@ func TestRunStats_InvalidGroupBy(t *testing.T) {
 	}
 }
 
-func TestRunStats_MilestoneShownWhenPresent(t *testing.T) {
-	tmpDir := createStatsMilestoneTestFiles(t)
+func TestRunStats_PhaseShownWhenPresent(t *testing.T) {
+	tmpDir := createStatsPhaseTestFiles(t)
 	resetStatsFlags()
-	// No --group-by flag, but tasks have milestones — section should still appear
+	// No --group-by flag, but tasks have phases — section should still appear
 
 	output, err := captureStatsOutput(t, []string{tmpDir})
 	if err != nil {
 		t.Fatalf("runStats failed: %v", err)
 	}
 
-	if !strings.Contains(output, "BY MILESTONE:") {
-		t.Errorf("expected BY MILESTONE section when milestones exist:\n%s", output)
+	if !strings.Contains(output, "BY PHASE:") {
+		t.Errorf("expected BY PHASE section when phases exist:\n%s", output)
 	}
 }

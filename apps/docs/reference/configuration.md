@@ -49,7 +49,7 @@ Command-line flags always override config file values.
 | `id.length` | integer | `6` | Length of generated IDs (used by `random` and `ulid` strategies) |
 | `id.padding` | integer | `3` | Zero-padding width for `sequential` strategy |
 | `scopes` | map | — | Scope-to-path mappings for the `touches` field ([details](#scopes-configuration)) |
-| `milestones` | array | `[]` | Milestone definitions with metadata ([details](#milestones-configuration)) |
+| `phases` | array | `[]` | Phase definitions with metadata ([details](#phases-configuration)) |
 
 **`ignore`** — The scanner already skips common directories (`node_modules`, `vendor`, `dist`, `build`, `.next`, `.nuxt`, `out`, `target`, `__pycache__`, and hidden directories). Use `ignore` to add project-specific directories:
 
@@ -285,13 +285,13 @@ Jira Cloud API v3 returns descriptions in Atlassian Document Format (ADF). taskm
 | `labels_to_tags` | `bool` | Convert external labels/categories to task tags |
 | `assignee_to_owner` | `bool` | Map external assignee to the `owner` field |
 
-## Milestones Configuration {#milestones-configuration}
+## Phases Configuration {#phases-configuration}
 
-The `milestones` key defines the milestones available for your project. Tasks reference milestones via the `milestone` frontmatter field.
+The `phases` key defines the phases available for your project. Tasks reference phases via the `phase` frontmatter field.
 
 ```yaml
 # .taskmd.yaml
-milestones:
+phases:
   - name: "v0.2"
     description: "Core CLI features"
     due: 2026-04-01
@@ -300,18 +300,18 @@ milestones:
     due: 2026-06-01
 ```
 
-Each milestone entry has the following fields:
+Each phase entry has the following fields:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | Yes | Milestone identifier (must match the task's `milestone` field) |
-| `description` | No | Human-readable description of the milestone's scope |
+| `name` | Yes | Phase identifier (must match the task's `phase` field) |
+| `description` | No | Human-readable description of the phase's scope |
 | `due` | No | Target date in `YYYY-MM-DD` format |
 
 **Behavior:**
 
-- When milestones are configured, any `milestone` value in a task that does not match a configured milestone name produces a warning.
-- When no milestones config exists, all `milestone` values are accepted silently.
+- When phases are configured, any `phase` value in a task that does not match a configured phase name produces a warning.
+- When no phases config exists, all `phase` values are accepted silently.
 
 ## Shell Aliases
 

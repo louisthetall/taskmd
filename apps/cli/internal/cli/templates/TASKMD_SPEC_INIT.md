@@ -32,7 +32,7 @@ Description and subtasks go here.
 | `tags` | array | No | Lowercase, hyphen-separated strings |
 | `group` | string | No | Logical grouping (derived from directory if omitted) |
 | `owner` | string | No | Free-form assignee name or identifier |
-| `milestone` | string | No | Free-form milestone name (e.g., `"v0.2"`) |
+| `phase` | string | No | Free-form phase name (e.g., `"v0.2"`) |
 | `touches` | array | No | Abstract scope identifiers (e.g., `["cli/graph"]`) |
 | `context` | array | No | Explicit file paths relevant to the task |
 | `parent` | string | No | Single task ID (e.g., `"045"`) |
@@ -90,7 +90,7 @@ tags: [core, api]
 
 **`owner`** -- Free-form assignee string.
 
-**`milestone`** -- Sprint, phase, or release identifier.
+**`phase`** -- Sprint, phase, or release identifier.
 
 **`touches`** -- Scope identifiers declaring which code areas a task modifies. Scopes can be mapped to paths in `.taskmd.yaml`. Two tasks sharing a scope risk merge conflicts.
 
@@ -188,7 +188,7 @@ status: in-progress
 priority: high
 effort: large
 type: feature
-milestone: "v1.0"
+phase: "v1.0"
 dependencies: ["012", "013"]
 parent: "012"
 tags: [auth, security, api]

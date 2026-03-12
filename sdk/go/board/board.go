@@ -102,9 +102,9 @@ func GroupTasks(tasks []*model.Task, field string) (*GroupResult, error) {
 			Groups: groups,
 		}, nil
 
-	case "milestone":
+	case "phase":
 		for _, t := range tasks {
-			key := t.Milestone
+			key := t.Phase
 			if key == "" {
 				key = defaultGroupKey
 			}
@@ -116,7 +116,7 @@ func GroupTasks(tasks []*model.Task, field string) (*GroupResult, error) {
 		}, nil
 
 	default:
-		return nil, fmt.Errorf("unsupported group-by field: %s (supported: status, priority, effort, type, group, tag, milestone)", field)
+		return nil, fmt.Errorf("unsupported group-by field: %s (supported: status, priority, effort, type, group, tag, phase)", field)
 	}
 }
 

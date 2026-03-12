@@ -20,8 +20,8 @@ const (
 	ScoreDownstreamMax    = 15
 	ScoreEffortSmall      = 5
 	ScoreEffortMedium     = 2
-	ScoreMilestoneBase    = 25
-	ScoreMilestoneDecay   = 5
+	ScorePhaseBase    = 25
+	ScorePhaseDecay   = 5
 )
 
 // Recommendation represents a scored task recommendation.
@@ -48,8 +48,8 @@ type Options struct {
 	Scope          string
 	ScopeExact     bool
 	ArchivedTasks  []*model.Task
-	Milestone      string
-	MilestoneOrder []string
+	Phase      string
+	PhaseOrder []string
 }
 
 type scoredTask struct {
@@ -83,7 +83,7 @@ func Recommend(tasks []*model.Task, opts Options) ([]Recommendation, error) {
 		return nil, err
 	}
 
-	scored := scoreAndSort(actionable, opts.MilestoneOrder, criticalPath, downstreamInfo)
+	scored := scoreAndSort(actionable, opts.PhaseOrder, criticalPath, downstreamInfo)
 
 	limit := min(opts.Limit, len(scored))
 	return buildRecommendations(scored[:limit], criticalPath, downstreamInfo), nil
@@ -169,10 +169,10 @@ func filterActionable(
 		}
 	}
 
-	if opts.Milestone != "" {
+	if opts.Phase != "" {
 		var filtered []*model.Task
 		for _, task := range actionable {
-			if task.Milestone == opts.Milestone {
+			if task.Phase == opts.Phase {
 				filtered = append(filtered, task)
 			}
 		}
@@ -192,14 +192,14 @@ func filterActionable(
 
 func scoreAndSort(
 	tasks []*model.Task,
-	milestoneOrder []string,
+	phaseOrder []string,
 	criticalPath map[string]bool,
 	downstreamInfo map[string]DownstreamInfo,
 ) []scoredTask {
 	scored := make([]scoredTask, len(tasks))
 	for i, task := range tasks {
 		s, r := ScoreTask(task, criticalPath, downstreamInfo)
-		ms, mr := scoreMilestone(task, milestoneOrder)
+		ms, mr := scorePhase(task, phaseOrder)
 		s += ms
 		r = append(r, mr...)
 		scored[i] = scoredTask{task: task, score: s, reasons: r}
@@ -345,19 +345,19 @@ func ScoreTask(
 	return score, reasons
 }
 
-// scoreMilestone computes a milestone-based scoring bonus.
-// Tasks from earlier milestones in the configured order get higher bonuses.
-func scoreMilestone(task *model.Task, milestoneOrder []string) (int, []string) {
-	if task.Milestone == "" || len(milestoneOrder) == 0 {
+// scorePhase computes a phase-based scoring bonus.
+// Tasks from earlier phases in the configured order get higher bonuses.
+func scorePhase(task *model.Task, phaseOrder []string) (int, []string) {
+	if task.Phase == "" || len(phaseOrder) == 0 {
 		return 0, nil
 	}
-	for i, name := range milestoneOrder {
-		if name == task.Milestone {
-			bonus := ScoreMilestoneBase - (i * ScoreMilestoneDecay)
+	for i, name := range phaseOrder {
+		if name == task.Phase {
+			bonus := ScorePhaseBase - (i * ScorePhaseDecay)
 			if bonus <= 0 {
 				return 0, nil
 			}
-			return bonus, []string{fmt.Sprintf("milestone %s", task.Milestone)}
+			return bonus, []string{fmt.Sprintf("phase %s", task.Phase)}
 		}
 	}
 	return 0, nil

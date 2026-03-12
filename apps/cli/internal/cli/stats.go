@@ -48,7 +48,7 @@ func init() {
 	rootCmd.AddCommand(statsCmd)
 
 	statsCmd.Flags().StringVar(&statsFormat, "format", "table", "output format (table, json, yaml)")
-	statsCmd.Flags().StringVar(&statsGroupBy, "group-by", "", "group tasks by field (milestone)")
+	statsCmd.Flags().StringVar(&statsGroupBy, "group-by", "", "group tasks by field (phase)")
 }
 
 func runStats(cmd *cobra.Command, args []string) error {
@@ -79,8 +79,8 @@ func runStats(cmd *cobra.Command, args []string) error {
 	// Calculate metrics
 	m := metrics.Calculate(tasks)
 
-	if statsGroupBy != "" && statsGroupBy != "milestone" {
-		return fmt.Errorf("unsupported group-by field: %s (supported: milestone)", statsGroupBy)
+	if statsGroupBy != "" && statsGroupBy != "phase" {
+		return fmt.Errorf("unsupported group-by field: %s (supported: phase)", statsGroupBy)
 	}
 
 	// Output in requested format
@@ -135,11 +135,11 @@ func outputStatsTable(m *metrics.Metrics, groupBy string) error {
 	fmt.Println(formatLabel("BY EFFORT:", r))
 	printStatsBreakdownByEffort(m, r)
 
-	// Tasks by milestone (shown when --group-by milestone or when milestones exist)
-	if groupBy == "milestone" || len(m.TasksByMilestone) > 0 {
+	// Tasks by phase (shown when --group-by phase or when phases exist)
+	if groupBy == "phase" || len(m.TasksByPhase) > 0 {
 		fmt.Println()
-		fmt.Println(formatLabel("BY MILESTONE:", r))
-		printStatsBreakdownByMilestone(m)
+		fmt.Println(formatLabel("BY PHASE:", r))
+		printStatsBreakdownByPhase(m)
 	}
 
 	return nil
@@ -184,14 +184,14 @@ func printStatsBreakdownByPriority(m *metrics.Metrics, r *lipgloss.Renderer) {
 	tw.Flush(os.Stdout)
 }
 
-func printStatsBreakdownByMilestone(m *metrics.Metrics) {
-	if len(m.TasksByMilestone) == 0 {
+func printStatsBreakdownByPhase(m *metrics.Metrics) {
+	if len(m.TasksByPhase) == 0 {
 		fmt.Println("  (none)")
 		return
 	}
-	// Sort milestone names alphabetically
-	names := make([]string, 0, len(m.TasksByMilestone))
-	for name := range m.TasksByMilestone {
+	// Sort phase names alphabetically
+	names := make([]string, 0, len(m.TasksByPhase))
+	for name := range m.TasksByPhase {
 		names = append(names, name)
 	}
 	sort.Strings(names)
@@ -199,7 +199,7 @@ func printStatsBreakdownByMilestone(m *metrics.Metrics) {
 	tw := NewTableWriter()
 	for _, name := range names {
 		label := fmt.Sprintf("  %s:", name)
-		val := fmt.Sprintf("%d", m.TasksByMilestone[name])
+		val := fmt.Sprintf("%d", m.TasksByPhase[name])
 		tw.AddRow([]string{label, val}, []string{label, val})
 	}
 	tw.Flush(os.Stdout)

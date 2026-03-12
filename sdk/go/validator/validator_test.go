@@ -1317,20 +1317,20 @@ func TestValidateConfig_IDIsKnownKey(t *testing.T) {
 	}
 }
 
-// --- Milestone validation tests ---
+// --- Phase validation tests ---
 
-func TestValidateMilestones_UndefinedMilestone(t *testing.T) {
+func TestValidatePhases_UndefinedPhase(t *testing.T) {
 	v := NewValidator(false)
 	tasks := []*model.Task{
-		{ID: "001", Title: "Task 1", Milestone: "v0.2"},
-		{ID: "002", Title: "Task 2", Milestone: "v0.9"},
+		{ID: "001", Title: "Task 1", Phase: "v0.2"},
+		{ID: "002", Title: "Task 2", Phase: "v0.9"},
 	}
 	known := map[string]bool{"v0.2": true, "v0.3": true}
 
-	result := v.ValidateMilestonesAgainstConfig(tasks, known)
+	result := v.ValidatePhasesAgainstConfig(tasks, known)
 
 	if result.Warnings != 1 {
-		t.Errorf("Expected 1 warning for undefined milestone, got %d", result.Warnings)
+		t.Errorf("Expected 1 warning for undefined phase, got %d", result.Warnings)
 		for _, issue := range result.Issues {
 			t.Logf("  Issue: [%s] task=%s %s", issue.Level, issue.TaskID, issue.Message)
 		}
@@ -1343,70 +1343,70 @@ func TestValidateMilestones_UndefinedMilestone(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("Expected warning for task 002 referencing undefined milestone v0.9")
+		t.Error("Expected warning for task 002 referencing undefined phase v0.9")
 	}
 }
 
-func TestValidateMilestones_NoConfigSkipsValidation(t *testing.T) {
+func TestValidatePhases_NoConfigSkipsValidation(t *testing.T) {
 	v := NewValidator(false)
 	tasks := []*model.Task{
-		{ID: "001", Title: "Task 1", Milestone: "anything"},
+		{ID: "001", Title: "Task 1", Phase: "anything"},
 	}
 
-	// nil milestones
-	result := v.ValidateMilestonesAgainstConfig(tasks, nil)
+	// nil phases
+	result := v.ValidatePhasesAgainstConfig(tasks, nil)
 	if result.Warnings != 0 {
-		t.Errorf("Expected no warnings for nil milestones, got %d", result.Warnings)
+		t.Errorf("Expected no warnings for nil phases, got %d", result.Warnings)
 	}
 
-	// empty milestones
-	result = v.ValidateMilestonesAgainstConfig(tasks, map[string]bool{})
+	// empty phases
+	result = v.ValidatePhasesAgainstConfig(tasks, map[string]bool{})
 	if result.Warnings != 0 {
-		t.Errorf("Expected no warnings for empty milestones, got %d", result.Warnings)
+		t.Errorf("Expected no warnings for empty phases, got %d", result.Warnings)
 	}
 }
 
-func TestValidateMilestones_DeduplicatesWarnings(t *testing.T) {
+func TestValidatePhases_DeduplicatesWarnings(t *testing.T) {
 	v := NewValidator(false)
 	tasks := []*model.Task{
-		{ID: "001", Title: "Task 1", Milestone: "unknown"},
-		{ID: "002", Title: "Task 2", Milestone: "unknown"},
+		{ID: "001", Title: "Task 1", Phase: "unknown"},
+		{ID: "002", Title: "Task 2", Phase: "unknown"},
 	}
 	known := map[string]bool{"v0.2": true}
 
-	result := v.ValidateMilestonesAgainstConfig(tasks, known)
+	result := v.ValidatePhasesAgainstConfig(tasks, known)
 
 	if result.Warnings != 1 {
 		t.Errorf("Expected 1 deduplicated warning, got %d", result.Warnings)
 	}
 }
 
-func TestValidateMilestones_EmptyMilestoneSkipped(t *testing.T) {
+func TestValidatePhases_EmptyPhaseSkipped(t *testing.T) {
 	v := NewValidator(false)
 	tasks := []*model.Task{
-		{ID: "001", Title: "Task 1", Milestone: ""},
-		{ID: "002", Title: "Task 2", Milestone: "v0.2"},
+		{ID: "001", Title: "Task 1", Phase: ""},
+		{ID: "002", Title: "Task 2", Phase: "v0.2"},
 	}
 	known := map[string]bool{"v0.2": true}
 
-	result := v.ValidateMilestonesAgainstConfig(tasks, known)
+	result := v.ValidatePhasesAgainstConfig(tasks, known)
 
 	if result.Warnings != 0 {
 		t.Errorf("Expected no warnings, got %d", result.Warnings)
 	}
 }
 
-func TestValidateConfig_MilestonesIsKnownKey(t *testing.T) {
+func TestValidateConfig_PhasesIsKnownKey(t *testing.T) {
 	v := NewValidator(false)
 	config := &ConfigData{
-		TopKeys:    []string{"milestones"},
+		TopKeys:    []string{"phases"},
 		ConfigPath: ".taskmd.yaml",
 	}
 
 	result := v.ValidateConfig(config)
 
 	if result.Warnings != 0 {
-		t.Errorf("Expected no warnings for 'milestones' config key, got %d", result.Warnings)
+		t.Errorf("Expected no warnings for 'phases' config key, got %d", result.Warnings)
 		for _, issue := range result.Issues {
 			t.Logf("  Issue: [%s] %s", issue.Level, issue.Message)
 		}

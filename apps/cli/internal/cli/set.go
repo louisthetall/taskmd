@@ -34,7 +34,7 @@ var (
 	setAddTouches    []string
 	setRemoveTouches []string
 	setDependsOn     string
-	setMilestone     string
+	setPhase         string
 )
 
 var setCmd = &cobra.Command{
@@ -90,7 +90,7 @@ func init() {
 		cmd.Flags().StringArrayVar(&setAddTouches, "add-touches", nil, "add a scope identifier to touches (repeatable)")
 		cmd.Flags().StringArrayVar(&setRemoveTouches, "remove-touches", nil, "remove a scope identifier from touches (repeatable)")
 		cmd.Flags().StringVar(&setDependsOn, "depends-on", "", "set dependencies (comma-separated IDs, e.g. 010,015)")
-		cmd.Flags().StringVar(&setMilestone, "milestone", "", "milestone name (use empty string to clear)")
+		cmd.Flags().StringVar(&setPhase, "phase", "", "phase name (use empty string to clear)")
 	}
 }
 
@@ -212,8 +212,8 @@ func buildSetRequest(cmd *cobra.Command) (taskfile.UpdateRequest, error) {
 	if cmd.Flags().Changed("parent") {
 		req.Parent = &setParent
 	}
-	if cmd.Flags().Changed("milestone") {
-		req.Milestone = &setMilestone
+	if cmd.Flags().Changed("phase") {
+		req.Phase = &setPhase
 	}
 
 	if len(setAddTags) > 0 {
@@ -245,7 +245,7 @@ func buildSetRequest(cmd *cobra.Command) (taskfile.UpdateRequest, error) {
 	}
 
 	if !hasUpdates(req) {
-		return taskfile.UpdateRequest{}, fmt.Errorf("nothing to update: provide --status, --priority, --effort, --type, --owner, --parent, --milestone, --done, --add-tag, --remove-tag, --add-pr, --remove-pr, --add-touches, --remove-touches, or --depends-on")
+		return taskfile.UpdateRequest{}, fmt.Errorf("nothing to update: provide --status, --priority, --effort, --type, --owner, --parent, --phase, --done, --add-tag, --remove-tag, --add-pr, --remove-pr, --add-touches, --remove-touches, or --depends-on")
 	}
 
 	return req, nil
@@ -253,7 +253,7 @@ func buildSetRequest(cmd *cobra.Command) (taskfile.UpdateRequest, error) {
 
 func hasUpdates(req taskfile.UpdateRequest) bool {
 	hasScalar := req.Status != nil || req.Priority != nil || req.Effort != nil ||
-		req.Type != nil || req.Owner != nil || req.Parent != nil || req.Milestone != nil
+		req.Type != nil || req.Owner != nil || req.Parent != nil || req.Phase != nil
 	hasTags := len(req.AddTags) > 0 || len(req.RemTags) > 0
 	hasPRs := len(req.AddPRs) > 0 || len(req.RemPRs) > 0
 	hasTouches := len(req.AddTouches) > 0 || len(req.RemTouches) > 0
@@ -281,13 +281,13 @@ func listChangeEntry(field string, current, add, remove []string) *changeEntry {
 
 func buildChangeLog(task *model.Task, req taskfile.UpdateRequest) []changeEntry {
 	oldValues := map[string]string{
-		"status":    string(task.Status),
-		"priority":  string(task.Priority),
-		"effort":    string(task.Effort),
-		"type":      string(task.Type),
-		"owner":     task.Owner,
-		"parent":    task.Parent,
-		"milestone": task.Milestone,
+		"status":   string(task.Status),
+		"priority": string(task.Priority),
+		"effort":   string(task.Effort),
+		"type":     string(task.Type),
+		"owner":    task.Owner,
+		"parent":   task.Parent,
+		"phase":    task.Phase,
 	}
 
 	var changes []changeEntry
@@ -310,8 +310,8 @@ func buildChangeLog(task *model.Task, req taskfile.UpdateRequest) []changeEntry 
 	if req.Parent != nil {
 		changes = append(changes, changeEntry{field: "parent", oldValue: oldValues["parent"], newValue: *req.Parent})
 	}
-	if req.Milestone != nil {
-		changes = append(changes, changeEntry{field: "milestone", oldValue: oldValues["milestone"], newValue: *req.Milestone})
+	if req.Phase != nil {
+		changes = append(changes, changeEntry{field: "phase", oldValue: oldValues["phase"], newValue: *req.Phase})
 	}
 
 	for _, entry := range []struct {

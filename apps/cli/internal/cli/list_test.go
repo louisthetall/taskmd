@@ -99,7 +99,7 @@ func resetListFlags() {
 	listColumns = "id,title,status,priority,file"
 	listLimit = 0
 	listScope = ""
-	listMilestone = ""
+	listPhase = ""
 	noColor = true
 }
 
@@ -669,60 +669,60 @@ func TestOutputJSON_NilTasks_ReturnsEmptyArray(t *testing.T) {
 	}
 }
 
-func TestGetColumnValue_Milestone(t *testing.T) {
+func TestGetColumnValue_Phase(t *testing.T) {
 	task := &model.Task{
-		ID:        "001",
-		Title:     "Test Task",
-		Milestone: "v0.2",
+		ID:    "001",
+		Title: "Test Task",
+		Phase: "v0.2",
 	}
 
-	result := getColumnValue(task, "milestone")
+	result := getColumnValue(task, "phase")
 	if result != "v0.2" {
-		t.Errorf("getColumnValue(milestone) = %s, want v0.2", result)
+		t.Errorf("getColumnValue(phase) = %s, want v0.2", result)
 	}
 
-	// Empty milestone
-	task2 := &model.Task{ID: "002", Title: "No Milestone"}
-	result2 := getColumnValue(task2, "milestone")
+	// Empty phase
+	task2 := &model.Task{ID: "002", Title: "No Phase"}
+	result2 := getColumnValue(task2, "phase")
 	if result2 != "" {
-		t.Errorf("getColumnValue(milestone) for task without milestone = %q, want empty", result2)
+		t.Errorf("getColumnValue(phase) for task without phase = %q, want empty", result2)
 	}
 }
 
-func TestListCommand_MilestoneColumn(t *testing.T) {
+func TestListCommand_PhaseColumn(t *testing.T) {
 	resetListFlags()
 
 	tasks := []*model.Task{
-		{ID: "001", Title: "Feature A", Status: model.StatusPending, Milestone: "v0.2"},
-		{ID: "002", Title: "Feature B", Status: model.StatusPending, Milestone: "v0.3"},
+		{ID: "001", Title: "Feature A", Status: model.StatusPending, Phase: "v0.2"},
+		{ID: "002", Title: "Feature B", Status: model.StatusPending, Phase: "v0.3"},
 		{ID: "003", Title: "Feature C", Status: model.StatusPending},
 	}
 
-	output := captureListTableOutput(t, tasks, "id,title,milestone")
+	output := captureListTableOutput(t, tasks, "id,title,phase")
 
-	if !strings.Contains(output, "milestone") {
-		t.Error("Expected 'milestone' column header in output")
+	if !strings.Contains(output, "phase") {
+		t.Error("Expected 'phase' column header in output")
 	}
 	if !strings.Contains(output, "v0.2") {
-		t.Error("Expected milestone value 'v0.2' in output")
+		t.Error("Expected phase value 'v0.2' in output")
 	}
 	if !strings.Contains(output, "v0.3") {
-		t.Error("Expected milestone value 'v0.3' in output")
+		t.Error("Expected phase value 'v0.3' in output")
 	}
 }
 
-func TestFilterTasksByMilestone(t *testing.T) {
+func TestFilterTasksByPhase(t *testing.T) {
 	tasks := []*model.Task{
-		{ID: "001", Title: "Feature A", Milestone: "v0.2"},
-		{ID: "002", Title: "Feature B", Milestone: "v0.3"},
-		{ID: "003", Title: "Feature C", Milestone: "v0.2"},
+		{ID: "001", Title: "Feature A", Phase: "v0.2"},
+		{ID: "002", Title: "Feature B", Phase: "v0.3"},
+		{ID: "003", Title: "Feature C", Phase: "v0.2"},
 		{ID: "004", Title: "Feature D"},
 	}
 
 	tests := []struct {
-		name      string
-		milestone string
-		wantIDs   []string
+		name    string
+		phase   string
+		wantIDs []string
 	}{
 		{"exact match", "v0.2", []string{"001", "003"}},
 		{"single match", "v0.3", []string{"002"}},
@@ -731,7 +731,7 @@ func TestFilterTasksByMilestone(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := filterTasksByMilestone(tasks, tt.milestone)
+			result := filterTasksByPhase(tasks, tt.phase)
 			if len(result) != len(tt.wantIDs) {
 				t.Fatalf("got %d tasks, want %d", len(result), len(tt.wantIDs))
 			}

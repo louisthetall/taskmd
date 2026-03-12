@@ -31,7 +31,7 @@ Supported group-by fields:
   - type: Group by work type
   - group: Group by task group
   - tag: Group by tags (tasks may appear in multiple groups)
-  - milestone: Group by milestone
+  - phase: Group by phase
 
 Supported formats:
   - md: Markdown sections (default)
@@ -50,7 +50,7 @@ Examples:
 func init() {
 	rootCmd.AddCommand(boardCmd)
 
-	boardCmd.Flags().StringVar(&boardGroupBy, "group-by", "status", "field to group by (status, priority, effort, type, group, tag, milestone)")
+	boardCmd.Flags().StringVar(&boardGroupBy, "group-by", "status", "field to group by (status, priority, effort, type, group, tag, phase)")
 	boardCmd.Flags().StringVar(&boardFormat, "format", "md", "output format (md, txt, json)")
 	boardCmd.Flags().StringVarP(&boardOut, "out", "o", "", "write output to file instead of stdout")
 }

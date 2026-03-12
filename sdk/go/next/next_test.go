@@ -27,13 +27,13 @@ func makeTaskWithTouches(id string, status model.Status, priority model.Priority
 	}
 }
 
-func makeTaskWithMilestone(id string, status model.Status, priority model.Priority, milestone string) *model.Task {
+func makeTaskWithPhase(id string, status model.Status, priority model.Priority, phase string) *model.Task {
 	return &model.Task{
-		ID:        id,
-		Title:     "Task " + id,
-		Status:    status,
-		Priority:  priority,
-		Milestone: milestone,
+		ID:       id,
+		Title:    "Task " + id,
+		Status:   status,
+		Priority: priority,
+		Phase:    phase,
 	}
 }
 
@@ -689,105 +689,105 @@ func TestRecommend_ScopeWildcardExpanded(t *testing.T) {
 	}
 }
 
-func TestScoreMilestone_FirstMilestoneGetsFullBonus(t *testing.T) {
-	task := makeTaskWithMilestone("001", model.StatusPending, model.PriorityMedium, "v0.2")
+func TestScorePhase_FirstPhaseGetsFullBonus(t *testing.T) {
+	task := makeTaskWithPhase("001", model.StatusPending, model.PriorityMedium, "v0.2")
 	order := []string{"v0.2", "v0.3", "v0.4"}
 
-	score, reasons := scoreMilestone(task, order)
+	score, reasons := scorePhase(task, order)
 
-	if score != ScoreMilestoneBase {
-		t.Errorf("First milestone score = %d, want %d", score, ScoreMilestoneBase)
+	if score != ScorePhaseBase {
+		t.Errorf("First phase score = %d, want %d", score, ScorePhaseBase)
 	}
-	if len(reasons) != 1 || reasons[0] != "milestone v0.2" {
-		t.Errorf("reasons = %v, want [milestone v0.2]", reasons)
+	if len(reasons) != 1 || reasons[0] != "phase v0.2" {
+		t.Errorf("reasons = %v, want [phase v0.2]", reasons)
 	}
 }
 
-func TestScoreMilestone_SecondMilestoneGetsDecayedBonus(t *testing.T) {
-	task := makeTaskWithMilestone("001", model.StatusPending, model.PriorityMedium, "v0.3")
+func TestScorePhase_SecondPhaseGetsDecayedBonus(t *testing.T) {
+	task := makeTaskWithPhase("001", model.StatusPending, model.PriorityMedium, "v0.3")
 	order := []string{"v0.2", "v0.3", "v0.4"}
 
-	score, _ := scoreMilestone(task, order)
+	score, _ := scorePhase(task, order)
 
-	expected := ScoreMilestoneBase - ScoreMilestoneDecay
+	expected := ScorePhaseBase - ScorePhaseDecay
 	if score != expected {
-		t.Errorf("Second milestone score = %d, want %d", score, expected)
+		t.Errorf("Second phase score = %d, want %d", score, expected)
 	}
 }
 
-func TestScoreMilestone_NoMilestoneGetsNoBonus(t *testing.T) {
+func TestScorePhase_NoPhaseGetsNoBonus(t *testing.T) {
 	task := makeTask("001", model.StatusPending, model.PriorityMedium, nil)
 	order := []string{"v0.2", "v0.3"}
 
-	score, reasons := scoreMilestone(task, order)
+	score, reasons := scorePhase(task, order)
 
 	if score != 0 {
-		t.Errorf("No milestone score = %d, want 0", score)
+		t.Errorf("No phase score = %d, want 0", score)
 	}
 	if len(reasons) != 0 {
 		t.Errorf("reasons = %v, want empty", reasons)
 	}
 }
 
-func TestScoreMilestone_UnknownMilestoneGetsNoBonus(t *testing.T) {
-	task := makeTaskWithMilestone("001", model.StatusPending, model.PriorityMedium, "v9.9")
+func TestScorePhase_UnknownPhaseGetsNoBonus(t *testing.T) {
+	task := makeTaskWithPhase("001", model.StatusPending, model.PriorityMedium, "v9.9")
 	order := []string{"v0.2", "v0.3"}
 
-	score, _ := scoreMilestone(task, order)
+	score, _ := scorePhase(task, order)
 
 	if score != 0 {
-		t.Errorf("Unknown milestone score = %d, want 0", score)
+		t.Errorf("Unknown phase score = %d, want 0", score)
 	}
 }
 
-func TestScoreMilestone_NoOrderConfigured(t *testing.T) {
-	task := makeTaskWithMilestone("001", model.StatusPending, model.PriorityMedium, "v0.2")
+func TestScorePhase_NoPhaseOrderConfigured(t *testing.T) {
+	task := makeTaskWithPhase("001", model.StatusPending, model.PriorityMedium, "v0.2")
 
-	score, _ := scoreMilestone(task, nil)
+	score, _ := scorePhase(task, nil)
 
 	if score != 0 {
-		t.Errorf("No milestone order score = %d, want 0", score)
+		t.Errorf("No phase order score = %d, want 0", score)
 	}
 }
 
-func TestScoreMilestone_LatePositionZeroBonus(t *testing.T) {
-	task := makeTaskWithMilestone("001", model.StatusPending, model.PriorityMedium, "v0.7")
+func TestScorePhase_LatePhasePositionZeroBonus(t *testing.T) {
+	task := makeTaskWithPhase("001", model.StatusPending, model.PriorityMedium, "v0.7")
 	order := []string{"v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.7"}
 
-	score, _ := scoreMilestone(task, order)
+	score, _ := scorePhase(task, order)
 
 	// Position 5: bonus = 25 - (5 * 5) = 0
 	if score != 0 {
-		t.Errorf("Late position milestone score = %d, want 0", score)
+		t.Errorf("Late position phase score = %d, want 0", score)
 	}
 }
 
-func TestRecommend_MilestoneFilter(t *testing.T) {
+func TestRecommend_PhaseFilter(t *testing.T) {
 	tasks := []*model.Task{
-		makeTaskWithMilestone("001", model.StatusPending, model.PriorityHigh, "v0.2"),
-		makeTaskWithMilestone("002", model.StatusPending, model.PriorityMedium, "v0.3"),
+		makeTaskWithPhase("001", model.StatusPending, model.PriorityHigh, "v0.2"),
+		makeTaskWithPhase("002", model.StatusPending, model.PriorityMedium, "v0.3"),
 		makeTask("003", model.StatusPending, model.PriorityLow, nil),
 	}
 
-	recs, err := Recommend(tasks, Options{Limit: 10, Milestone: "v0.2"})
+	recs, err := Recommend(tasks, Options{Limit: 10, Phase: "v0.2"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	if len(recs) != 1 || recs[0].ID != "001" {
-		t.Errorf("Expected only task 001 with milestone v0.2, got %v", recs)
+		t.Errorf("Expected only task 001 with phase v0.2, got %v", recs)
 	}
 }
 
-func TestRecommend_MilestoneOrderAffectsRanking(t *testing.T) {
+func TestRecommend_PhaseOrderAffectsRanking(t *testing.T) {
 	tasks := []*model.Task{
-		makeTaskWithMilestone("001", model.StatusPending, model.PriorityMedium, "v0.3"),
-		makeTaskWithMilestone("002", model.StatusPending, model.PriorityMedium, "v0.2"),
+		makeTaskWithPhase("001", model.StatusPending, model.PriorityMedium, "v0.3"),
+		makeTaskWithPhase("002", model.StatusPending, model.PriorityMedium, "v0.2"),
 	}
 
 	recs, err := Recommend(tasks, Options{
 		Limit:          10,
-		MilestoneOrder: []string{"v0.2", "v0.3"},
+		PhaseOrder: []string{"v0.2", "v0.3"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -796,7 +796,7 @@ func TestRecommend_MilestoneOrderAffectsRanking(t *testing.T) {
 	if len(recs) < 2 {
 		t.Fatalf("Expected 2 recommendations, got %d", len(recs))
 	}
-	// Task 002 (v0.2, first milestone) should rank above task 001 (v0.3, second)
+	// Task 002 (v0.2, first phase) should rank above task 001 (v0.3, second)
 	if recs[0].ID != "002" {
 		t.Errorf("Expected task 002 (v0.2) to rank first, got %s", recs[0].ID)
 	}
