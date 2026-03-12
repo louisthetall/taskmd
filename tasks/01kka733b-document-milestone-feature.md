@@ -1,7 +1,7 @@
 ---
 title: "Document milestone feature"
 id: "01kka733b"
-status: pending
+status: completed
 priority: medium
 type: docs
 dependencies: ["01kka72zy", "01kka730t", "01kka731b"]
@@ -17,13 +17,13 @@ Add documentation for the milestone feature across the docs site, including the 
 
 ## Tasks
 
-- [ ] Add `milestone` to the frontmatter field reference on the docs site
-- [ ] Document `milestones` configuration in `.taskmd.yaml` reference
-- [ ] Update CLI command reference for `list --milestone`, `set --milestone`, `add --milestone`
-- [ ] Update `next` command docs to mention milestone-aware ranking
-- [ ] Update `board` and `stats` docs for `--group-by milestone`
-- [ ] Add a "Milestones" section to the user guide / best practices with usage examples
-- [ ] Update the spec (`docs/taskmd_specification.md`) examples to include milestone in the "Full Task" example
+- [x] Add `milestone` to the frontmatter field reference on the docs site
+- [x] Document `milestones` configuration in `.taskmd.yaml` reference
+- [x] Update CLI command reference for `list --milestone`, `set --milestone`, `add --milestone`
+- [x] Update `next` command docs to mention milestone-aware ranking
+- [x] Update `board` and `stats` docs for `--group-by milestone`
+- [x] Add a "Milestones" section to the user guide / best practices with usage examples
+- [x] Update the spec (`docs/taskmd_specification.md`) examples to include milestone in the "Full Task" example
 
 ## Acceptance Criteria
 

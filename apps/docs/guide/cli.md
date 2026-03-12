@@ -113,6 +113,7 @@ taskmd list --sort priority --limit 5
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--filter` | | Filter tasks (repeatable, AND logic) |
+| `--milestone` | | Filter tasks by milestone name |
 | `--sort` | | Sort by field (`id`, `title`, `status`, `priority`, `effort`, `created`) |
 | `--columns` | `id,title,status,priority,file` | Comma-separated list of columns to display |
 | `--limit` | `0` | Maximum number of tasks to display (0 = unlimited) |
@@ -134,6 +135,9 @@ taskmd list --sort priority --limit 5
 
 # Export to JSON for scripting
 taskmd list --format json > tasks.json
+
+# Filter by milestone
+taskmd list --milestone v0.2
 ```
 
 ### validate - Check Task Files
@@ -183,6 +187,7 @@ taskmd scores tasks based on:
 - **Critical path**: Tasks on the critical path score higher
 - **Downstream impact**: Tasks blocking many others score higher
 - **Effort**: Smaller tasks get a boost (quick wins)
+- **Milestone proximity**: Tasks in milestones with nearer due dates score higher
 - **Actionability**: Only tasks with satisfied dependencies
 
 ```bash
@@ -204,6 +209,9 @@ taskmd next --quick-wins
 # Show only critical path tasks
 taskmd next --critical --limit 1
 
+# Next task for a specific milestone
+taskmd next --milestone v0.2
+
 # JSON for automation
 taskmd next --format json
 ```
@@ -215,6 +223,7 @@ taskmd next --format json
 | `--format` | `table` | Output format (`table`, `json`, `yaml`) |
 | `--limit` | `5` | Maximum number of recommendations |
 | `--filter` | | Filter tasks (repeatable, e.g. `--filter tag=cli`) |
+| `--milestone` | | Filter recommendations by milestone name |
 | `--quick-wins` | `false` | Show only quick wins (effort: small) |
 | `--critical` | `false` | Show only critical path tasks |
 
@@ -314,6 +323,7 @@ taskmd stats --format json
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--format` | `table` | Output format (`table`, `json`, `yaml`) |
+| `--group-by` | | Group stats by field (e.g., `milestone`) |
 
 **Metrics provided:**
 - Total tasks and count by status
@@ -342,6 +352,9 @@ taskmd board --group-by effort
 # Group by tag
 taskmd board --group-by tag
 
+# Group by milestone
+taskmd board --group-by milestone
+
 # Output formats
 taskmd board --format md    # Markdown (default)
 taskmd board --format txt   # Plain text
@@ -356,7 +369,7 @@ taskmd board --out board.md
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--format` | `md` | Output format (`md`, `txt`, `json`) |
-| `--group-by` | `status` | Field to group by (`status`, `priority`, `effort`, `type`, `group`, `tag`) |
+| `--group-by` | `status` | Field to group by (`status`, `priority`, `effort`, `type`, `group`, `tag`, `milestone`) |
 | `--out`, `-o` | | Write output to file |
 
 ### snapshot - Machine-Readable Export

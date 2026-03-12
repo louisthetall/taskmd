@@ -381,6 +381,7 @@ status: in-progress
 priority: high
 effort: large
 type: feature
+milestone: "v1.0"
 dependencies: ["012", "013"]
 parent: "012"
 tags:
