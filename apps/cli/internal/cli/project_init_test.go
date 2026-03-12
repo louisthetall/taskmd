@@ -18,9 +18,18 @@ func resetProjectInitFlags(tmpDir string) {
 	projectInitNoAgent = false
 	projectInitNoTemplates = false
 	projectInitTaskDir = tmpDir
+	projectInitIDStrategy = ""
+	projectInitIDPrefix = ""
 	projectInitRoot = tmpDir
 	projectInitIsTTY = func() bool { return false }
 	taskDir = tmpDir
+	// Reset cobra flag changed state so resolveInitIDStrategy sees them as unset
+	if f := projectInitCmd.Flags().Lookup("id-strategy"); f != nil {
+		f.Changed = false
+	}
+	if f := projectInitCmd.Flags().Lookup("id-prefix"); f != nil {
+		f.Changed = false
+	}
 }
 
 func TestProjectInit_DefaultWritesBothFiles(t *testing.T) {
@@ -790,6 +799,348 @@ func TestProjectInit_EnsureTaskDir_PathIsFile(t *testing.T) {
 
 	if !strings.Contains(err.Error(), "not a directory") {
 		t.Errorf("expected 'not a directory' error, got: %v", err)
+	}
+}
+
+// --- ID Strategy tests ---
+
+func TestProjectInit_IDStrategy_ULID_ConfigAndTemplates(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitClaude = true
+	projectInitIDStrategy = "ulid"
+
+	projectInitCmd.Flags().Set("id-strategy", "ulid")
+
+	err := runProjectInit(projectInitCmd, []string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check config file includes id section
+	configPath := filepath.Join(tmpDir, configFilename)
+	configContent, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("failed to read config: %v", err)
+	}
+	configStr := string(configContent)
+	if !strings.Contains(configStr, "strategy: ulid") {
+		t.Errorf("config should contain 'strategy: ulid', got: %s", configStr)
+	}
+	if !strings.Contains(configStr, "length: 9") {
+		t.Errorf("config should contain 'length: 9', got: %s", configStr)
+	}
+
+	// Check CLAUDE.md has ULID examples
+	claudePath := filepath.Join(tmpDir, "CLAUDE.md")
+	claudeContent, err := os.ReadFile(claudePath)
+	if err != nil {
+		t.Fatalf("failed to read CLAUDE.md: %v", err)
+	}
+	claudeStr := string(claudeContent)
+	if !strings.Contains(claudeStr, `id: "01h5a3mpk"`) {
+		t.Errorf("CLAUDE.md should contain ULID example ID, got: %s", claudeStr)
+	}
+	if !strings.Contains(claudeStr, "01h5a3mpk-add-user-auth.md") {
+		t.Errorf("CLAUDE.md should contain ULID example filename")
+	}
+	if strings.Contains(claudeStr, `id: "001"`) {
+		t.Error("CLAUDE.md should not contain sequential example ID")
+	}
+
+	// Check spec has ULID section
+	specPath := filepath.Join(tmpDir, specFilename)
+	specContent, err := os.ReadFile(specPath)
+	if err != nil {
+		t.Fatalf("failed to read spec: %v", err)
+	}
+	if !strings.Contains(string(specContent), "ULID") {
+		t.Error("spec should contain ULID documentation section")
+	}
+}
+
+func TestProjectInit_IDStrategy_Random_ConfigAndTemplates(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitClaude = true
+	projectInitIDStrategy = "random"
+
+	projectInitCmd.Flags().Set("id-strategy", "random")
+
+	err := runProjectInit(projectInitCmd, []string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	configContent, _ := os.ReadFile(filepath.Join(tmpDir, configFilename))
+	configStr := string(configContent)
+	if !strings.Contains(configStr, "strategy: random") {
+		t.Errorf("config should contain 'strategy: random', got: %s", configStr)
+	}
+	if !strings.Contains(configStr, "length: 6") {
+		t.Errorf("config should contain 'length: 6', got: %s", configStr)
+	}
+
+	claudeContent, _ := os.ReadFile(filepath.Join(tmpDir, "CLAUDE.md"))
+	if !strings.Contains(string(claudeContent), `id: "a3f9x2"`) {
+		t.Error("CLAUDE.md should contain random example ID")
+	}
+	if !strings.Contains(string(claudeContent), "a3f9x2-add-user-auth.md") {
+		t.Error("CLAUDE.md should contain random example filename")
+	}
+}
+
+func TestProjectInit_IDStrategy_Prefixed_ConfigAndTemplates(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitClaude = true
+	projectInitIDStrategy = "prefixed"
+	projectInitIDPrefix = "dr"
+
+	projectInitCmd.Flags().Set("id-strategy", "prefixed")
+	projectInitCmd.Flags().Set("id-prefix", "dr")
+
+	err := runProjectInit(projectInitCmd, []string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	configContent, _ := os.ReadFile(filepath.Join(tmpDir, configFilename))
+	configStr := string(configContent)
+	if !strings.Contains(configStr, "strategy: prefixed") {
+		t.Errorf("config should contain 'strategy: prefixed', got: %s", configStr)
+	}
+	if !strings.Contains(configStr, "prefix: dr") {
+		t.Errorf("config should contain 'prefix: dr', got: %s", configStr)
+	}
+
+	claudeContent, _ := os.ReadFile(filepath.Join(tmpDir, "CLAUDE.md"))
+	claudeStr := string(claudeContent)
+	if !strings.Contains(claudeStr, `id: "dr-001"`) {
+		t.Errorf("CLAUDE.md should contain prefixed example ID, got relevant part missing")
+	}
+	if !strings.Contains(claudeStr, "dr-015-add-user-auth.md") {
+		t.Error("CLAUDE.md should contain prefixed example filename")
+	}
+
+	specContent, _ := os.ReadFile(filepath.Join(tmpDir, specFilename))
+	if !strings.Contains(string(specContent), "prefixed") {
+		t.Error("spec should contain prefixed documentation section")
+	}
+}
+
+func TestProjectInit_IDStrategy_Sequential_NoIDConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitClaude = true
+	// No --id-strategy flag set, should default to sequential
+
+	err := runProjectInit(projectInitCmd, []string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	configContent, _ := os.ReadFile(filepath.Join(tmpDir, configFilename))
+	configStr := string(configContent)
+	// Sequential is default, so no id: section should be written
+	if strings.Contains(configStr, "id:") {
+		t.Errorf("config should not contain id: section for sequential strategy, got: %s", configStr)
+	}
+
+	// Templates should remain unchanged (sequential examples)
+	claudeContent, _ := os.ReadFile(filepath.Join(tmpDir, "CLAUDE.md"))
+	if !bytes.Equal(claudeContent, claudeTemplate) {
+		t.Error("CLAUDE.md should match raw template for sequential strategy")
+	}
+}
+
+func TestProjectInit_IDStrategy_InvalidStrategy(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitClaude = true
+	projectInitIDStrategy = "invalid"
+
+	projectInitCmd.Flags().Set("id-strategy", "invalid")
+
+	err := runProjectInit(projectInitCmd, []string{})
+	if err == nil {
+		t.Fatal("expected error for invalid strategy")
+	}
+	if !strings.Contains(err.Error(), "invalid --id-strategy") {
+		t.Errorf("error should mention invalid strategy, got: %v", err)
+	}
+}
+
+func TestProjectInit_IDStrategy_PrefixedWithoutPrefix_NonTTY(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitClaude = true
+	projectInitIDStrategy = "prefixed"
+
+	projectInitCmd.Flags().Set("id-strategy", "prefixed")
+
+	err := runProjectInit(projectInitCmd, []string{})
+	if err == nil {
+		t.Fatal("expected error for prefixed strategy without prefix in non-TTY mode")
+	}
+	if !strings.Contains(err.Error(), "id-prefix") {
+		t.Errorf("error should mention id-prefix, got: %v", err)
+	}
+}
+
+func TestProjectInit_IDStrategy_ULID_AllAgents(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitClaude = true
+	projectInitGemini = true
+	projectInitCodex = true
+	projectInitIDStrategy = "ulid"
+
+	projectInitCmd.Flags().Set("id-strategy", "ulid")
+
+	err := runProjectInit(projectInitCmd, []string{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// All agent files should have ULID examples
+	for _, name := range []string{"CLAUDE.md", "GEMINI.md", "AGENTS.md"} {
+		content, err := os.ReadFile(filepath.Join(tmpDir, name))
+		if err != nil {
+			t.Fatalf("failed to read %s: %v", name, err)
+		}
+		if !strings.Contains(string(content), `id: "01h5a3mpk"`) {
+			t.Errorf("%s should contain ULID example ID", name)
+		}
+	}
+}
+
+func TestProjectInit_IDStrategy_Stdout_ShowsReplacedContent(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetProjectInitFlags(tmpDir)
+	projectInitStdout = true
+	projectInitClaude = true
+	projectInitIDStrategy = "ulid"
+
+	projectInitCmd.Flags().Set("id-strategy", "ulid")
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runProjectInit(projectInitCmd, []string{})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	if !strings.Contains(output, `id: "01h5a3mpk"`) {
+		t.Error("stdout should contain ULID example ID")
+	}
+	if strings.Contains(output, `id: "001"`) {
+		t.Error("stdout should not contain sequential example ID")
+	}
+}
+
+func TestBuildIDConfigYAML(t *testing.T) {
+	tests := []struct {
+		name     string
+		cfg      idStrategyConfig
+		expected string
+	}{
+		{
+			name:     "sequential produces no output",
+			cfg:      idStrategyConfig{strategy: "sequential"},
+			expected: "",
+		},
+		{
+			name:     "ulid",
+			cfg:      idStrategyConfig{strategy: "ulid"},
+			expected: "id:\n  strategy: ulid\n  length: 9\n",
+		},
+		{
+			name:     "random",
+			cfg:      idStrategyConfig{strategy: "random"},
+			expected: "id:\n  strategy: random\n  length: 6\n",
+		},
+		{
+			name:     "prefixed",
+			cfg:      idStrategyConfig{strategy: "prefixed", prefix: "cli"},
+			expected: "id:\n  strategy: prefixed\n  prefix: cli\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := buildIDConfigYAML(tt.cfg)
+			if got != tt.expected {
+				t.Errorf("buildIDConfigYAML() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetIDStrategyExamples(t *testing.T) {
+	tests := []struct {
+		name            string
+		cfg             idStrategyConfig
+		wantID          string
+		wantFilename    string
+		wantFilePattern string
+	}{
+		{"sequential", idStrategyConfig{strategy: "sequential"}, "001", "015-add-user-auth.md", "NNN-descriptive-title.md"},
+		{"ulid", idStrategyConfig{strategy: "ulid"}, "01h5a3mpk", "01h5a3mpk-add-user-auth.md", "ID-descriptive-title.md"},
+		{"random", idStrategyConfig{strategy: "random"}, "a3f9x2", "a3f9x2-add-user-auth.md", "ID-descriptive-title.md"},
+		{"prefixed", idStrategyConfig{strategy: "prefixed", prefix: "dr"}, "dr-001", "dr-015-add-user-auth.md", "DR-NNN-descriptive-title.md"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ex := getIDStrategyExamples(tt.cfg)
+			if ex.exampleID != tt.wantID {
+				t.Errorf("exampleID = %q, want %q", ex.exampleID, tt.wantID)
+			}
+			if ex.exampleFilename != tt.wantFilename {
+				t.Errorf("exampleFilename = %q, want %q", ex.exampleFilename, tt.wantFilename)
+			}
+			if ex.filePattern != tt.wantFilePattern {
+				t.Errorf("filePattern = %q, want %q", ex.filePattern, tt.wantFilePattern)
+			}
+		})
+	}
+}
+
+func TestApplyIDStrategyReplacements(t *testing.T) {
+	input := []byte(`id: "001"` + "\n" + `Files follow the pattern ` + "`NNN-descriptive-title.md`" + ` (e.g., ` + "`015-add-user-auth.md`" + `).`)
+
+	examples := getIDStrategyExamples(idStrategyConfig{strategy: "ulid"})
+	result := string(applyIDStrategyReplacements(input, examples))
+
+	if !strings.Contains(result, `id: "01h5a3mpk"`) {
+		t.Error("should replace example ID")
+	}
+	if !strings.Contains(result, "01h5a3mpk-add-user-auth.md") {
+		t.Error("should replace example filename")
+	}
+	if !strings.Contains(result, "ID-descriptive-title.md") {
+		t.Error("should replace file pattern")
+	}
+}
+
+func TestApplyIDStrategyReplacements_Sequential_NoOp(t *testing.T) {
+	input := []byte(`id: "001"` + "\n" + "015-add-user-auth.md")
+	examples := getIDStrategyExamples(idStrategyConfig{strategy: "sequential"})
+	result := applyIDStrategyReplacements(input, examples)
+	if !bytes.Equal(result, input) {
+		t.Error("sequential strategy should return unchanged content")
 	}
 }
 

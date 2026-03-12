@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/mattn/go-isatty"
@@ -22,6 +24,8 @@ var (
 	projectInitNoAgent     bool
 	projectInitNoTemplates bool
 	projectInitTaskDir     string
+	projectInitIDStrategy  string
+	projectInitIDPrefix    string
 )
 
 // projectInitRoot is the project root directory. Defaults to ".".
@@ -75,6 +79,8 @@ func init() {
 	projectInitCmd.Flags().BoolVar(&projectInitNoAgent, "no-agent", false, "skip generating agent configuration files")
 	projectInitCmd.Flags().BoolVar(&projectInitNoTemplates, "no-templates", false, "skip copying built-in task templates")
 	projectInitCmd.Flags().StringVar(&projectInitTaskDir, "task-dir", "./tasks", "task directory path to create")
+	projectInitCmd.Flags().StringVar(&projectInitIDStrategy, "id-strategy", "", "ID generation strategy: sequential, prefixed, random, ulid")
+	projectInitCmd.Flags().StringVar(&projectInitIDPrefix, "id-prefix", "", "prefix for prefixed ID strategy")
 }
 
 // fileToWrite represents a file that the init command will create.
@@ -101,8 +107,14 @@ func runProjectInit(cmd *cobra.Command, _ []string) error {
 	// Resolve agents: flags > prompt > default (Claude)
 	resolveInitAgents(isTTY)
 
+	// Resolve ID strategy: flag > prompt > default (sequential)
+	idStrategy, err := resolveInitIDStrategy(cmd, isTTY)
+	if err != nil {
+		return err
+	}
+
 	// Collect files split by destination
-	rootFiles, taskDirFiles := collectInitFiles()
+	rootFiles, taskDirFiles := collectInitFiles(idStrategy)
 
 	// --stdout mode: print everything and exit
 	if projectInitStdout {
@@ -115,11 +127,11 @@ func runProjectInit(cmd *cobra.Command, _ []string) error {
 		taskDirAbs = filepath.Join(root, taskDirPath)
 	}
 
-	return writeProjectFiles(root, taskDirAbs, taskDirPath, rootFiles, taskDirFiles, quiet)
+	return writeProjectFiles(root, taskDirAbs, taskDirPath, idStrategy, rootFiles, taskDirFiles, quiet)
 }
 
 // writeProjectFiles creates directories, config, and all init files.
-func writeProjectFiles(root, taskDirAbs, taskDirPath string, rootFiles, taskDirFiles []fileToWrite, quiet bool) error {
+func writeProjectFiles(root, taskDirAbs, taskDirPath string, idStrategy idStrategyConfig, rootFiles, taskDirFiles []fileToWrite, quiet bool) error {
 	var createdPaths []string
 
 	dirCreated, err := ensureTaskDir(taskDirAbs, quiet)
@@ -131,7 +143,7 @@ func writeProjectFiles(root, taskDirAbs, taskDirPath string, rootFiles, taskDirF
 		createdPaths = append(createdPaths, abs+"/")
 	}
 
-	configCreated, err := writeConfigFile(root, taskDirPath, quiet)
+	configCreated, err := writeConfigFile(root, taskDirPath, idStrategy, quiet)
 	if err != nil {
 		return err
 	}
@@ -257,23 +269,227 @@ func promptAgentSelection() {
 	}
 }
 
+// idStrategyConfig holds the resolved ID strategy and associated settings.
+type idStrategyConfig struct {
+	strategy string // sequential, prefixed, random, ulid
+	prefix   string // only for prefixed
+}
+
+var validIDStrategies = []string{"sequential", "prefixed", "random", "ulid"}
+
+// resolveInitIDStrategy returns the ID strategy config.
+// If --id-strategy was provided, uses it. If TTY, prompts. Otherwise defaults to sequential.
+func resolveInitIDStrategy(cmd *cobra.Command, isTTY bool) (idStrategyConfig, error) {
+	cfg := idStrategyConfig{strategy: "sequential"}
+
+	if cmd.Flags().Changed("id-strategy") {
+		if !isValidIDStrategy(projectInitIDStrategy) {
+			return cfg, fmt.Errorf("invalid --id-strategy %q: must be one of %s",
+				projectInitIDStrategy, strings.Join(validIDStrategies, ", "))
+		}
+		cfg.strategy = projectInitIDStrategy
+		if cfg.strategy == "prefixed" {
+			prefix, err := resolveIDPrefix(cmd, isTTY)
+			if err != nil {
+				return cfg, err
+			}
+			cfg.prefix = prefix
+		}
+		return cfg, nil
+	}
+
+	if isTTY {
+		strategy, err := promptIDStrategy()
+		if err != nil {
+			return cfg, err
+		}
+		cfg.strategy = strategy
+		if cfg.strategy == "prefixed" {
+			prefix, err := resolveIDPrefix(cmd, isTTY)
+			if err != nil {
+				return cfg, err
+			}
+			cfg.prefix = prefix
+		}
+		return cfg, nil
+	}
+
+	return cfg, nil
+}
+
+func isValidIDStrategy(s string) bool {
+	for _, v := range validIDStrategies {
+		if s == v {
+			return true
+		}
+	}
+	return false
+}
+
+func promptIDStrategy() (string, error) {
+	options := []huh.Option[string]{
+		huh.NewOption("Sequential (001, 002, ...)", "sequential").Selected(true),
+		huh.NewOption("Prefixed (dr-001, dr-002, ...)", "prefixed"),
+		huh.NewOption("Random (a3f9x2, b7k2m1, ...)", "random"),
+		huh.NewOption("ULID (01h5a3mpk, ...)", "ulid"),
+	}
+
+	var selected string
+	err := huh.NewSelect[string]().
+		Title("ID strategy").
+		Options(options...).
+		Value(&selected).
+		Run()
+	if err != nil {
+		return "sequential", fmt.Errorf("prompt cancelled: %w", err)
+	}
+	if selected == "" {
+		return "sequential", nil
+	}
+	return selected, nil
+}
+
+func resolveIDPrefix(cmd *cobra.Command, isTTY bool) (string, error) {
+	if cmd.Flags().Changed("id-prefix") {
+		if projectInitIDPrefix == "" {
+			return "", fmt.Errorf("--id-prefix cannot be empty for prefixed strategy")
+		}
+		return projectInitIDPrefix, nil
+	}
+	if isTTY {
+		value := ""
+		err := huh.NewInput().
+			Title("ID prefix").
+			Description("Short prefix for task IDs (e.g., \"dr\", \"cli\")").
+			Value(&value).
+			Run()
+		if err != nil {
+			return "", fmt.Errorf("prompt cancelled: %w", err)
+		}
+		if value == "" {
+			return "", fmt.Errorf("prefix cannot be empty for prefixed strategy")
+		}
+		return value, nil
+	}
+	return "", fmt.Errorf("--id-prefix is required for prefixed strategy in non-interactive mode")
+}
+
+// idStrategyExamples holds strategy-specific placeholder replacements.
+type idStrategyExamples struct {
+	exampleID       string // e.g. "001"
+	exampleFilename string // e.g. "015-add-user-auth.md"
+	filePattern     string // e.g. "NNN-descriptive-title.md"
+}
+
+func getIDStrategyExamples(cfg idStrategyConfig) idStrategyExamples {
+	switch cfg.strategy {
+	case "prefixed":
+		p := cfg.prefix
+		return idStrategyExamples{
+			exampleID:       fmt.Sprintf("%s-001", p),
+			exampleFilename: fmt.Sprintf("%s-015-add-user-auth.md", p),
+			filePattern:     fmt.Sprintf("%s-NNN-descriptive-title.md", strings.ToUpper(p)),
+		}
+	case "random":
+		return idStrategyExamples{
+			exampleID:       "a3f9x2",
+			exampleFilename: "a3f9x2-add-user-auth.md",
+			filePattern:     "ID-descriptive-title.md",
+		}
+	case "ulid":
+		return idStrategyExamples{
+			exampleID:       "01h5a3mpk",
+			exampleFilename: "01h5a3mpk-add-user-auth.md",
+			filePattern:     "ID-descriptive-title.md",
+		}
+	default: // sequential
+		return idStrategyExamples{
+			exampleID:       "001",
+			exampleFilename: "015-add-user-auth.md",
+			filePattern:     "NNN-descriptive-title.md",
+		}
+	}
+}
+
+// applyIDStrategyReplacements replaces sequential-style placeholders in template content.
+func applyIDStrategyReplacements(content []byte, examples idStrategyExamples) []byte {
+	// Only apply if non-sequential (sequential is already the default in templates)
+	if examples.exampleID == "001" {
+		return content
+	}
+	result := content
+	result = bytes.ReplaceAll(result, []byte(`id: "001"`), []byte(fmt.Sprintf(`id: "%s"`, examples.exampleID)))
+	result = bytes.ReplaceAll(result, []byte("015-add-user-auth.md"), []byte(examples.exampleFilename))
+	result = bytes.ReplaceAll(result, []byte("NNN-descriptive-title.md"), []byte(examples.filePattern))
+	return result
+}
+
+// idStrategySpecSection returns a markdown section documenting the chosen ID strategy.
+func idStrategySpecSection(cfg idStrategyConfig) string {
+	switch cfg.strategy {
+	case "prefixed":
+		return fmt.Sprintf(`
+
+## ID Generation
+
+This project uses **prefixed sequential** IDs with the prefix **%q**.
+
+- Format: `+"`%s-NNN`"+`
+- IDs are zero-padded sequential numbers with a prefix (e.g., `+"`%s-001`"+`, `+"`%s-002`"+`)
+- The prefix groups tasks by team, area, or project
+`, cfg.prefix, cfg.prefix, cfg.prefix, cfg.prefix)
+	case "random":
+		return `
+
+## ID Generation
+
+This project uses **random** IDs.
+
+- Format: alphanumeric strings (e.g., ` + "`a3f9x2`" + `, ` + "`b7k2m1`" + `)
+- Generated automatically by ` + "`taskmd add`" + `
+- Default length: 6 characters
+`
+	case "ulid":
+		return `
+
+## ID Generation
+
+This project uses **ULID** (Universally Unique Lexicographically Sortable Identifier) IDs.
+
+- Format: lowercase ULID strings (e.g., ` + "`01h5a3mpk`" + `)
+- Generated automatically by ` + "`taskmd add`" + `
+- ULIDs are time-ordered, so tasks sort chronologically by creation
+- Default length: 9 characters
+`
+	default: // sequential
+		return "" // sequential is the default, no extra section needed
+	}
+}
+
 // collectInitFiles returns files split into root and task dir.
 // Agent configs and spec are both placed in the task directory.
-func collectInitFiles() (rootFiles, taskDirFiles []fileToWrite) {
+func collectInitFiles(idStrategy idStrategyConfig) (rootFiles, taskDirFiles []fileToWrite) {
+	examples := getIDStrategyExamples(idStrategy)
+
 	if !projectInitNoAgent {
 		agents := getProjectInitAgents()
 		for _, agent := range agents {
 			taskDirFiles = append(taskDirFiles, fileToWrite{
 				filename: agent.filename,
-				content:  agent.template,
+				content:  applyIDStrategyReplacements(agent.template, examples),
 			})
 		}
 	}
 
 	if !projectInitNoSpec {
+		specContent := applyIDStrategyReplacements(initSpecTemplate, examples)
+		// Append strategy-specific documentation section
+		if section := idStrategySpecSection(idStrategy); section != "" {
+			specContent = append(specContent, []byte(section)...)
+		}
 		taskDirFiles = append(taskDirFiles, fileToWrite{
 			filename: specFilename,
-			content:  initSpecTemplate,
+			content:  specContent,
 		})
 	}
 
@@ -335,7 +551,7 @@ func ensureTaskDir(path string, quiet bool) (created bool, err error) {
 }
 
 // writeConfigFile writes .taskmd.yaml to the project root.
-func writeConfigFile(root, taskDirPath string, quiet bool) (created bool, err error) {
+func writeConfigFile(root, taskDirPath string, idStrategy idStrategyConfig, quiet bool) (created bool, err error) {
 	configPath := filepath.Join(root, configFilename)
 
 	if !projectInitForce {
@@ -349,10 +565,27 @@ func writeConfigFile(root, taskDirPath string, quiet bool) (created bool, err er
 	}
 
 	content := fmt.Sprintf("dir: %s\n", taskDirPath)
+	content += buildIDConfigYAML(idStrategy)
+
 	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
 		return false, fmt.Errorf("failed to write %s: %w", configFilename, err)
 	}
 	return true, nil
+}
+
+// buildIDConfigYAML returns the id: section for .taskmd.yaml.
+// Returns empty string for the default sequential strategy.
+func buildIDConfigYAML(cfg idStrategyConfig) string {
+	switch cfg.strategy {
+	case "prefixed":
+		return fmt.Sprintf("id:\n  strategy: prefixed\n  prefix: %s\n", cfg.prefix)
+	case "random":
+		return "id:\n  strategy: random\n  length: 6\n"
+	case "ulid":
+		return "id:\n  strategy: ulid\n  length: 9\n"
+	default:
+		return ""
+	}
 }
 
 // writeInitFiles writes files to a directory, returning created paths.
