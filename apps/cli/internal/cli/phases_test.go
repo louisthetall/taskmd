@@ -421,3 +421,108 @@ func TestPhases_EmptyPhaseHasZeroProgress(t *testing.T) {
 		t.Errorf("expected 0%% progress, got %q", summaries[0].Progress)
 	}
 }
+
+func TestPhases_MissingIDWarnsAndExcludes(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetPhasesFlags()
+	phasesFormat = "json"
+
+	// Configure phases WITHOUT id fields — only names.
+	setupPhasesConfig(t, []map[string]any{
+		{"name": "Core CLI"},
+		{"name": "Web Dashboard"},
+		{"name": "Documentation"},
+	})
+
+	// Create tasks: 1 completed + 2 pending (would be 33% if all phases matched the same tasks).
+	tasks := []struct {
+		id     string
+		status string
+	}{
+		{"001", "completed"},
+		{"002", "pending"},
+		{"003", "pending"},
+	}
+	for _, task := range tasks {
+		content := "---\nid: \"" + task.id + "\"\ntitle: \"Task " + task.id + "\"\nstatus: " + task.status + "\n---"
+		if err := os.WriteFile(filepath.Join(tmpDir, task.id+".md"), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	_, stderr, err := capturePhasesOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runPhases failed: %v", err)
+	}
+
+	// Phases without id should produce warnings.
+	for _, name := range []string{"Core CLI", "Web Dashboard", "Documentation"} {
+		if !strings.Contains(stderr, name) {
+			t.Errorf("expected warning mentioning phase %q, got stderr:\n%s", name, stderr)
+		}
+	}
+	if !strings.Contains(stderr, "missing \"id\"") {
+		t.Errorf("expected warning about missing id, got stderr:\n%s", stderr)
+	}
+
+	// Since all phases lack an id, none should be valid → "No phases configured".
+	if !strings.Contains(stderr, "No phases configured") {
+		t.Errorf("expected 'No phases configured' when all phases lack id, got stderr:\n%s", stderr)
+	}
+}
+
+func TestPhases_MixedMissingAndValidIDs(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetPhasesFlags()
+	phasesFormat = "json"
+
+	// One valid phase with id, two without.
+	setupPhasesConfig(t, []map[string]any{
+		{"id": "mvp", "name": "MVP"},
+		{"name": "No ID Phase"},
+		{"id": "v2", "name": "Version 2"},
+	})
+
+	// Create tasks assigned to the valid phases.
+	for _, task := range []struct {
+		id, status, phase string
+	}{
+		{"001", "completed", "mvp"},
+		{"002", "pending", "mvp"},
+		{"003", "pending", "v2"},
+	} {
+		content := "---\nid: \"" + task.id + "\"\ntitle: \"Task\"\nstatus: " + task.status + "\nphase: " + task.phase + "\n---"
+		if err := os.WriteFile(filepath.Join(tmpDir, task.id+".md"), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	stdout, stderr, err := capturePhasesOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runPhases failed: %v", err)
+	}
+
+	// Warning about the phase without id.
+	if !strings.Contains(stderr, "No ID Phase") {
+		t.Errorf("expected warning about phase without id, got stderr:\n%s", stderr)
+	}
+
+	// Only valid phases should appear in output.
+	var summaries []PhaseSummary
+	if err := json.Unmarshal([]byte(stdout), &summaries); err != nil {
+		t.Fatalf("failed to parse JSON: %v\noutput: %s", err, stdout)
+	}
+
+	if len(summaries) != 2 {
+		t.Fatalf("expected 2 phases (only those with id), got %d", len(summaries))
+	}
+	if summaries[0].ID != "mvp" {
+		t.Errorf("first phase ID = %q, want mvp", summaries[0].ID)
+	}
+	if summaries[0].Progress != "50%" {
+		t.Errorf("mvp progress = %q, want 50%%", summaries[0].Progress)
+	}
+	if summaries[1].ID != "v2" {
+		t.Errorf("second phase ID = %q, want v2", summaries[1].ID)
+	}
+}

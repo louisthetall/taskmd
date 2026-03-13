@@ -897,7 +897,7 @@ func TestParsePhasesConfig_NotASlice(t *testing.T) {
 func TestParsePhasesConfig_SkipsNonMapEntries(t *testing.T) {
 	raw := []any{
 		"not-a-map",
-		map[string]any{"name": "v0.2"},
+		map[string]any{"id": "v02", "name": "v0.2"},
 	}
 
 	phases := parsePhasesConfig(raw)
@@ -926,7 +926,7 @@ func TestParsePhasesConfig_IDFieldParsed(t *testing.T) {
 	}
 }
 
-func TestParsePhasesConfig_NoID(t *testing.T) {
+func TestParsePhasesConfig_NoID_SkippedWithWarning(t *testing.T) {
 	raw := []any{
 		map[string]any{
 			"name": "Legacy Phase",
@@ -934,14 +934,8 @@ func TestParsePhasesConfig_NoID(t *testing.T) {
 	}
 
 	phases := parsePhasesConfig(raw)
-	if len(phases) != 1 {
-		t.Fatalf("expected 1 phase, got %d", len(phases))
-	}
-	if phases[0].ID != "" {
-		t.Errorf("ID = %q, want empty", phases[0].ID)
-	}
-	if phases[0].Name != "Legacy Phase" {
-		t.Errorf("Name = %q, want %q", phases[0].Name, "Legacy Phase")
+	if len(phases) != 0 {
+		t.Fatalf("expected 0 phases (no id → skipped), got %d", len(phases))
 	}
 }
 

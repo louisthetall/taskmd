@@ -132,10 +132,8 @@ func loadPhaseOrder() []string {
 		if !ok {
 			continue
 		}
-		if id, ok := m["id"].(string); ok {
+		if id, ok := m["id"].(string); ok && id != "" {
 			ids = append(ids, id)
-		} else if name, ok := m["name"].(string); ok {
-			ids = append(ids, name)
 		}
 	}
 	return ids

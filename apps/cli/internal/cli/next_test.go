@@ -2010,7 +2010,7 @@ func TestLoadPhaseOrder_UsesIDWhenPresent(t *testing.T) {
 	}
 }
 
-func TestLoadPhaseOrder_FallsBackToName(t *testing.T) {
+func TestLoadPhaseOrder_SkipsPhasesWithoutID(t *testing.T) {
 	viper.Set("phases", []any{
 		map[string]any{"name": "Phase One"},
 		map[string]any{"name": "Phase Two"},
@@ -2018,18 +2018,12 @@ func TestLoadPhaseOrder_FallsBackToName(t *testing.T) {
 	defer viper.Set("phases", nil)
 
 	got := loadPhaseOrder()
-	want := []string{"Phase One", "Phase Two"}
-	if len(got) != len(want) {
-		t.Fatalf("loadPhaseOrder() = %v, want %v", got, want)
-	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Errorf("loadPhaseOrder()[%d] = %q, want %q", i, got[i], want[i])
-		}
+	if len(got) != 0 {
+		t.Fatalf("loadPhaseOrder() = %v, want empty (phases without id should be skipped)", got)
 	}
 }
 
-func TestLoadPhaseOrder_MixedIDAndName(t *testing.T) {
+func TestLoadPhaseOrder_MixedIDAndNoID(t *testing.T) {
 	viper.Set("phases", []any{
 		map[string]any{"id": "core-cli", "name": "Core CLI"},
 		map[string]any{"name": "Legacy Phase"},
@@ -2037,14 +2031,12 @@ func TestLoadPhaseOrder_MixedIDAndName(t *testing.T) {
 	defer viper.Set("phases", nil)
 
 	got := loadPhaseOrder()
-	want := []string{"core-cli", "Legacy Phase"}
+	want := []string{"core-cli"}
 	if len(got) != len(want) {
 		t.Fatalf("loadPhaseOrder() = %v, want %v", got, want)
 	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Errorf("loadPhaseOrder()[%d] = %q, want %q", i, got[i], want[i])
-		}
+	if got[0] != want[0] {
+		t.Errorf("loadPhaseOrder()[0] = %q, want %q", got[0], want[0])
 	}
 }
 

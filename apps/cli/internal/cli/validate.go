@@ -302,27 +302,41 @@ func parsePhasesConfig(raw any) []validator.PhaseConfig {
 		if !ok {
 			continue
 		}
-		mc := validator.PhaseConfig{}
-		if id, ok := m["id"].(string); ok {
-			mc.ID = id
+		mc, valid := parsePhaseEntry(m)
+		if valid {
+			phases = append(phases, mc)
 		}
-		if name, ok := m["name"].(string); ok {
-			mc.Name = name
-		}
-		if desc, ok := m["description"].(string); ok {
-			mc.Description = desc
-		}
-		// Due date is optional; skip if not present or not a string
-		if due, ok := m["due"].(string); ok {
-			ft := model.FlexibleTime{}
-			node := yaml.Node{Kind: yaml.ScalarNode, Value: due, Tag: "!!str"}
-			if err := ft.UnmarshalYAML(&node); err == nil {
-				mc.Due = ft
-			}
-		}
-		phases = append(phases, mc)
 	}
 	return phases
+}
+
+func parsePhaseEntry(m map[string]any) (validator.PhaseConfig, bool) {
+	mc := validator.PhaseConfig{}
+	if id, ok := m["id"].(string); ok {
+		mc.ID = id
+	}
+	if name, ok := m["name"].(string); ok {
+		mc.Name = name
+	}
+	if mc.ID == "" {
+		label := mc.Name
+		if label == "" {
+			label = "(unnamed)"
+		}
+		fmt.Fprintf(os.Stderr, "Warning: phase %q is missing \"id\" field and will be skipped\n", label)
+		return mc, false
+	}
+	if desc, ok := m["description"].(string); ok {
+		mc.Description = desc
+	}
+	if due, ok := m["due"].(string); ok {
+		ft := model.FlexibleTime{}
+		node := yaml.Node{Kind: yaml.ScalarNode, Value: due, Tag: "!!str"}
+		if err := ft.UnmarshalYAML(&node); err == nil {
+			mc.Due = ft
+		}
+	}
+	return mc, true
 }
 
 // toInt converts a viper numeric value (int, int64, float64) to int.
