@@ -28,11 +28,11 @@ Benchmark the do-task skill by running it with and without the skill loaded, com
   - **without_skill**: bare project — remove CLAUDE.md, TASKMD_SPEC.md, .taskmd.yaml, .taskmd/; block `taskmd` from PATH using shadow dir
 - [ ] Run with_skill eval using `benchmark/run_eval.sh`:
   ```
-  bash benchmark/run_eval.sh <project-dir> "pick up task 003 and start working on it" benchmark/iteration-1/eval-8-do-task/with_skill/outputs --allowedTools "Bash,taskmd:do-task"
+  bash benchmark/run_eval.sh <project-dir> "pick up task 003 and start working on it" benchmark/iteration-1/eval-8-do-task/with_skill/outputs --allowedTools "Bash,Skill,Read,Glob,Grep,taskmd:do-task"
   ```
 - [ ] Run without_skill baseline using `benchmark/run_eval.sh` with taskmd blocked:
   ```
-  PATH="$SHADOW_DIR:$PATH" bash benchmark/run_eval.sh <project-dir> "pick up task 003 and start working on it" benchmark/iteration-1/eval-8-do-task/without_skill/outputs --allowedTools "Bash"
+  PATH="$SHADOW_DIR:$PATH" bash benchmark/run_eval.sh <project-dir> "pick up task 003 and start working on it" benchmark/iteration-1/eval-8-do-task/without_skill/outputs --allowedTools "Bash,Read,Glob,Grep"
   ```
 - [ ] Write `eval_metadata.json` with assertions from `evals.json`
 - [ ] Grade both outputs against assertions

@@ -28,11 +28,11 @@ Benchmark the validate-tasks skill by running it with and without the skill load
   - **without_skill**: bare project — remove CLAUDE.md, TASKMD_SPEC.md, .taskmd.yaml, .taskmd/; block `taskmd` from PATH using shadow dir
 - [ ] Run with_skill eval using `benchmark/run_eval.sh`:
   ```
-  bash benchmark/run_eval.sh <project-dir> "check if all my task files are valid" benchmark/iteration-1/eval-9-validate-tasks/with_skill/outputs --allowedTools "Bash,taskmd:validate-tasks"
+  bash benchmark/run_eval.sh <project-dir> "check if all my task files are valid" benchmark/iteration-1/eval-9-validate-tasks/with_skill/outputs --allowedTools "Bash,Skill,Read,Glob,Grep,taskmd:validate-tasks"
   ```
 - [ ] Run without_skill baseline using `benchmark/run_eval.sh` with taskmd blocked:
   ```
-  PATH="$SHADOW_DIR:$PATH" bash benchmark/run_eval.sh <project-dir> "check if all my task files are valid" benchmark/iteration-1/eval-9-validate-tasks/without_skill/outputs --allowedTools "Bash"
+  PATH="$SHADOW_DIR:$PATH" bash benchmark/run_eval.sh <project-dir> "check if all my task files are valid" benchmark/iteration-1/eval-9-validate-tasks/without_skill/outputs --allowedTools "Bash,Read,Glob,Grep"
   ```
 - [ ] Write `eval_metadata.json` with assertions from `evals.json`
 - [ ] Grade both outputs against assertions

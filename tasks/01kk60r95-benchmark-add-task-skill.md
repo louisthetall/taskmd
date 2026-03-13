@@ -28,11 +28,11 @@ Benchmark the add-task skill by running it with and without the skill loaded, co
   - **without_skill**: bare project — remove CLAUDE.md, TASKMD_SPEC.md, .taskmd.yaml, .taskmd/; block `taskmd` from PATH using shadow dir
 - [ ] Run with_skill eval using `benchmark/run_eval.sh`:
   ```
-  bash benchmark/run_eval.sh <project-dir> "create a new task to implement user notifications via email and in-app, high priority, tags: notifications,backend" benchmark/iteration-1/eval-4-add-task/with_skill/outputs --allowedTools "Bash,taskmd:add-task"
+  bash benchmark/run_eval.sh <project-dir> "create a new task to implement user notifications via email and in-app, high priority, tags: notifications,backend" benchmark/iteration-1/eval-4-add-task/with_skill/outputs --allowedTools "Bash,Skill,Read,Glob,Grep,taskmd:add-task"
   ```
 - [ ] Run without_skill baseline using `benchmark/run_eval.sh` with taskmd blocked:
   ```
-  PATH="$SHADOW_DIR:$PATH" bash benchmark/run_eval.sh <project-dir> "create a new task to implement user notifications via email and in-app, high priority, tags: notifications,backend" benchmark/iteration-1/eval-4-add-task/without_skill/outputs --allowedTools "Bash"
+  PATH="$SHADOW_DIR:$PATH" bash benchmark/run_eval.sh <project-dir> "create a new task to implement user notifications via email and in-app, high priority, tags: notifications,backend" benchmark/iteration-1/eval-4-add-task/without_skill/outputs --allowedTools "Bash,Read,Glob,Grep"
   ```
 - [ ] Write `eval_metadata.json` with assertions from `evals.json`
 - [ ] Grade both outputs against assertions

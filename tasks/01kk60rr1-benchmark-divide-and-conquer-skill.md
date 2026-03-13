@@ -28,11 +28,11 @@ Benchmark the divide-and-conquer skill by running it with and without the skill 
   - **without_skill**: bare project — remove CLAUDE.md, TASKMD_SPEC.md, .taskmd.yaml, .taskmd/; block `taskmd` from PATH using shadow dir
 - [ ] Run with_skill eval using `benchmark/run_eval.sh`:
   ```
-  bash benchmark/run_eval.sh <project-dir> "pick up task 002 and work on it using parallel subagents" benchmark/iteration-1/eval-13-divide-and-conquer/with_skill/outputs --allowedTools "Bash,taskmd:divide-and-conquer"
+  bash benchmark/run_eval.sh <project-dir> "pick up task 002 and work on it using parallel subagents" benchmark/iteration-1/eval-13-divide-and-conquer/with_skill/outputs --allowedTools "Bash,Skill,Read,Glob,Grep,taskmd:divide-and-conquer"
   ```
 - [ ] Run without_skill baseline using `benchmark/run_eval.sh` with taskmd blocked:
   ```
-  PATH="$SHADOW_DIR:$PATH" bash benchmark/run_eval.sh <project-dir> "pick up task 002 and work on it using parallel subagents" benchmark/iteration-1/eval-13-divide-and-conquer/without_skill/outputs --allowedTools "Bash"
+  PATH="$SHADOW_DIR:$PATH" bash benchmark/run_eval.sh <project-dir> "pick up task 002 and work on it using parallel subagents" benchmark/iteration-1/eval-13-divide-and-conquer/without_skill/outputs --allowedTools "Bash,Read,Glob,Grep"
   ```
 - [ ] Write `eval_metadata.json` with assertions from `evals.json`
 - [ ] Grade both outputs against assertions
