@@ -1,0 +1,10 @@
+{
+  "duration_ms": 15551,
+  "duration_api_ms": 13906,
+  "num_turns": 5,
+  "total_cost_usd": 0.09796525,
+  "input_tokens": 6,
+  "output_tokens": 428,
+  "cache_read_input_tokens": 64158,
+  "cache_creation_input_tokens": 8825
+}

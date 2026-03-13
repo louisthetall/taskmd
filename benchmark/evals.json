@@ -25,6 +25,52 @@
       ]
     },
     {
+      "id": 14,
+      "skill": "list-tasks",
+      "prompt": "which bugs still need fixing?",
+      "expected_output": "Filters tasks by type=bug and excludes completed, showing tasks 001 and 003",
+      "assertions": [
+        {"id": "uses-filter", "text": "Uses taskmd list with a filter flag (e.g. --filter type=bug or --filter status!=completed)"},
+        {"id": "shows-bugs-only", "text": "Output includes only bug-type tasks (001, 003) and excludes non-bugs (002, 004, 005)"},
+        {"id": "excludes-completed", "text": "Does not show completed tasks, or correctly marks 001 as in-progress and 003 as pending"}
+      ]
+    },
+    {
+      "id": 15,
+      "skill": "list-tasks",
+      "prompt": "give me the top 3 highest priority tasks as json",
+      "expected_output": "Runs taskmd list with --sort priority --limit 3 --format json, returns tasks 003, 001, 005 (or 001, 005, 002 depending on sort order)",
+      "assertions": [
+        {"id": "uses-sort", "text": "Uses --sort priority or equivalent to order by priority"},
+        {"id": "uses-limit", "text": "Uses --limit 3 or equivalent to cap results"},
+        {"id": "uses-json", "text": "Uses --format json to produce JSON output"},
+        {"id": "correct-tasks", "text": "Returns the 3 highest priority tasks (critical and high before medium/low)"}
+      ]
+    },
+    {
+      "id": 16,
+      "skill": "list-tasks",
+      "prompt": "what's still on my plate? just show me the stuff that isn't done yet, sorted by priority",
+      "expected_output": "Filters out completed tasks and sorts by priority, showing 003 (critical), 001 (high), 002 (medium), 004 (low)",
+      "assertions": [
+        {"id": "excludes-completed", "text": "Filters out completed task 005"},
+        {"id": "sorts-by-priority", "text": "Uses --sort priority or presents results ordered by priority (critical > high > medium > low)"},
+        {"id": "shows-4-tasks", "text": "Shows exactly 4 non-completed tasks (001, 002, 003, 004)"},
+        {"id": "readable-format", "text": "Output is in a readable format (table or list)"}
+      ]
+    },
+    {
+      "id": 17,
+      "skill": "list-tasks",
+      "prompt": "show tasks with just the id and title columns",
+      "expected_output": "Runs taskmd list --columns id,title, showing a minimal two-column table",
+      "assertions": [
+        {"id": "uses-columns", "text": "Uses --columns id,title flag to select specific columns"},
+        {"id": "minimal-output", "text": "Output shows only id and title columns, not status/priority/file"},
+        {"id": "shows-all", "text": "All 5 tasks are present in the output"}
+      ]
+    },
+    {
       "id": 2,
       "skill": "get-task",
       "prompt": "show me the details of task 001",

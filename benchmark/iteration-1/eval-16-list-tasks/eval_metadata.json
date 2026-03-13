@@ -1,0 +1,11 @@
+{
+  "eval_id": 16,
+  "eval_name": "list-tasks-not-done-sorted",
+  "prompt": "what's still on my plate? just show me the stuff that isn't done yet, sorted by priority",
+  "assertions": [
+    {"id": "excludes-completed", "text": "Filters out completed task 005"},
+    {"id": "sorts-by-priority", "text": "Uses --sort priority or presents results ordered by priority (critical > high > medium > low)"},
+    {"id": "shows-4-tasks", "text": "Shows exactly 4 non-completed tasks (001, 002, 003, 004)"},
+    {"id": "readable-format", "text": "Output is in a readable format (table or list)"}
+  ]
+}

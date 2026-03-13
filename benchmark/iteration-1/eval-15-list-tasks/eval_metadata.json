@@ -1,0 +1,11 @@
+{
+  "eval_id": 15,
+  "eval_name": "list-tasks-top3-json",
+  "prompt": "give me the top 3 highest priority tasks as json",
+  "assertions": [
+    {"id": "uses-sort", "text": "Uses --sort priority or equivalent to order by priority"},
+    {"id": "uses-limit", "text": "Uses --limit 3 or equivalent to cap results"},
+    {"id": "uses-json", "text": "Uses --format json to produce JSON output"},
+    {"id": "correct-tasks", "text": "Returns the 3 highest priority tasks (critical and high before medium/low)"}
+  ]
+}

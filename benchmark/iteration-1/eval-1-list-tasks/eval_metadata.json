@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "eval_name": "list-tasks",
+  "prompt": "show me all my tasks",
+  "assertions": [
+    {"id": "runs-list", "text": "Runs taskmd list command"},
+    {"id": "shows-all-tasks", "text": "Output shows all 5 baseline tasks"},
+    {"id": "readable-format", "text": "Output is in a readable table or list format"}
+  ]
+}

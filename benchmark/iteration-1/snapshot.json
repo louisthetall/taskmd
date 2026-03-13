@@ -1,0 +1,10 @@
+{
+  "commit": "6878c4c15542a226a79fae9aa866342958deedd9",
+  "short": "6878c4c",
+  "subject": "prepare benchmarks",
+  "date": "2026-03-13T10:40:15+01:00",
+  "author": "German Greiner",
+  "branch": "main",
+  "skill_path": "/Users/driangle/.claude/plugins/cache/taskmd-marketplace/taskmd/0.1.3/skills",
+  "notes": "First benchmark run. list-tasks skill showed 0% delta vs baseline across 5 evals."
+}

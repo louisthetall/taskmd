@@ -1,0 +1,10 @@
+{
+  "eval_id": 17,
+  "eval_name": "list-tasks-custom-columns",
+  "prompt": "show tasks with just the id and title columns",
+  "assertions": [
+    {"id": "uses-columns", "text": "Uses --columns id,title flag to select specific columns"},
+    {"id": "minimal-output", "text": "Output shows only id and title columns, not status/priority/file"},
+    {"id": "shows-all", "text": "All 5 tasks are present in the output"}
+  ]
+}
