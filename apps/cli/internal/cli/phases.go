@@ -115,8 +115,11 @@ func computePhaseSummaries(phases []validator.PhaseConfig, tasks []*model.Task) 
 			if task.Phase != phase.ID {
 				continue
 			}
-			summary.Tasks++
 			summary.ByStatus[string(task.Status)]++
+			if task.Status == model.StatusCancelled {
+				continue
+			}
+			summary.Tasks++
 			if task.Status == model.StatusCompleted {
 				summary.Done++
 			}

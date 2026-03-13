@@ -305,6 +305,77 @@ func TestPhases_OrphanedPhaseWarningsSortedDeterministically(t *testing.T) {
 	}
 }
 
+func TestPhases_CancelledTasksExcludedFromProgress(t *testing.T) {
+	tmpDir := t.TempDir()
+	resetPhasesFlags()
+	phasesFormat = "json"
+	setupPhasesConfig(t, []map[string]any{
+		{"id": "mvp", "name": "MVP"},
+	})
+
+	// 10 tasks total: 3 completed, 2 cancelled, 5 pending
+	// Expected: 8 active tasks (10 - 2 cancelled), 3 done → 38% progress
+	tasks := []struct {
+		id     string
+		status string
+	}{
+		{"001", "completed"},
+		{"002", "completed"},
+		{"003", "completed"},
+		{"004", "cancelled"},
+		{"005", "cancelled"},
+		{"006", "pending"},
+		{"007", "pending"},
+		{"008", "pending"},
+		{"009", "pending"},
+		{"010", "pending"},
+	}
+	for _, task := range tasks {
+		content := "---\nid: \"" + task.id + "\"\ntitle: \"Task " + task.id + "\"\nstatus: " + task.status + "\nphase: mvp\n---"
+		if err := os.WriteFile(filepath.Join(tmpDir, task.id+".md"), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	stdout, _, err := capturePhasesOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runPhases failed: %v", err)
+	}
+
+	var summaries []PhaseSummary
+	if err := json.Unmarshal([]byte(stdout), &summaries); err != nil {
+		t.Fatalf("failed to parse JSON: %v\noutput: %s", err, stdout)
+	}
+
+	if len(summaries) != 1 {
+		t.Fatalf("expected 1 phase, got %d", len(summaries))
+	}
+
+	mvp := summaries[0]
+
+	// Cancelled tasks excluded from Tasks count
+	if mvp.Tasks != 8 {
+		t.Errorf("tasks = %d, want 8 (10 total minus 2 cancelled)", mvp.Tasks)
+	}
+	if mvp.Done != 3 {
+		t.Errorf("done = %d, want 3", mvp.Done)
+	}
+	if mvp.Progress != "38%" {
+		t.Errorf("progress = %q, want 38%% (3/8)", mvp.Progress)
+	}
+
+	// Cancelled tasks still visible in ByStatus
+	if mvp.ByStatus["cancelled"] != 2 {
+		t.Errorf("by_status[cancelled] = %d, want 2", mvp.ByStatus["cancelled"])
+	}
+	if mvp.ByStatus["completed"] != 3 {
+		t.Errorf("by_status[completed] = %d, want 3", mvp.ByStatus["completed"])
+	}
+	if mvp.ByStatus["pending"] != 5 {
+		t.Errorf("by_status[pending] = %d, want 5", mvp.ByStatus["pending"])
+	}
+}
+
 func TestPhases_InvalidFormat(t *testing.T) {
 	tmpDir := createPhasesTestFiles(t)
 	resetPhasesFlags()
