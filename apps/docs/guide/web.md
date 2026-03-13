@@ -68,8 +68,10 @@ Visual board with tasks organized in columns.
 | Status | pending, in-progress, completed, blocked, cancelled | Standard kanban workflow |
 | Priority | critical, high, medium, low | Prioritization planning |
 | Effort | small, medium, large | Capacity planning |
+| Type | feature, bug, chore, docs, test | Work type classification |
 | Group | Task groups (cli, web, docs...) | Team-based views |
 | Tag | One per unique tag | Feature-based organization |
+| Phase | One column per configured phase | Release/milestone planning |
 
 ### Graph View
 
@@ -117,6 +119,19 @@ Parallel work tracks showing tasks grouped by scope.
 
 - Tasks organized into independent work streams
 - Helps identify parallelizable work
+
+### Phases View
+
+**URL:** `/phases`
+
+Overview of project phases with progress tracking.
+
+![Phases view showing phase cards with progress bars, task counts, and completion percentages](/images/web/phases.view.png)
+
+- Phase cards showing task counts, completion percentages, and progress bars
+- Status badges summarizing pending, in-progress, and completed counts
+- Unphased tasks section showing tasks not assigned to any phase
+- Defined via the `phases` key in `.taskmd.yaml`
 
 ### Validate View
 

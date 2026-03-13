@@ -77,6 +77,7 @@ The top navigation bar provides quick access to all views:
 - **Stats** - Project statistics
 - **Next** - Task recommendations
 - **Tracks** - Parallel work tracks
+- **Phases** - Project phase overview
 - **Validate** - Task validation results
 
 ### Views
@@ -162,10 +163,20 @@ Use the "Group by" dropdown to organize by:
 - Organize by project area
 - Team-based views
 
+**Type:**
+- Columns: feature, bug, chore, docs, test
+- Work type classification
+- Useful for balancing feature vs. maintenance work
+
 **Tag:**
 - Columns: one per unique tag
 - Tasks may appear in multiple columns
 - Feature-based organization
+
+**Phase:**
+- Columns: one per configured phase
+- Release and milestone planning
+- Track progress toward specific deliverables
 
 **Card Contents:**
 - Task title (clickable)
@@ -300,7 +311,24 @@ Parallel work tracks showing tasks grouped by scope overlap.
 - Team task assignment
 - Identifying independent work streams
 
-#### 7. Validate View
+#### 7. Phases View
+
+**URL:** `http://localhost:8080/phases`
+
+Overview of project phases with progress tracking.
+
+**Features:**
+- Phase cards showing task counts, completion percentages, and progress bars
+- Status badges summarizing pending, in-progress, and completed counts
+- Unphased tasks section showing tasks not assigned to any phase
+- Defined via the `phases` key in `.taskmd.yaml`
+
+**Best for:**
+- Release planning
+- Milestone tracking
+- Sprint progress overview
+
+#### 8. Validate View
 
 **URL:** `http://localhost:8080/validate`
 
@@ -316,7 +344,7 @@ Validation results for task files, showing errors and warnings.
 - Finding broken dependencies
 - Ensuring task file consistency
 
-#### 8. Task Detail View
+#### 9. Task Detail View
 
 **URL:** `http://localhost:8080/tasks/{id}`
 

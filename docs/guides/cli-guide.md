@@ -149,6 +149,7 @@ taskmd list ./tasks/cli
 | `init` | Initialize a project with agent configuration and spec files |
 | `mcp` | Start MCP server for LLM tool integration |
 | `todos` | Find TODO/FIXME comments in source code |
+| `phases` | List project phases with progress stats |
 | `completion` | Generate shell completion scripts |
 
 ---
@@ -1588,6 +1589,7 @@ taskmd tracks ./tasks
 | `--format string` | `table` | Output format (`table`, `json`, `yaml`) |
 | `--filter string` | | Filter tasks (repeatable, e.g., `--filter tag=cli`) |
 | `--limit int` | `0` | Maximum number of tracks to show (0 = unlimited) |
+| `--scope string` | | Focus on a single scope; supports wildcards (e.g. `cli/graph`, `cli*`) |
 
 **Examples:**
 ```bash
@@ -1602,6 +1604,37 @@ taskmd tracks --limit 3
 
 # Export track assignments
 taskmd tracks --format json > tracks.json
+```
+
+### phases - List Project Phases
+
+Display configured project phases with summary statistics including task counts, completion rates, and due dates. Phases are defined in `.taskmd.yaml` under the `phases` key.
+
+**Basic usage:**
+```bash
+# List phases with progress
+taskmd phases
+
+# JSON output
+taskmd phases --format json
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format string` | `table` | Output format (`table`, `json`, `yaml`) |
+
+**Examples:**
+```bash
+# Show all phases with progress stats
+taskmd phases
+
+# Export phase data
+taskmd phases --format json > phases.json
+
+# YAML output
+taskmd phases --format yaml
 ```
 
 ### feed - Activity Feed

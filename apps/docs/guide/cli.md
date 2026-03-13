@@ -40,6 +40,7 @@ Complete reference for using taskmd from the command line.
 | [`commit-msg`](#commit-msg-generate-commit-messages) | Generate conventional commit messages from task metadata |
 | [`mcp`](#mcp-start-mcp-server) | Start MCP server over stdio |
 | [`todos`](#todos-find-todo-fixme-comments) | Find TODO/FIXME comments in source code |
+| [`phases`](#phases-list-project-phases) | List project phases with progress stats |
 | [`completion`](#completion-generate-shell-completions) | Generate shell completion scripts |
 
 ---
@@ -1171,6 +1172,28 @@ taskmd tracks --format json > tracks.json
 | `--format` | `table` | Output format (`table`, `json`, `yaml`) |
 | `--filter` | | Filter tasks (repeatable) |
 | `--limit` | `0` | Maximum number of tracks (0 = unlimited) |
+| `--scope` | | Focus on a single scope; supports wildcards (e.g. `cli/graph`, `cli*`) |
+
+### phases - List Project Phases
+
+Display configured project phases with summary statistics including task counts, completion rates, and due dates. Phases are defined in `.taskmd.yaml` under the `phases` key.
+
+```bash
+# List phases with progress
+taskmd phases
+
+# JSON output
+taskmd phases --format json
+
+# YAML output
+taskmd phases --format yaml
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
 
 ### feed - Activity Feed
 
