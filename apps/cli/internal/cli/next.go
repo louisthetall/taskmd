@@ -115,7 +115,8 @@ func runNext(cmd *cobra.Command, args []string) error {
 	}
 }
 
-// loadPhaseOrder reads phase names from the viper config, preserving order.
+// loadPhaseOrder reads phase identifiers from the viper config, preserving order.
+// It uses the phase id when present, falling back to name for backwards compatibility.
 func loadPhaseOrder() []string {
 	raw := viper.Get("phases")
 	if raw == nil {
@@ -125,17 +126,19 @@ func loadPhaseOrder() []string {
 	if !ok {
 		return nil
 	}
-	var names []string
+	var ids []string
 	for _, item := range items {
 		m, ok := item.(map[string]any)
 		if !ok {
 			continue
 		}
-		if name, ok := m["name"].(string); ok {
-			names = append(names, name)
+		if id, ok := m["id"].(string); ok {
+			ids = append(ids, id)
+		} else if name, ok := m["name"].(string); ok {
+			ids = append(ids, name)
 		}
 	}
-	return names
+	return ids
 }
 
 func outputNextJSON(recs []Recommendation) error {

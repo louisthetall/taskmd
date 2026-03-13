@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/viper"
+
 	"github.com/driangle/taskmd/sdk/go/model"
 	"github.com/driangle/taskmd/sdk/go/next"
 )
@@ -1986,5 +1988,71 @@ func TestNext_PhaseFilterNoMatch(t *testing.T) {
 
 	if len(recs) != 0 {
 		t.Errorf("Expected 0 recommendations for non-existent phase, got %d", len(recs))
+	}
+}
+
+func TestLoadPhaseOrder_UsesIDWhenPresent(t *testing.T) {
+	viper.Set("phases", []any{
+		map[string]any{"id": "core-cli", "name": "Core CLI"},
+		map[string]any{"id": "web-ui", "name": "Web UI"},
+	})
+	defer viper.Set("phases", nil)
+
+	got := loadPhaseOrder()
+	want := []string{"core-cli", "web-ui"}
+	if len(got) != len(want) {
+		t.Fatalf("loadPhaseOrder() = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("loadPhaseOrder()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestLoadPhaseOrder_FallsBackToName(t *testing.T) {
+	viper.Set("phases", []any{
+		map[string]any{"name": "Phase One"},
+		map[string]any{"name": "Phase Two"},
+	})
+	defer viper.Set("phases", nil)
+
+	got := loadPhaseOrder()
+	want := []string{"Phase One", "Phase Two"}
+	if len(got) != len(want) {
+		t.Fatalf("loadPhaseOrder() = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("loadPhaseOrder()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestLoadPhaseOrder_MixedIDAndName(t *testing.T) {
+	viper.Set("phases", []any{
+		map[string]any{"id": "core-cli", "name": "Core CLI"},
+		map[string]any{"name": "Legacy Phase"},
+	})
+	defer viper.Set("phases", nil)
+
+	got := loadPhaseOrder()
+	want := []string{"core-cli", "Legacy Phase"}
+	if len(got) != len(want) {
+		t.Fatalf("loadPhaseOrder() = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("loadPhaseOrder()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestLoadPhaseOrder_NilPhases(t *testing.T) {
+	viper.Set("phases", nil)
+
+	got := loadPhaseOrder()
+	if got != nil {
+		t.Errorf("loadPhaseOrder() = %v, want nil", got)
 	}
 }
