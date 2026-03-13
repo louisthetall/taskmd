@@ -28,11 +28,12 @@ Benchmark the get-task-status skill by running it with and without the skill loa
   - **without_skill**: bare project — remove CLAUDE.md, TASKMD_SPEC.md, .taskmd.yaml, .taskmd/; block `taskmd` from PATH using shadow dir
 - [ ] Run with_skill eval using `benchmark/run_eval.sh`:
   ```
-  bash benchmark/run_eval.sh <project-dir> "what's the status of task 002?" benchmark/iteration-1/eval-3-get-task-status/with_skill/outputs --allowedTools "Bash,taskmd:get-task-status"
+  bash benchmark/run_eval.sh <project-dir> "what's the status of task 002?" benchmark/iteration-1/eval-3-get-task-status/with_skill/outputs --allowedTools "Bash,Skill,Read,Glob,Grep,taskmd:get-task-status"
   ```
+  **Note:** `Skill` must be in `--allowedTools` for the skill to trigger — without it, Claude attempts the Skill tool but gets denied and falls back to Glob + Read, making the test invalid.
 - [ ] Run without_skill baseline using `benchmark/run_eval.sh` with taskmd blocked:
   ```
-  PATH="$SHADOW_DIR:$PATH" bash benchmark/run_eval.sh <project-dir> "what's the status of task 002?" benchmark/iteration-1/eval-3-get-task-status/without_skill/outputs --allowedTools "Bash"
+  PATH="$SHADOW_DIR:$PATH" bash benchmark/run_eval.sh <project-dir> "what's the status of task 002?" benchmark/iteration-1/eval-3-get-task-status/without_skill/outputs --allowedTools "Bash,Read,Glob,Grep"
   ```
 - [ ] Write `eval_metadata.json` with assertions from `evals.json`
 - [ ] Grade both outputs against assertions
