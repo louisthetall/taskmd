@@ -10,13 +10,11 @@ import { StatsPage } from "./pages/StatsPage.tsx";
 import { ValidatePage } from "./pages/ValidatePage.tsx";
 import { PhasesPage } from "./pages/PhasesPage.tsx";
 import { useLiveReload } from "./hooks/use-live-reload.ts";
-import { PhaseProvider } from "./hooks/use-phase.tsx";
 
 export default function App() {
   useLiveReload();
 
   return (
-    <PhaseProvider>
     <Shell>
       <Routes>
         <Route path="/" element={<Navigate to="/tasks" replace />} />
@@ -31,6 +29,5 @@ export default function App() {
         <Route path="/validate" element={<ValidatePage />} />
       </Routes>
     </Shell>
-    </PhaseProvider>
   );
 }

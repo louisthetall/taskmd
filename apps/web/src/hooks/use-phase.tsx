@@ -1,24 +1,29 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 
-interface PhaseContextValue {
-  phase: string | null;
-  setPhase: (phase: string | null) => void;
-}
-
-const PhaseContext = createContext<PhaseContextValue>({
-  phase: null,
-  setPhase: () => {},
-});
-
-export function PhaseProvider({ children }: { children: ReactNode }) {
-  const [phase, setPhase] = useState<string | null>(null);
-  return (
-    <PhaseContext.Provider value={{ phase, setPhase }}>
-      {children}
-    </PhaseContext.Provider>
-  );
-}
+const PHASE_PARAM = "phase";
 
 export function usePhase() {
-  return useContext(PhaseContext);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const phase = searchParams.get(PHASE_PARAM);
+
+  const setPhase = useCallback(
+    (next: string | null) => {
+      setSearchParams(
+        (prev) => {
+          const updated = new URLSearchParams(prev);
+          if (next) {
+            updated.set(PHASE_PARAM, next);
+          } else {
+            updated.delete(PHASE_PARAM);
+          }
+          return updated;
+        },
+        { replace: false },
+      );
+    },
+    [setSearchParams],
+  );
+
+  return { phase, setPhase };
 }
