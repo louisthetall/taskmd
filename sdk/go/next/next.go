@@ -48,8 +48,9 @@ type Options struct {
 	Scope          string
 	ScopeExact     bool
 	ArchivedTasks  []*model.Task
-	Phase      string
-	PhaseOrder []string
+	Phase        string
+	PhaseOrder   []string
+	StrictPhases bool
 }
 
 type scoredTask struct {
@@ -83,7 +84,7 @@ func Recommend(tasks []*model.Task, opts Options) ([]Recommendation, error) {
 		return nil, err
 	}
 
-	scored := scoreAndSort(actionable, opts.PhaseOrder, criticalPath, downstreamInfo)
+	scored := scoreAndSort(actionable, opts.PhaseOrder, opts.StrictPhases, criticalPath, downstreamInfo)
 
 	limit := min(opts.Limit, len(scored))
 	return buildRecommendations(scored[:limit], criticalPath, downstreamInfo), nil
@@ -193,9 +194,12 @@ func filterActionable(
 func scoreAndSort(
 	tasks []*model.Task,
 	phaseOrder []string,
+	strictPhases bool,
 	criticalPath map[string]bool,
 	downstreamInfo map[string]DownstreamInfo,
 ) []scoredTask {
+	phaseIndex := buildPhaseIndex(phaseOrder)
+
 	scored := make([]scoredTask, len(tasks))
 	for i, task := range tasks {
 		s, r := ScoreTask(task, criticalPath, downstreamInfo)
@@ -206,6 +210,13 @@ func scoreAndSort(
 	}
 
 	sort.SliceStable(scored, func(i, j int) bool {
+		if strictPhases && len(phaseOrder) > 0 {
+			pi := taskPhaseIndex(scored[i].task, phaseIndex)
+			pj := taskPhaseIndex(scored[j].task, phaseIndex)
+			if pi != pj {
+				return pi < pj
+			}
+		}
 		if scored[i].score != scored[j].score {
 			return scored[i].score > scored[j].score
 		}
@@ -213,6 +224,27 @@ func scoreAndSort(
 	})
 
 	return scored
+}
+
+// buildPhaseIndex maps phase names to their position in the phase order.
+func buildPhaseIndex(phaseOrder []string) map[string]int {
+	idx := make(map[string]int, len(phaseOrder))
+	for i, name := range phaseOrder {
+		idx[name] = i
+	}
+	return idx
+}
+
+// taskPhaseIndex returns the phase index for a task. Tasks with no phase
+// or a phase not in the order are sorted after all phased tasks.
+func taskPhaseIndex(task *model.Task, phaseIndex map[string]int) int {
+	if task.Phase == "" {
+		return len(phaseIndex)
+	}
+	if idx, ok := phaseIndex[task.Phase]; ok {
+		return idx
+	}
+	return len(phaseIndex)
 }
 
 func buildRecommendations(

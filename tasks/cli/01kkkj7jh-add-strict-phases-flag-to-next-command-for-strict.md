@@ -1,7 +1,7 @@
 ---
 title: "Add --strict-phases flag to next command for strict phase ordering"
 id: "01kkkj7jh"
-status: pending
+status: completed
 priority: medium
 type: feature
 tags: ["cli", "phases"]
@@ -16,17 +16,17 @@ Add a `--strict-phases` flag to the `next` command that enforces strict phase se
 
 ## Tasks
 
-- [ ] Add `--strict-phases` boolean flag to the `next` command in `apps/cli/internal/cli/next.go`
-- [ ] Pass the flag value through to the recommendation engine in `sdk/go/next/next.go`
-- [ ] Implement strict phase sorting: when enabled, group actionable tasks by phase index, then sort within each group by existing score
-- [ ] Handle edge cases: tasks with no phase assigned (sort after all phased tasks, or treat as last phase)
-- [ ] Add unit tests in `apps/cli/internal/cli/next_test.go` covering:
-  - [ ] Flag is off by default (existing behavior unchanged)
-  - [ ] With flag on, earlier-phase tasks always rank above later-phase tasks
-  - [ ] Within same phase, normal scoring applies
-  - [ ] Tasks with no phase are sorted after phased tasks
-  - [ ] Interaction with `--phase` filter flag
-- [ ] Update command help text to document the new flag
+- [x] Add `--strict-phases` boolean flag to the `next` command in `apps/cli/internal/cli/next.go`
+- [x] Pass the flag value through to the recommendation engine in `sdk/go/next/next.go`
+- [x] Implement strict phase sorting: when enabled, group actionable tasks by phase index, then sort within each group by existing score
+- [x] Handle edge cases: tasks with no phase assigned (sort after all phased tasks, or treat as last phase)
+- [x] Add unit tests in `apps/cli/internal/cli/next_test.go` covering:
+  - [x] Flag is off by default (existing behavior unchanged)
+  - [x] With flag on, earlier-phase tasks always rank above later-phase tasks
+  - [x] Within same phase, normal scoring applies
+  - [x] Tasks with no phase are sorted after phased tasks
+  - [x] Interaction with `--phase` filter flag
+- [x] Update command help text to document the new flag
 
 ## Acceptance Criteria
 

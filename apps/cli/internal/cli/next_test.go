@@ -21,12 +21,12 @@ import (
 //
 //	001 (completed, high, small)         - root, completed
 //	002 (completed, medium, medium)      - depends on 001, completed
-//	003 (pending, critical, small, cli)  - depends on 001 (completed) → actionable
-//	004 (pending, high, large, cli)      - depends on 002 (completed) → actionable
-//	005 (pending, low, small)            - no deps → actionable
+//	003 (pending, critical, small, cli)  - depends on 001 (completed) - actionable
+//	004 (pending, high, large, cli)      - depends on 002 (completed) - actionable
+//	005 (pending, low, small)            - no deps - actionable
 //	006 (pending, high, medium)          - depends on 007 (pending) → blocked
-//	007 (pending, medium, small)         - no deps → actionable
-//	008 (in-progress, high, small, cli)  - depends on 001 (completed) → actionable
+//	007 (pending, medium, small)         - no deps - actionable
+//	008 (in-progress, high, small, cli)  - depends on 001 (completed) - actionable
 //	009 (pending, medium, large)         - depends on 006 (pending) → blocked
 //	010 (pending, low, medium)           - depends on 003 → blocked (003 pending)
 func createNextTestTaskFiles(t *testing.T) string {
@@ -175,6 +175,7 @@ func resetNextFlags() {
 	nextScope = ""
 	nextExact = false
 	nextPhase = ""
+	nextStrictPhases = false
 }
 
 func TestNext_BasicRanking(t *testing.T) {
@@ -2046,5 +2047,223 @@ func TestLoadPhaseOrder_NilPhases(t *testing.T) {
 	got := loadPhaseOrder()
 	if got != nil {
 		t.Errorf("loadPhaseOrder() = %v, want nil", got)
+	}
+}
+
+// createStrictPhasesTestFiles creates tasks with different phases and priorities
+// to test --strict-phases behavior.
+//
+// Task layout:
+//
+//	001: phase=v0.2, priority=low     - actionable
+//	002: phase=v0.3, priority=critical - actionable (would normally outrank 001)
+//	003: phase=v0.2, priority=medium   - actionable
+//	004: no phase,   priority=high     - actionable
+func createStrictPhasesTestFiles(t *testing.T) string {
+	t.Helper()
+	tmpDir := t.TempDir()
+
+	tasks := map[string]string{
+		"001.md": `---
+id: "001"
+title: "Low priority v0.2 task"
+status: pending
+priority: low
+phase: v0.2
+---`,
+		"002.md": `---
+id: "002"
+title: "Critical v0.3 task"
+status: pending
+priority: critical
+phase: v0.3
+---`,
+		"003.md": `---
+id: "003"
+title: "Medium v0.2 task"
+status: pending
+priority: medium
+phase: v0.2
+---`,
+		"004.md": `---
+id: "004"
+title: "High no-phase task"
+status: pending
+priority: high
+---`,
+	}
+
+	for filename, content := range tasks {
+		if err := os.WriteFile(filepath.Join(tmpDir, filename), []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to create test file %s: %v", filename, err)
+		}
+	}
+	return tmpDir
+}
+
+func setPhaseOrder(phases []string) {
+	items := make([]any, len(phases))
+	for i, p := range phases {
+		items[i] = map[string]any{"id": p}
+	}
+	viper.Set("phases", items)
+}
+
+func TestNext_StrictPhasesOff_DefaultBehavior(t *testing.T) {
+	tmpDir := createStrictPhasesTestFiles(t)
+	resetNextFlags()
+	nextFormat = "json"
+	nextLimit = 10
+	nextStrictPhases = false
+	setPhaseOrder([]string{"v0.2", "v0.3"})
+	defer viper.Set("phases", nil)
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	var recs []next.Recommendation
+	if err := json.Unmarshal([]byte(output), &recs); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	if len(recs) == 0 {
+		t.Fatal("Expected recommendations, got none")
+	}
+
+	// Without strict phases, the critical-priority v0.3 task (002) should rank first
+	if recs[0].ID != "002" {
+		t.Errorf("Without --strict-phases, expected critical task 002 first, got %s", recs[0].ID)
+	}
+}
+
+func TestNext_StrictPhasesOn_EarlierPhaseFirst(t *testing.T) {
+	tmpDir := createStrictPhasesTestFiles(t)
+	resetNextFlags()
+	nextFormat = "json"
+	nextLimit = 10
+	nextStrictPhases = true
+	setPhaseOrder([]string{"v0.2", "v0.3"})
+	defer viper.Set("phases", nil)
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	var recs []next.Recommendation
+	if err := json.Unmarshal([]byte(output), &recs); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	if len(recs) != 4 {
+		t.Fatalf("Expected 4 recommendations, got %d", len(recs))
+	}
+
+	// v0.2 tasks (001, 003) must come before v0.3 task (002)
+	// Within v0.2, 003 (medium) should rank above 001 (low)
+	if recs[0].ID != "003" {
+		t.Errorf("Expected v0.2 medium task 003 first, got %s", recs[0].ID)
+	}
+	if recs[1].ID != "001" {
+		t.Errorf("Expected v0.2 low task 001 second, got %s", recs[1].ID)
+	}
+	if recs[2].ID != "002" {
+		t.Errorf("Expected v0.3 critical task 002 third, got %s", recs[2].ID)
+	}
+}
+
+func TestNext_StrictPhases_SamePhaseUsesScore(t *testing.T) {
+	tmpDir := createStrictPhasesTestFiles(t)
+	resetNextFlags()
+	nextFormat = "json"
+	nextLimit = 10
+	nextStrictPhases = true
+	setPhaseOrder([]string{"v0.2", "v0.3"})
+	defer viper.Set("phases", nil)
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	var recs []next.Recommendation
+	if err := json.Unmarshal([]byte(output), &recs); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	// Find the two v0.2 tasks (001=low, 003=medium)
+	var v02Tasks []next.Recommendation
+	for _, r := range recs {
+		if r.ID == "001" || r.ID == "003" {
+			v02Tasks = append(v02Tasks, r)
+		}
+	}
+	if len(v02Tasks) != 2 {
+		t.Fatalf("Expected 2 v0.2 tasks, got %d", len(v02Tasks))
+	}
+	// Medium priority (003) should score higher than low (001)
+	if v02Tasks[0].ID != "003" {
+		t.Errorf("Within v0.2, expected medium-priority 003 before low-priority 001, got %s first", v02Tasks[0].ID)
+	}
+}
+
+func TestNext_StrictPhases_NoPhaseSortedLast(t *testing.T) {
+	tmpDir := createStrictPhasesTestFiles(t)
+	resetNextFlags()
+	nextFormat = "json"
+	nextLimit = 10
+	nextStrictPhases = true
+	setPhaseOrder([]string{"v0.2", "v0.3"})
+	defer viper.Set("phases", nil)
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	var recs []next.Recommendation
+	if err := json.Unmarshal([]byte(output), &recs); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	if len(recs) != 4 {
+		t.Fatalf("Expected 4 recommendations, got %d", len(recs))
+	}
+
+	// Task 004 (no phase) should be last
+	if recs[3].ID != "004" {
+		t.Errorf("Expected no-phase task 004 last, got %s", recs[3].ID)
+	}
+}
+
+func TestNext_StrictPhases_WithPhaseFilter(t *testing.T) {
+	tmpDir := createStrictPhasesTestFiles(t)
+	resetNextFlags()
+	nextFormat = "json"
+	nextLimit = 10
+	nextStrictPhases = true
+	nextPhase = "v0.2"
+	setPhaseOrder([]string{"v0.2", "v0.3"})
+	defer viper.Set("phases", nil)
+
+	output, err := captureNextOutput(t, []string{tmpDir})
+	if err != nil {
+		t.Fatalf("runNext failed: %v", err)
+	}
+
+	var recs []next.Recommendation
+	if err := json.Unmarshal([]byte(output), &recs); err != nil {
+		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
+	}
+
+	// --phase v0.2 filters to only v0.2 tasks; --strict-phases still applies ordering
+	if len(recs) != 2 {
+		t.Fatalf("Expected 2 recommendations for phase v0.2, got %d", len(recs))
+	}
+	// Both are v0.2, so normal scoring: 003 (medium) before 001 (low)
+	if recs[0].ID != "003" {
+		t.Errorf("Expected 003 first within filtered v0.2, got %s", recs[0].ID)
 	}
 }

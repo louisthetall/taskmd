@@ -16,14 +16,15 @@ import (
 type Recommendation = next.Recommendation
 
 var (
-	nextFormat    string
-	nextLimit     int
-	nextFilters   []string
-	nextQuickWins bool
-	nextCritical  bool
-	nextScope     string
-	nextExact     bool
-	nextPhase     string
+	nextFormat       string
+	nextLimit        int
+	nextFilters      []string
+	nextQuickWins    bool
+	nextCritical     bool
+	nextScope        string
+	nextExact        bool
+	nextPhase        string
+	nextStrictPhases bool
 )
 
 var nextCmd = &cobra.Command{
@@ -48,7 +49,8 @@ Examples:
   taskmd next --critical --limit 1
   taskmd next --scope web/graph
   taskmd next --scope web/graph --exact
-  taskmd next --phase v0.2`,
+  taskmd next --phase v0.2
+  taskmd next --strict-phases`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runNext,
 }
@@ -64,6 +66,7 @@ func init() {
 	nextCmd.Flags().StringVar(&nextScope, "scope", "", "filter by scope; supports wildcards (e.g. cli, cli*)")
 	nextCmd.Flags().BoolVar(&nextExact, "exact", false, "disable dependency expansion for --scope (only direct matches)")
 	nextCmd.Flags().StringVar(&nextPhase, "phase", "", "filter by phase")
+	nextCmd.Flags().BoolVar(&nextStrictPhases, "strict-phases", false, "enforce strict phase ordering (earlier phases always rank first)")
 }
 
 func runNext(cmd *cobra.Command, args []string) error {
@@ -98,6 +101,7 @@ func runNext(cmd *cobra.Command, args []string) error {
 		ArchivedTasks: archivedTasks,
 		Phase:         nextPhase,
 		PhaseOrder:    phaseOrder,
+		StrictPhases:  nextStrictPhases,
 	})
 	if err != nil {
 		return err
