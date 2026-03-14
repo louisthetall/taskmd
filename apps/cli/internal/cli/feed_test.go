@@ -48,6 +48,11 @@ func resetFeedFlags() {
 	feedScope = ""
 }
 
+// noopGitShow returns an error so enrichEntriesWithTaskStatus is a no-op.
+func noopGitShow(_, _ string) (string, error) {
+	return "", fmt.Errorf("not available")
+}
+
 func TestParseGitLogOutput(t *testing.T) {
 	entries := parseGitLogOutput(sampleGitLogOutput)
 
@@ -121,6 +126,10 @@ func TestFeedCommand_PlainText(t *testing.T) {
 	}
 	defer func() { gitLogFunc = oldGitLog }()
 
+	oldGitShow := gitShowFunc
+	gitShowFunc = noopGitShow
+	defer func() { gitShowFunc = oldGitShow }()
+
 	output, err := captureFeedOutput(t, func() error {
 		return runFeed(feedCmd, nil)
 	})
@@ -128,8 +137,8 @@ func TestFeedCommand_PlainText(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !strings.Contains(output, "[A] added") {
-		t.Error("expected legend in output")
+	if !strings.Contains(output, "Recent task activity") {
+		t.Error("expected header line in output")
 	}
 	if !strings.Contains(output, "2026-02-28 10:30") {
 		t.Error("expected date in output")
@@ -137,11 +146,11 @@ func TestFeedCommand_PlainText(t *testing.T) {
 	if !strings.Contains(output, "Alice") {
 		t.Error("expected author in output")
 	}
-	if !strings.Contains(output, "[M]") {
-		t.Error("expected [M] status tag")
+	if !strings.Contains(output, "[Modified]") {
+		t.Error("expected [Modified] status tag")
 	}
-	if !strings.Contains(output, "[A] tasks/") {
-		t.Error("expected [A] file entry")
+	if !strings.Contains(output, "[Added] tasks/") {
+		t.Error("expected [Added] file entry")
 	}
 	if !strings.Contains(output, "042") {
 		t.Error("expected task ID 042 in output")
@@ -157,6 +166,10 @@ func TestFeedCommand_JSON(t *testing.T) {
 		return sampleGitLogOutput, nil
 	}
 	defer func() { gitLogFunc = oldGitLog }()
+
+	oldGitShow := gitShowFunc
+	gitShowFunc = noopGitShow
+	defer func() { gitShowFunc = oldGitShow }()
 
 	output, err := captureFeedOutput(t, func() error {
 		return runFeed(feedCmd, nil)
@@ -193,6 +206,10 @@ func TestFeedCommand_Limit(t *testing.T) {
 	}
 	defer func() { gitLogFunc = oldGitLog }()
 
+	oldGitShow := gitShowFunc
+	gitShowFunc = noopGitShow
+	defer func() { gitShowFunc = oldGitShow }()
+
 	_, err := captureFeedOutput(t, func() error {
 		return runFeed(feedCmd, nil)
 	})
@@ -223,6 +240,10 @@ func TestFeedCommand_Since(t *testing.T) {
 		return "", nil
 	}
 	defer func() { gitLogFunc = oldGitLog }()
+
+	oldGitShow := gitShowFunc
+	gitShowFunc = noopGitShow
+	defer func() { gitShowFunc = oldGitShow }()
 
 	_, err := captureFeedOutput(t, func() error {
 		return runFeed(feedCmd, nil)
@@ -255,6 +276,10 @@ func TestFeedCommand_Scope(t *testing.T) {
 	}
 	defer func() { gitLogFunc = oldGitLog }()
 
+	oldGitShow := gitShowFunc
+	gitShowFunc = noopGitShow
+	defer func() { gitShowFunc = oldGitShow }()
+
 	_, err := captureFeedOutput(t, func() error {
 		return runFeed(feedCmd, nil)
 	})
@@ -278,6 +303,10 @@ func TestFeedCommand_EmptyFeed(t *testing.T) {
 	}
 	defer func() { gitLogFunc = oldGitLog }()
 
+	oldGitShow := gitShowFunc
+	gitShowFunc = noopGitShow
+	defer func() { gitShowFunc = oldGitShow }()
+
 	output, err := captureFeedOutput(t, func() error {
 		return runFeed(feedCmd, nil)
 	})
@@ -299,6 +328,10 @@ func TestFeedCommand_EmptyFeed_JSON(t *testing.T) {
 		return "", nil
 	}
 	defer func() { gitLogFunc = oldGitLog }()
+
+	oldGitShow := gitShowFunc
+	gitShowFunc = noopGitShow
+	defer func() { gitShowFunc = oldGitShow }()
 
 	output, err := captureFeedOutput(t, func() error {
 		return runFeed(feedCmd, nil)
@@ -322,6 +355,10 @@ func TestFeedCommand_InvalidFormat(t *testing.T) {
 	}
 	defer func() { gitLogFunc = oldGitLog }()
 
+	oldGitShow := gitShowFunc
+	gitShowFunc = noopGitShow
+	defer func() { gitShowFunc = oldGitShow }()
+
 	err := runFeed(feedCmd, nil)
 	if err == nil {
 		t.Fatal("expected error for invalid format")
@@ -339,6 +376,10 @@ func TestFeedCommand_NonGitRepo(t *testing.T) {
 		return "", fmt.Errorf("not a git repository")
 	}
 	defer func() { gitLogFunc = oldGitLog }()
+
+	oldGitShow := gitShowFunc
+	gitShowFunc = noopGitShow
+	defer func() { gitShowFunc = oldGitShow }()
 
 	err := runFeed(feedCmd, nil)
 	if err == nil {
@@ -417,6 +458,152 @@ func TestNormalizeSince(t *testing.T) {
 		if got != tt.expected {
 			t.Errorf("normalizeSince(%q) = %q, want %q", tt.input, got, tt.expected)
 		}
+	}
+}
+
+func TestExtractStatusFromContent(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		expected string
+	}{
+		{
+			name:     "completed status",
+			content:  "---\nid: 042\ntitle: Test\nstatus: completed\n---\n# Body",
+			expected: "completed",
+		},
+		{
+			name:     "cancelled status",
+			content:  "---\nid: 043\ntitle: Test\nstatus: cancelled\n---\n# Body",
+			expected: "cancelled",
+		},
+		{
+			name:     "pending status",
+			content:  "---\nid: 044\ntitle: Test\nstatus: pending\n---\n# Body",
+			expected: "pending",
+		},
+		{
+			name:     "no frontmatter",
+			content:  "# Just a markdown file",
+			expected: "",
+		},
+		{
+			name:     "no status field",
+			content:  "---\nid: 045\ntitle: Test\n---\n# Body",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractStatusFromContent(tt.content)
+			if got != tt.expected {
+				t.Errorf("extractStatusFromContent() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestFeedCommand_CompletedStatus(t *testing.T) {
+	resetFeedFlags()
+	noColor = true
+	defer func() { noColor = false }()
+
+	oldGitLog := gitLogFunc
+	gitLogFunc = func(_ string, _ []string) (string, error) {
+		return sampleGitLogOutput, nil
+	}
+	defer func() { gitLogFunc = oldGitLog }()
+
+	oldGitShow := gitShowFunc
+	gitShowFunc = func(_, path string) (string, error) {
+		if strings.Contains(path, "042") {
+			return "---\nid: 042\ntitle: Add Auth\nstatus: completed\n---\n# Task", nil
+		}
+		return "", fmt.Errorf("not found")
+	}
+	defer func() { gitShowFunc = oldGitShow }()
+
+	output, err := captureFeedOutput(t, func() error {
+		return runFeed(feedCmd, nil)
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "[Completed]") {
+		t.Error("expected [Completed] tag for task 042")
+	}
+	if !strings.Contains(output, "[Added]") {
+		t.Error("expected [Added] tag for task 043")
+	}
+}
+
+func TestFeedCommand_CancelledStatus(t *testing.T) {
+	resetFeedFlags()
+	noColor = true
+	defer func() { noColor = false }()
+
+	oldGitLog := gitLogFunc
+	gitLogFunc = func(_ string, _ []string) (string, error) {
+		return sampleGitLogOutput, nil
+	}
+	defer func() { gitLogFunc = oldGitLog }()
+
+	oldGitShow := gitShowFunc
+	gitShowFunc = func(_, path string) (string, error) {
+		if strings.Contains(path, "042") {
+			return "---\nid: 042\ntitle: Add Auth\nstatus: cancelled\n---\n# Task", nil
+		}
+		return "", fmt.Errorf("not found")
+	}
+	defer func() { gitShowFunc = oldGitShow }()
+
+	output, err := captureFeedOutput(t, func() error {
+		return runFeed(feedCmd, nil)
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "[Cancelled]") {
+		t.Error("expected [Cancelled] tag for task 042")
+	}
+}
+
+func TestFeedCommand_CompletedStatus_JSON(t *testing.T) {
+	resetFeedFlags()
+	feedFormat = "json"
+
+	oldGitLog := gitLogFunc
+	gitLogFunc = func(_ string, _ []string) (string, error) {
+		return sampleGitLogOutput, nil
+	}
+	defer func() { gitLogFunc = oldGitLog }()
+
+	oldGitShow := gitShowFunc
+	gitShowFunc = func(_, path string) (string, error) {
+		if strings.Contains(path, "042") {
+			return "---\nid: 042\ntitle: Add Auth\nstatus: completed\n---\n# Task", nil
+		}
+		return "", fmt.Errorf("not found")
+	}
+	defer func() { gitShowFunc = oldGitShow }()
+
+	output, err := captureFeedOutput(t, func() error {
+		return runFeed(feedCmd, nil)
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var entries []FeedEntry
+	if err := json.Unmarshal([]byte(output), &entries); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	if entries[0].Files[0].TaskStatus != "completed" {
+		t.Errorf("expected taskStatus 'completed', got %q", entries[0].Files[0].TaskStatus)
 	}
 }
 

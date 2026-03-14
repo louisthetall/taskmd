@@ -24,6 +24,10 @@ var (
 // Override in tests to avoid running actual git commands.
 var gitLogFunc = runGitLog
 
+// gitShowFunc is the function used to run git show.
+// Override in tests to avoid running actual git commands.
+var gitShowFunc = runGitShow
+
 // FeedEntry represents a single commit in the activity feed.
 type FeedEntry struct {
 	Hash      string       `json:"hash"`
@@ -35,9 +39,10 @@ type FeedEntry struct {
 
 // FileChange represents a file changed in a commit.
 type FileChange struct {
-	Path   string `json:"path"`
-	Status string `json:"status"`
-	TaskID string `json:"taskID,omitempty"`
+	Path       string `json:"path"`
+	Status     string `json:"status"`
+	TaskID     string `json:"taskID,omitempty"`
+	TaskStatus string `json:"taskStatus,omitempty"`
 }
 
 var taskIDFromFilenameRegex = regexp.MustCompile(`(?:^|/)(\w+)-`)
@@ -85,6 +90,7 @@ func runFeed(_ *cobra.Command, _ []string) error {
 	}
 
 	entries := parseGitLogOutput(output)
+	enrichEntriesWithTaskStatus(entries)
 
 	if len(entries) == 0 {
 		if feedFormat == "text" {
@@ -183,6 +189,49 @@ func runGitLog(_ string, args []string) (string, error) {
 		return "", err
 	}
 	return string(out), nil
+}
+
+func runGitShow(hash, path string) (string, error) {
+	cmd := exec.Command("git", "show", hash+":"+path)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+var statusLineRegex = regexp.MustCompile(`(?m)^status:\s*(\S+)`)
+
+// extractStatusFromContent extracts the status field from task file frontmatter.
+func extractStatusFromContent(content string) string {
+	// Only look within frontmatter (between --- delimiters)
+	parts := strings.SplitN(content, "---", 3)
+	if len(parts) < 3 {
+		return ""
+	}
+	match := statusLineRegex.FindStringSubmatch(parts[1])
+	if len(match) >= 2 {
+		return match[1]
+	}
+	return ""
+}
+
+// enrichEntriesWithTaskStatus reads task files at each commit to determine
+// their status, overriding the file-change label for completed/cancelled tasks.
+func enrichEntriesWithTaskStatus(entries []FeedEntry) {
+	for i := range entries {
+		for j := range entries[i].Files {
+			fc := &entries[i].Files[j]
+			content, err := gitShowFunc(entries[i].Hash, fc.Path)
+			if err != nil {
+				continue
+			}
+			status := extractStatusFromContent(content)
+			if status == "completed" || status == "cancelled" {
+				fc.TaskStatus = status
+			}
+		}
+	}
 }
 
 func parseGitLogOutput(output string) []FeedEntry {
@@ -303,7 +352,7 @@ func isHexString(s string) bool {
 func writeFeedText(entries []FeedEntry) error {
 	r := getRenderer()
 
-	fmt.Println(formatDim("[A] added  [M] modified  [R] renamed", r))
+	fmt.Println(formatDim("Recent task activity from git history", r))
 	fmt.Println()
 
 	for i, entry := range entries {
@@ -316,7 +365,7 @@ func writeFeedText(entries []FeedEntry) error {
 		fmt.Printf("%s %s: %s\n", date, author, entry.Message)
 
 		for _, f := range entry.Files {
-			statusTag := fileStatusTag(f.Status)
+			statusTag := fileStatusTag(f)
 			line := fmt.Sprintf("  %s %s", statusTag, f.Path)
 			if f.TaskID != "" {
 				line = fmt.Sprintf("  %s %s (%s)", statusTag, f.Path, formatTaskID(f.TaskID, r))
@@ -328,14 +377,20 @@ func writeFeedText(entries []FeedEntry) error {
 	return nil
 }
 
-func fileStatusTag(status string) string {
-	switch status {
+func fileStatusTag(fc FileChange) string {
+	if fc.TaskStatus == "completed" {
+		return "[Completed]"
+	}
+	if fc.TaskStatus == "cancelled" {
+		return "[Cancelled]"
+	}
+	switch fc.Status {
 	case "created":
-		return "[A]"
+		return "[Added]"
 	case "modified":
-		return "[M]"
+		return "[Modified]"
 	case "renamed":
-		return "[R]"
+		return "[Renamed]"
 	default:
 		return "[?]"
 	}
