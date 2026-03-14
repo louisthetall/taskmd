@@ -89,6 +89,11 @@ func ExtractBodySnippet(body, lowerQuery string) string {
 		}
 	}
 
+	if start > end {
+		start = max(idx-radius, 0)
+		end = min(idx+len(lowerQuery)+radius, len(body))
+	}
+
 	snippet := body[start:end]
 	// Collapse whitespace
 	snippet = strings.Join(strings.Fields(snippet), " ")

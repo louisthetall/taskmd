@@ -182,6 +182,19 @@ func TestExtractBodySnippet_MatchAtStart(t *testing.T) {
 	}
 }
 
+func TestExtractBodySnippet_WordBoundaryTrimCausesStartPastEnd(t *testing.T) {
+	// Regression: when word-boundary trimming pushes start past end,
+	// the slice bounds go out of range causing a panic.
+	// This happens when start trims forward to a distant space and end
+	// trims backward to an earlier space, causing them to cross.
+	body := "word " + strings.Repeat("a", 100) + "keyword" + strings.Repeat("b", 100) + " word"
+	snippet := ExtractBodySnippet(body, "keyword")
+
+	if !strings.Contains(snippet, "keyword") {
+		t.Errorf("expected snippet to contain 'keyword', got %q", snippet)
+	}
+}
+
 func TestExtractBodySnippet_NoMatch(t *testing.T) {
 	snippet := ExtractBodySnippet("some body text", "nonexistent")
 
