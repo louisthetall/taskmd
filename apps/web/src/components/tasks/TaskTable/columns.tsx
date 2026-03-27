@@ -56,6 +56,10 @@ export function createTaskColumns(
         const v = info.getValue();
         return v ? <PriorityBadge priority={v} /> : null;
       },
+      sortingFn: (rowA, rowB) => {
+        const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+        return (order[rowA.original.priority ?? ""] ?? 4) - (order[rowB.original.priority ?? ""] ?? 4);
+      },
     }),
     columnHelper.accessor("effort", {
       header: "Effort",
