@@ -2,6 +2,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Link } from "react-router-dom";
 import type { Task } from "../../../api/types.ts";
 import { StatusBadge, PriorityBadge, TypeBadge, PhaseBadge, BlockedStatusBadge } from "./Badges.tsx";
+import { compareBlocked, comparePriority } from "./sorting.ts";
 
 export function createTaskColumns(
   selectedTags: Set<string>,
@@ -43,11 +44,8 @@ export function createTaskColumns(
       header: "Blocked",
       meta: { className: "hidden md:table-cell" },
       cell: (info) => <BlockedStatusBadge dependencies={info.getValue()} taskStatusMap={taskStatusMap} />,
-      sortingFn: (rowA, rowB) => {
-        const filterUnmet = (deps: string[] | null) =>
-          deps?.filter((id) => !taskStatusMap || taskStatusMap.get(id) !== "completed").length ?? 0;
-        return filterUnmet(rowA.original.dependencies) - filterUnmet(rowB.original.dependencies);
-      },
+      sortingFn: (rowA, rowB) =>
+        compareBlocked(rowA.original.dependencies, rowB.original.dependencies, taskStatusMap),
     }),
     columnHelper.accessor("priority", {
       header: "Priority",
@@ -56,10 +54,8 @@ export function createTaskColumns(
         const v = info.getValue();
         return v ? <PriorityBadge priority={v} /> : null;
       },
-      sortingFn: (rowA, rowB) => {
-        const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-        return (order[rowA.original.priority ?? ""] ?? 4) - (order[rowB.original.priority ?? ""] ?? 4);
-      },
+      sortingFn: (rowA, rowB) =>
+        comparePriority(rowA.original.priority, rowB.original.priority),
     }),
     columnHelper.accessor("effort", {
       header: "Effort",
