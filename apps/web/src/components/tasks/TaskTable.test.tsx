@@ -123,6 +123,9 @@ describe("TaskTable status toggle", () => {
     renderWithRouter(<TaskTable tasks={tasks} />);
     expect(screen.getByText("Showing 3 of 3 tasks")).toBeInTheDocument();
 
+    // Open the filters panel first
+    await user.click(screen.getByRole("button", { name: /Filters/ }));
+
     // Click "pending" to deselect it
     await user.click(screen.getByRole("button", { name: "pending" }));
     // Tasks 002 (in-progress) and 003 (completed) remain
@@ -138,6 +141,9 @@ describe("TaskTable priority toggle", () => {
   it("toggles priority filter when clicking a priority button", async () => {
     const user = userEvent.setup();
     renderWithRouter(<TaskTable tasks={tasks} />);
+
+    // Open the filters panel first
+    await user.click(screen.getByRole("button", { name: /Filters/ }));
 
     // Click "high" to deselect it - task 001 has high priority
     await user.click(screen.getByRole("button", { name: "high" }));

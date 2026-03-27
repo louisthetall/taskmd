@@ -24,6 +24,7 @@ describe("fetcher", () => {
       ok: false,
       status: 404,
       statusText: "Not Found",
+      json: () => Promise.reject(new Error("no body")),
     });
     await expect(fetcher("/api/tasks/999")).rejects.toThrow(
       "API error: 404 Not Found",
