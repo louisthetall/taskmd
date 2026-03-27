@@ -157,6 +157,10 @@ Full detail page for a single task.
 
 ## Web Features
 
+### Multi-Project Support
+
+When you have multiple projects registered (via `taskmd projects register`), the web interface shows a **project selector** in the navigation bar. Selecting a project scopes all views and API requests to that project's tasks. The project list is fetched from the `/api/projects` endpoint.
+
 ### Task Editing
 
 The web UI supports editing tasks directly from the browser:
@@ -282,6 +286,7 @@ The web server exposes a JSON API you can access directly. All endpoints return 
 
 | Method | Path | Description |
 |--------|------|-------------|
+| `GET` | `/api/projects` | List registered projects (for multi-project setups) |
 | `GET` | `/api/config` | Server config (read-only status, version) |
 | `GET` | `/api/events` | Server-Sent Events stream for live reload |
 

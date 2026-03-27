@@ -50,6 +50,8 @@ Command-line flags always override config file values.
 | `id.padding` | integer | `3` | Zero-padding width for `sequential` strategy |
 | `scopes` | map | — | Scope-to-path mappings for the `touches` field ([details](#scopes-configuration)) |
 | `phases` | array | `[]` | Phase definitions with metadata ([details](#phases-configuration)) |
+| `projects` | array | `[]` | Registered projects for multi-project workflows ([details](#projects-configuration)) (global config only) |
+| `default_project` | string | `""` | Default project ID to use when no `--project` flag is specified (global config only) |
 
 **`ignore`** — The scanner already skips common directories (`node_modules`, `vendor`, `dist`, `build`, `.next`, `.nuxt`, `out`, `target`, `__pycache__`, and hidden directories). Use `ignore` to add project-specific directories:
 
@@ -315,6 +317,49 @@ Each phase entry has the following fields:
 
 - When phases are configured, any `phase` value in a task that does not match a configured phase name produces a warning.
 - When no phases config exists, all `phase` values are accepted silently.
+
+## Projects Configuration {#projects-configuration}
+
+The `projects` key in the **global** config (`~/.taskmd.yaml`) registers projects for multi-project workflows. Use `taskmd projects register` to add entries, or edit the config directly.
+
+```yaml
+# ~/.taskmd.yaml
+projects:
+  - id: frontend
+    name: "Frontend App"
+    path: /Users/me/projects/frontend
+  - id: backend
+    name: "Backend API"
+    path: /Users/me/projects/backend
+
+# Optional: set a default project so --project can be omitted
+default_project: frontend
+```
+
+Each project entry has the following fields:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | Unique project identifier (auto-generated from directory basename if omitted during registration) |
+| `name` | No | Human-readable display name (defaults to the same value as `id`) |
+| `path` | Yes | Absolute path to the project directory (must contain a `.taskmd.yaml` file) |
+
+**Usage:**
+
+```bash
+# List all registered projects
+taskmd projects
+
+# Run commands against a specific project
+taskmd list --project backend
+taskmd next --project frontend
+
+# Aggregate tasks from all projects
+taskmd stats --all-projects
+taskmd list --all-projects
+```
+
+When `default_project` is set, commands automatically scope to that project unless `--project` or `--all-projects` is explicitly provided.
 
 ## Shell Aliases
 

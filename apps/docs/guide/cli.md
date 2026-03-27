@@ -41,6 +41,7 @@ Complete reference for using taskmd from the command line.
 | [`mcp`](#mcp-start-mcp-server) | Start MCP server over stdio |
 | [`todos`](#todos-find-todo-fixme-comments) | Find TODO/FIXME comments in source code |
 | [`phases`](#phases-list-project-phases) | List project phases with progress stats |
+| [`projects`](#projects-manage-registered-projects) | List and manage registered projects |
 | [`completion`](#completion-generate-shell-completions) | Generate shell completion scripts |
 
 ---
@@ -1412,6 +1413,64 @@ taskmd init --stdout
 
 If a file already exists and `--force` is not set, it is skipped with a warning.
 
+### projects - Manage Registered Projects
+
+List and manage globally registered projects. Projects are registered in `~/.taskmd.yaml` under the `projects` key, enabling multi-project workflows with `--project` and `--all-projects` flags.
+
+```bash
+# List all registered projects with task stats
+taskmd projects
+
+# JSON output
+taskmd projects --format json
+
+# Register the current directory as a project
+taskmd projects register
+
+# Register with a custom ID and name
+taskmd projects register --id my-project --name "My Project"
+
+# Register a specific path
+taskmd projects register --path /path/to/project
+
+# Unregister by current directory
+taskmd projects unregister
+
+# Unregister by project ID
+taskmd projects unregister --id my-project
+```
+
+**Flags (projects):**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
+
+**Flags (projects register):**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--id` | *(directory basename)* | Project ID |
+| `--name` | *(same as ID)* | Display name |
+| `--path` | *(current directory)* | Path to register |
+
+**Flags (projects unregister):**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--id` | *(match by current directory)* | Project ID to remove |
+
+**Multi-project usage:**
+```bash
+# Run any command against a specific registered project
+taskmd list --project my-project
+
+# Aggregate tasks from all registered projects
+taskmd list --all-projects
+taskmd stats --all-projects
+taskmd next --all-projects
+```
+
 ### completion - Generate Shell Completions
 
 Generate shell completion scripts for taskmd. Supports Bash, Zsh, Fish, and PowerShell.
@@ -1462,6 +1521,8 @@ Available for all commands:
 --stdin               # Read from stdin instead of files
 --debug               # Enable debug output (prints to stderr)
 --no-color            # Disable colored output
+--project string      # Operate on a registered project by ID
+--all-projects        # Aggregate tasks from all registered projects
 ```
 
 ## Common Workflows

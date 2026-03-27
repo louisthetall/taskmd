@@ -150,6 +150,7 @@ taskmd list ./tasks/cli
 | `mcp` | Start MCP server for LLM tool integration |
 | `todos` | Find TODO/FIXME comments in source code |
 | `phases` | List project phases with progress stats |
+| `projects` | List and manage registered projects |
 | `completion` | Generate shell completion scripts |
 
 ---
@@ -1128,6 +1129,65 @@ taskmd todos list --rich
 | `--raw-text` | `false` | Include original source line text in output |
 
 Exclude patterns can also be configured in `.taskmd.yaml` under `todos.exclude`. CLI `--exclude` flags are additive with config patterns.
+
+### projects - Manage Registered Projects
+
+List and manage globally registered projects. Projects are registered in `~/.taskmd.yaml` under the `projects` key, enabling multi-project workflows with `--project` and `--all-projects` flags.
+
+**Basic usage:**
+```bash
+# List all registered projects with task stats
+taskmd projects
+
+# JSON output
+taskmd projects --format json
+
+# Register the current directory as a project
+taskmd projects register
+
+# Register with a custom ID and name
+taskmd projects register --id my-project --name "My Project"
+
+# Register a specific path
+taskmd projects register --path /path/to/project
+
+# Unregister by current directory
+taskmd projects unregister
+
+# Unregister by project ID
+taskmd projects unregister --id my-project
+```
+
+**Flags (projects):**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--format` | `table` | Output format (`table`, `json`, `yaml`) |
+
+**Flags (projects register):**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--id` | *(directory basename)* | Project ID |
+| `--name` | *(same as ID)* | Display name |
+| `--path` | *(current directory)* | Path to register |
+
+**Flags (projects unregister):**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--id` | *(match by current directory)* | Project ID to remove |
+
+**Multi-project usage:**
+```bash
+# Run any command against a specific registered project
+taskmd list --project my-project
+
+# Aggregate tasks from all registered projects
+taskmd list --all-projects
+taskmd stats --all-projects
+taskmd next --all-projects
+```
 
 ### completion - Generate Shell Completions
 
@@ -2126,6 +2186,8 @@ Global flags (available for all commands):
 --stdin               # Read from stdin instead of files
 --debug               # Enable debug output (prints to stderr)
 --no-color            # Disable colored output
+--project string      # Operate on a registered project by ID
+--all-projects        # Aggregate tasks from all registered projects
 ```
 
 ### Environment Variables

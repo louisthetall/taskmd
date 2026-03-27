@@ -984,6 +984,7 @@ The web server exposes a JSON API you can access directly. All endpoints return 
 
 | Method | Path | Description |
 |--------|------|-------------|
+| `GET` | `/api/projects` | List registered projects (for multi-project setups) |
 | `GET` | `/api/config` | Server config (read-only status, version) |
 | `GET` | `/api/events` | Server-Sent Events stream for live reload |
 
