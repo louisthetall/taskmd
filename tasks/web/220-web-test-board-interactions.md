@@ -1,7 +1,7 @@
 ---
 id: "220"
 title: "Test board drag-and-drop and page containers"
-status: pending
+status: completed
 priority: low
 type: chore
 effort: medium
@@ -19,11 +19,11 @@ Add tests for the board view's drag-and-drop interactions and the remaining page
 
 ## Tasks
 
-- [ ] Test `BoardColumn.tsx` drag handlers (dragOver, dragLeave, drop with source !== target validation)
-- [ ] Test `TaskCard.tsx` drag guard system (dragStart data setup, dragEnd cleanup)
-- [ ] Test `BoardPage.tsx` filter logic (`availableTags` extraction, `filteredGroups` memoization)
-- [ ] Refactor: extract board drag handler logic into a utility if the handlers are complex enough to warrant it
-- [ ] Test `TaskDetailPage.tsx` edit flow (save handler, error display with `ApiRequestError`)
+- [x] Test `BoardColumn.tsx` drag handlers (dragOver, dragLeave, drop with source !== target validation)
+- [x] Test `TaskCard.tsx` drag guard system (dragStart data setup, dragEnd cleanup)
+- [x] Test `BoardPage.tsx` filter logic (`availableTags` extraction, `filteredGroups` memoization)
+- [x] Refactor: extract board drag handler logic into a utility if the handlers are complex enough to warrant it
+- [x] Test `TaskDetailPage.tsx` edit flow (save handler, error display with `ApiRequestError`)
 
 ## Acceptance Criteria
 
