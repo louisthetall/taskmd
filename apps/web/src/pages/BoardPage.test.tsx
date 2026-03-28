@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { BoardPage } from "./BoardPage.tsx";
 import {
   createBoardTask,
@@ -144,6 +144,15 @@ describe("BoardPage", () => {
       expect(screen.getByText("Task A")).toBeInTheDocument();
       expect(screen.getByText("Task B")).toBeInTheDocument();
       expect(screen.getByText("Task C")).toBeInTheDocument();
+    });
+  });
+
+  describe("groupBy change", () => {
+    it("updates select value when groupBy is changed", () => {
+      renderPage();
+      const select = screen.getByRole("combobox") as HTMLSelectElement;
+      fireEvent.change(select, { target: { value: "priority" } });
+      expect(select.value).toBe("priority");
     });
   });
 });

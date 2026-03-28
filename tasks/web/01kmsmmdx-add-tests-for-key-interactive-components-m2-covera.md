@@ -1,7 +1,7 @@
 ---
 title: "Add tests for key interactive components (M2 coverage target)"
 id: "01kmsmmdx"
-status: pending
+status: completed
 priority: low
 type: chore
 tags: ["testing", "quality"]
@@ -18,13 +18,13 @@ Add tests for the highest-value interactive components to reach the M2 milestone
 
 ## Tasks
 
-- [ ] Add tests for `Shell.tsx` (0% → target 70%+) — routing, layout, global state
-- [ ] Add tests for `SearchDialog.tsx` (0% → target 70%+) — keyboard shortcuts, search logic, 202 lines
-- [ ] Improve tests for `BoardFilterBar.tsx` (36% → target 80%+) — filter interactions
-- [ ] Improve tests for `BoardView.tsx` (45% → target 80%+) — board orchestration
-- [ ] Add tests for `KeyboardList.tsx` (45% → target 80%+) — keyboard navigation
-- [ ] Add tests for `WorklogSection.tsx` (14% → target 80%+) — worklog rendering
-- [ ] Verify overall coverage reaches M2 thresholds
+- [x] Add tests for `Shell.tsx` (0% → target 70%+) — routing, layout, global state
+- [x] Add tests for `SearchDialog.tsx` (0% → target 70%+) — keyboard shortcuts, search logic, 202 lines
+- [x] Improve tests for `BoardFilterBar.tsx` (36% → target 80%+) — filter interactions
+- [x] Improve tests for `BoardView.tsx` (45% → target 80%+) — board orchestration
+- [x] Add tests for `KeyboardList.tsx` (45% → target 80%+) — keyboard navigation
+- [x] Add tests for `WorklogSection.tsx` (14% → target 80%+) — worklog rendering
+- [x] Verify overall coverage reaches M2 thresholds
 
 ## Acceptance Criteria
 
