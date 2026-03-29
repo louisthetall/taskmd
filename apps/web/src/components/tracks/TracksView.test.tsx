@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { TracksView } from "./TracksView.tsx";
 import {
   createTrack,
-  createTrackTask,
   createTracksResult,
   resetFixtureCounter,
 } from "../../test-utils/fixtures.ts";

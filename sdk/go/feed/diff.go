@@ -1,4 +1,4 @@
-package cli
+package feed
 
 import (
 	"regexp"
@@ -6,30 +6,16 @@ import (
 	"strings"
 )
 
-// FieldChange represents a frontmatter field that changed between two versions.
-type FieldChange struct {
-	Field    string `json:"field"`
-	OldValue string `json:"oldValue"`
-	NewValue string `json:"newValue"`
-}
-
-// SubtaskChange represents a subtask checkbox that was toggled.
-type SubtaskChange struct {
-	Text string `json:"text"`
-	Done bool   `json:"done"`
-}
-
 var subtaskRegex = regexp.MustCompile(`^- \[([ xX])\] (.+)$`)
 
-// analyzeDiff compares old and new task file content, returning detected
+// AnalyzeDiff compares old and new task file content, returning detected
 // frontmatter field changes and subtask checkbox toggles.
-func analyzeDiff(oldContent, newContent string) ([]FieldChange, []SubtaskChange) {
-	oldFields := extractFrontmatterFields(oldContent)
-	newFields := extractFrontmatterFields(newContent)
+func AnalyzeDiff(oldContent, newContent string) ([]FieldChange, []SubtaskChange) {
+	oldFields := ExtractFrontmatterFields(oldContent)
+	newFields := ExtractFrontmatterFields(newContent)
 
 	var fieldChanges []FieldChange
 
-	// Check all fields in new version for changes
 	allKeys := make(map[string]struct{})
 	for k := range oldFields {
 		allKeys[k] = struct{}{}
@@ -38,7 +24,6 @@ func analyzeDiff(oldContent, newContent string) ([]FieldChange, []SubtaskChange)
 		allKeys[k] = struct{}{}
 	}
 
-	// Sort keys for deterministic output
 	keys := make([]string, 0, len(allKeys))
 	for k := range allKeys {
 		keys = append(keys, k)
@@ -57,8 +42,8 @@ func analyzeDiff(oldContent, newContent string) ([]FieldChange, []SubtaskChange)
 		}
 	}
 
-	oldSubtasks := extractSubtasks(oldContent)
-	newSubtasks := extractSubtasks(newContent)
+	oldSubtasks := ExtractSubtasks(oldContent)
+	newSubtasks := ExtractSubtasks(newContent)
 
 	var subtaskChanges []SubtaskChange
 	for text, newDone := range newSubtasks {
@@ -71,7 +56,6 @@ func analyzeDiff(oldContent, newContent string) ([]FieldChange, []SubtaskChange)
 		}
 	}
 
-	// Sort subtask changes by text for deterministic output
 	sort.Slice(subtaskChanges, func(i, j int) bool {
 		return subtaskChanges[i].Text < subtaskChanges[j].Text
 	})
@@ -79,9 +63,9 @@ func analyzeDiff(oldContent, newContent string) ([]FieldChange, []SubtaskChange)
 	return fieldChanges, subtaskChanges
 }
 
-// extractFrontmatterFields parses YAML frontmatter (between --- delimiters)
+// ExtractFrontmatterFields parses YAML frontmatter (between --- delimiters)
 // into a map of field name to value. Only handles simple key: value lines.
-func extractFrontmatterFields(content string) map[string]string {
+func ExtractFrontmatterFields(content string) map[string]string {
 	fields := make(map[string]string)
 
 	parts := strings.SplitN(content, "---", 3)
@@ -101,7 +85,6 @@ func extractFrontmatterFields(content string) map[string]string {
 		}
 		key := strings.TrimSpace(line[:idx])
 		value := strings.TrimSpace(line[idx+1:])
-		// Strip surrounding quotes
 		value = strings.Trim(value, `"'`)
 		fields[key] = value
 	}
@@ -109,12 +92,11 @@ func extractFrontmatterFields(content string) map[string]string {
 	return fields
 }
 
-// extractSubtasks finds all markdown checkbox lines (- [ ] or - [x]) in the
+// ExtractSubtasks finds all markdown checkbox lines (- [ ] or - [x]) in the
 // body (after frontmatter) and returns a map of subtask text to checked state.
-func extractSubtasks(content string) map[string]bool {
+func ExtractSubtasks(content string) map[string]bool {
 	subtasks := make(map[string]bool)
 
-	// Get body after frontmatter
 	body := content
 	parts := strings.SplitN(content, "---", 3)
 	if len(parts) >= 3 {

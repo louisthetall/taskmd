@@ -1,7 +1,7 @@
 ---
 title: "Add feed/activity view to web interface"
 id: "01kmshbtt"
-status: pending
+status: completed
 priority: medium
 type: feature
 tags: ["feed", "activity"]
@@ -21,15 +21,15 @@ The CLI feed shows:
 
 ## Tasks
 
-- [ ] Add `GET /api/feed` endpoint to the Go web server (`apps/cli/internal/web/server.go`) that reuses the existing feed logic from `feed.go` (git log parsing, worklog scanning, diff analysis) and returns JSON
-- [ ] Support query params: `limit`, `since`, `scope`, `source` matching the CLI flags
-- [ ] Create `use-feed.ts` hook in `apps/web/src/hooks/` to fetch from the feed API
-- [ ] Create `FeedView.tsx` component showing a timeline/activity stream with entries grouped or ordered chronologically
-- [ ] Render git entries with: timestamp, author, commit message, list of changed files with field change badges (e.g. "status: pending -> in-progress") and subtask change indicators
-- [ ] Render worklog entries with: timestamp, task ID link, worklog message content
-- [ ] Add filter controls for source (git/worklog/all), time range, and scope
-- [ ] Add `FeedPage.tsx` page and wire up routing + nav tab
-- [ ] Add tests for the API endpoint, hook, and component
+- [x] Add `GET /api/feed` endpoint to the Go web server (`apps/cli/internal/web/server.go`) that reuses the existing feed logic from `feed.go` (git log parsing, worklog scanning, diff analysis) and returns JSON
+- [x] Support query params: `limit`, `since`, `scope`, `source` matching the CLI flags
+- [x] Create `use-feed.ts` hook in `apps/web/src/hooks/` to fetch from the feed API
+- [x] Create `FeedView.tsx` component showing a timeline/activity stream with entries grouped or ordered chronologically
+- [x] Render git entries with: timestamp, author, commit message, list of changed files with field change badges (e.g. "status: pending -> in-progress") and subtask change indicators
+- [x] Render worklog entries with: timestamp, task ID link, worklog message content
+- [x] Add filter controls for source (git/worklog/all), time range, and scope
+- [x] Add `FeedPage.tsx` page and wire up routing + nav tab
+- [x] Add tests for the API endpoint, hook, and component
 
 ## Acceptance Criteria
 

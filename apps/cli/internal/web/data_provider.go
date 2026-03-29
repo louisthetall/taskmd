@@ -60,6 +60,11 @@ func (dp *DataProvider) GetArchivedTasks() ([]*model.Task, error) {
 	return s.ScanArchive()
 }
 
+// ScanDir returns the directory being scanned.
+func (dp *DataProvider) ScanDir() string {
+	return dp.scanDir
+}
+
 // Invalidate marks cached data as stale.
 func (dp *DataProvider) Invalidate() {
 	dp.mu.Lock()

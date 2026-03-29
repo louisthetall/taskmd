@@ -148,6 +148,36 @@ export interface SearchResult {
   snippet: string;
 }
 
+export interface FeedEntry {
+  source: string;
+  hash?: string;
+  author?: string;
+  timestamp: string;
+  message: string;
+  taskID?: string;
+  files?: FeedFileChange[];
+}
+
+export interface FeedFileChange {
+  path: string;
+  status: string;
+  taskID?: string;
+  taskStatus?: string;
+  fieldChanges?: FeedFieldChange[];
+  subtaskChanges?: FeedSubtaskChange[];
+}
+
+export interface FeedFieldChange {
+  field: string;
+  oldValue: string;
+  newValue: string;
+}
+
+export interface FeedSubtaskChange {
+  text: string;
+  done: boolean;
+}
+
 export interface ApiError {
   error: string;
   details?: string[];

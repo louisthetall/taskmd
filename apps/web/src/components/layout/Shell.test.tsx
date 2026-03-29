@@ -17,10 +17,11 @@ vi.mock("../search/SearchDialog.tsx", () => ({
     open ? <div data-testid="search-dialog">Search</div> : null,
 }));
 vi.mock("./NavTabs.tsx", () => ({
-  DesktopNav: ({ onSearchOpen }: { onSearchOpen: () => void }) => (
-    <nav data-testid="desktop-nav">
+  DesktopNav: () => <nav data-testid="desktop-nav">Nav</nav>,
+  HeaderActions: ({ onSearchOpen }: { onSearchOpen: () => void }) => (
+    <div data-testid="header-actions">
       <button onClick={onSearchOpen}>Search</button>
-    </nav>
+    </div>
   ),
   MobileMenu: () => <nav data-testid="mobile-menu">Mobile Menu</nav>,
 }));

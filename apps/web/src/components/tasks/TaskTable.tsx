@@ -24,9 +24,10 @@ interface TaskTableProps {
   initialPriorities?: string[];
   initialEffort?: string[];
   initialTypes?: string[];
+  initialPhases?: string[];
 }
 
-export function TaskTable({ tasks, initialTags, initialStatuses, initialPriorities, initialEffort, initialTypes }: TaskTableProps) {
+export function TaskTable({ tasks, initialTags, initialStatuses, initialPriorities, initialEffort, initialTypes, initialPhases }: TaskTableProps) {
   const [, setSearchParams] = useSearchParams();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -46,7 +47,7 @@ export function TaskTable({ tasks, initialTags, initialStatuses, initialPrioriti
     () => initialEffort && initialEffort.length > 0 ? new Set(initialEffort) : new Set(EFFORTS),
   );
   const [selectedPhases, setSelectedPhases] = useState<Set<string>>(
-    () => new Set<string>(),
+    () => initialPhases && initialPhases.length > 0 ? new Set(initialPhases) : new Set<string>(),
   );
 
   const { phase: globalPhase } = usePhase();

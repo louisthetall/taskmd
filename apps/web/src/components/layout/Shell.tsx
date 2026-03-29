@@ -5,7 +5,7 @@ import { useConfig } from "../../hooks/use-config.ts";
 import { useProject } from "../../hooks/use-project.ts";
 import { useTheme } from "../../hooks/use-theme.ts";
 import { SearchDialog } from "../search/SearchDialog.tsx";
-import { DesktopNav, MobileMenu } from "./NavTabs.tsx";
+import { DesktopNav, HeaderActions, MobileMenu } from "./NavTabs.tsx";
 import { PhaseSelector } from "./PhaseSelector.tsx";
 import { ProjectSelector } from "./ProjectSelector.tsx";
 
@@ -165,6 +165,7 @@ export function Shell({ children }: ShellProps) {
               <PhaseSelector />
             </div>
             <div className="flex items-center gap-1">
+              <HeaderActions onSearchOpen={() => setSearchOpen(true)} />
               {/* Theme toggle - always visible */}
               <button
                 onClick={toggle}
@@ -201,7 +202,7 @@ export function Shell({ children }: ShellProps) {
           </div>
           {/* Row 2: Navigation */}
           <div className="hidden md:flex items-center h-10 mb-1">
-            <DesktopNav onSearchOpen={() => setSearchOpen(true)} />
+            <DesktopNav />
           </div>
         </div>
         {menuOpen && <MobileMenu />}

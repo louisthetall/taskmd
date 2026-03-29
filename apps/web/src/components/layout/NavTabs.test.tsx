@@ -8,25 +8,22 @@ vi.mock("../../hooks/use-config.ts", () => ({
 }));
 
 import { useConfig } from "../../hooks/use-config.ts";
-import { DesktopNav, MobileMenu } from "./NavTabs.tsx";
+import { DesktopNav, HeaderActions, MobileMenu } from "./NavTabs.tsx";
 
 const mockUseConfig = vi.mocked(useConfig);
 
-const baseTabLabels = ["Tasks", "Next Up", "Board", "Tracks", "Graph", "Stats", "Validate"];
+const baseTabLabels = ["Tasks", "Next Up", "Board", "Tracks", "Graph", "Activity", "Stats", "Validate"];
 
 describe("DesktopNav", () => {
-  function renderDesktopNav(onSearchOpen = vi.fn()) {
-    return {
-      onSearchOpen,
-      ...render(
-        <MemoryRouter initialEntries={["/tasks"]}>
-          <DesktopNav onSearchOpen={onSearchOpen} />
-        </MemoryRouter>,
-      ),
-    };
+  function renderDesktopNav() {
+    return render(
+      <MemoryRouter initialEntries={["/tasks"]}>
+        <DesktopNav />
+      </MemoryRouter>,
+    );
   }
 
-  it("renders all 7 navigation tabs when no phases configured", () => {
+  it("renders all 8 navigation tabs when no phases configured", () => {
     mockUseConfig.mockReturnValue({ phases: [], readonly: false, version: "1.0" });
     renderDesktopNav();
     for (const label of baseTabLabels) {
@@ -53,34 +50,40 @@ describe("DesktopNav", () => {
     expect(screen.getByRole("link", { name: "Next Up" })).toHaveAttribute("href", "/next");
     expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute("href", "/board");
     expect(screen.getByRole("link", { name: "Graph" })).toHaveAttribute("href", "/graph");
+    expect(screen.getByRole("link", { name: "Activity" })).toHaveAttribute("href", "/feed");
     expect(screen.getByRole("link", { name: "Stats" })).toHaveAttribute("href", "/stats");
     expect(screen.getByRole("link", { name: "Validate" })).toHaveAttribute("href", "/validate");
   });
+});
+
+describe("HeaderActions", () => {
+  function renderHeaderActions(onSearchOpen = vi.fn()) {
+    return {
+      onSearchOpen,
+      ...render(<HeaderActions onSearchOpen={onSearchOpen} />),
+    };
+  }
 
   it("renders search button with aria-label", () => {
-    mockUseConfig.mockReturnValue({ phases: [], readonly: false, version: "1.0" });
-    renderDesktopNav();
+    renderHeaderActions();
     expect(screen.getByRole("button", { name: "Search tasks" })).toBeInTheDocument();
   });
 
   it("calls onSearchOpen when search button is clicked", async () => {
-    mockUseConfig.mockReturnValue({ phases: [], readonly: false, version: "1.0" });
-    const { onSearchOpen } = renderDesktopNav();
+    const { onSearchOpen } = renderHeaderActions();
     await userEvent.click(screen.getByRole("button", { name: "Search tasks" }));
     expect(onSearchOpen).toHaveBeenCalledOnce();
   });
 
   it("renders Docs external link", () => {
-    mockUseConfig.mockReturnValue({ phases: [], readonly: false, version: "1.0" });
-    renderDesktopNav();
+    renderHeaderActions();
     const docsLink = screen.getByText(/Docs/);
     expect(docsLink).toHaveAttribute("target", "_blank");
     expect(docsLink).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("renders GitHub external link with aria-label", () => {
-    mockUseConfig.mockReturnValue({ phases: [], readonly: false, version: "1.0" });
-    renderDesktopNav();
+    renderHeaderActions();
     const githubLink = screen.getByRole("link", { name: "GitHub repository" });
     expect(githubLink).toHaveAttribute("target", "_blank");
     expect(githubLink).toHaveAttribute("rel", "noopener noreferrer");
@@ -96,7 +99,7 @@ describe("MobileMenu", () => {
     );
   }
 
-  it("renders all 7 navigation tabs when no phases configured", () => {
+  it("renders all 8 navigation tabs when no phases configured", () => {
     mockUseConfig.mockReturnValue({ phases: [], readonly: false, version: "1.0" });
     renderMobileMenu();
     for (const label of baseTabLabels) {

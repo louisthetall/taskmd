@@ -9,6 +9,7 @@ import { TracksPage } from "./pages/TracksPage.tsx";
 import { StatsPage } from "./pages/StatsPage.tsx";
 import { ValidatePage } from "./pages/ValidatePage.tsx";
 import { PhasesPage } from "./pages/PhasesPage.tsx";
+import { FeedPage } from "./pages/FeedPage.tsx";
 import { useLiveReload } from "./hooks/use-live-reload.ts";
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/phases" element={<PhasesPage />} />
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/validate" element={<ValidatePage />} />
+        <Route path="/feed" element={<FeedPage />} />
       </Routes>
     </Shell>
   );

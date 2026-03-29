@@ -74,25 +74,7 @@ func NewServer(cfg Config) *Server {
 // Start starts the HTTP server. It blocks until ctx is cancelled.
 func (s *Server) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
-
-	// API routes
-	mux.HandleFunc("GET /api/projects", handleProjects(s.config.ListProjects))
-	mux.HandleFunc("GET /api/config", handleConfig(s.config))
-	mux.HandleFunc("GET /api/search", handleSearch(s.dp))
-	mux.HandleFunc("GET /api/tasks", handleTasks(s.dp))
-	mux.HandleFunc("GET /api/tasks/{id}", handleTaskByID(s.dp))
-	mux.HandleFunc("GET /api/tasks/{id}/worklog", handleWorklog(s.dp))
-	mux.HandleFunc("PUT /api/tasks/{id}", handleUpdateTask(s.dp, s.config.ReadOnly))
-	mux.HandleFunc("GET /api/board", handleBoard(s.dp, s.config.Phases))
-	mux.HandleFunc("GET /api/graph", handleGraph(s.dp))
-	mux.HandleFunc("GET /api/graph/mermaid", handleGraphMermaid(s.dp))
-	mux.HandleFunc("GET /api/stats", handleStats(s.dp))
-	mux.HandleFunc("GET /api/next", handleNext(s.dp))
-	mux.HandleFunc("GET /api/tracks", handleTracks(s.dp))
-	mux.HandleFunc("GET /api/validate", handleValidate(s.dp))
-	mux.Handle("GET /api/events", s.broker)
-
-	// Static file serving
+	s.registerRoutes(mux)
 	s.mountStatic(mux)
 
 	var handler http.Handler = mux
@@ -133,6 +115,25 @@ func (s *Server) Start(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (s *Server) registerRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/projects", handleProjects(s.config.ListProjects))
+	mux.HandleFunc("GET /api/config", handleConfig(s.config))
+	mux.HandleFunc("GET /api/search", handleSearch(s.dp))
+	mux.HandleFunc("GET /api/tasks", handleTasks(s.dp))
+	mux.HandleFunc("GET /api/tasks/{id}", handleTaskByID(s.dp))
+	mux.HandleFunc("GET /api/tasks/{id}/worklog", handleWorklog(s.dp))
+	mux.HandleFunc("PUT /api/tasks/{id}", handleUpdateTask(s.dp, s.config.ReadOnly))
+	mux.HandleFunc("GET /api/board", handleBoard(s.dp, s.config.Phases))
+	mux.HandleFunc("GET /api/graph", handleGraph(s.dp))
+	mux.HandleFunc("GET /api/graph/mermaid", handleGraphMermaid(s.dp))
+	mux.HandleFunc("GET /api/stats", handleStats(s.dp))
+	mux.HandleFunc("GET /api/next", handleNext(s.dp))
+	mux.HandleFunc("GET /api/tracks", handleTracks(s.dp))
+	mux.HandleFunc("GET /api/validate", handleValidate(s.dp))
+	mux.HandleFunc("GET /api/feed", handleFeed(s.dp))
+	mux.Handle("GET /api/events", s.broker)
 }
 
 func (s *Server) printBanner() {

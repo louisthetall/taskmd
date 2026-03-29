@@ -7,7 +7,10 @@ import (
 	"strconv"
 	"strings"
 
+	"os/exec"
+
 	"github.com/driangle/taskmd/sdk/go/board"
+	"github.com/driangle/taskmd/sdk/go/feed"
 	"github.com/driangle/taskmd/sdk/go/graph"
 	"github.com/driangle/taskmd/sdk/go/metrics"
 	"github.com/driangle/taskmd/sdk/go/model"
@@ -523,4 +526,65 @@ func handleWorklog(dp *DataProvider) http.HandlerFunc {
 
 		writeJSON(w, entries)
 	}
+}
+
+func handleFeed(dp *DataProvider) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		dp := effectiveDP(r, dp)
+		q := r.URL.Query()
+
+		limit := 20
+		if v := q.Get("limit"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				limit = n
+			}
+		}
+
+		source := q.Get("source")
+		if source == "" {
+			source = "all"
+		}
+		validSources := map[string]bool{"all": true, "git": true, "worklog": true}
+		if !validSources[source] {
+			http.Error(w, "invalid source: must be all, git, or worklog", http.StatusBadRequest)
+			return
+		}
+
+		entries, err := feed.Query(feed.Options{
+			TasksDir:  dp.ScanDir(),
+			Limit:     limit,
+			Since:     q.Get("since"),
+			Scope:     q.Get("scope"),
+			Source:    source,
+			GitLogFn:  webGitLog,
+			GitShowFn: webGitShow,
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if entries == nil {
+			entries = []feed.FeedEntry{}
+		}
+		writeJSON(w, entries)
+	}
+}
+
+func webGitLog(_ string, args []string) (string, error) {
+	cmd := exec.Command("git", args...)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+func webGitShow(hash, path string) (string, error) {
+	cmd := exec.Command("git", "show", hash+":"+path)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
 }

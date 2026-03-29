@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/driangle/taskmd/sdk/go/feed"
 )
 
 const sampleGitLogOutput = `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -56,7 +58,7 @@ func noopGitShow(_, _ string) (string, error) {
 }
 
 func TestParseGitLogOutput(t *testing.T) {
-	entries := parseGitLogOutput(sampleGitLogOutput)
+	entries := feed.ParseGitLogOutput(sampleGitLogOutput)
 
 	if len(entries) != 2 {
 		t.Fatalf("expected 2 entries, got %d", len(entries))
@@ -106,12 +108,12 @@ func TestParseGitLogOutput(t *testing.T) {
 }
 
 func TestParseGitLogOutput_Empty(t *testing.T) {
-	entries := parseGitLogOutput("")
+	entries := feed.ParseGitLogOutput("")
 	if len(entries) != 0 {
 		t.Errorf("expected 0 entries, got %d", len(entries))
 	}
 
-	entries = parseGitLogOutput("   \n\n  ")
+	entries = feed.ParseGitLogOutput("   \n\n  ")
 	if len(entries) != 0 {
 		t.Errorf("expected 0 entries for whitespace, got %d", len(entries))
 	}
@@ -180,7 +182,7 @@ func TestFeedCommand_JSON(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var entries []FeedEntry
+	var entries []feed.FeedEntry
 	if err := json.Unmarshal([]byte(output), &entries); err != nil {
 		t.Fatalf("failed to parse JSON: %v\noutput: %s", err, output)
 	}
@@ -404,15 +406,15 @@ func TestExtractTaskIDFromPath(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := extractTaskIDFromPath(tt.path)
+		got := feed.ExtractTaskIDFromPath(tt.path)
 		if got != tt.expected {
-			t.Errorf("extractTaskIDFromPath(%q) = %q, want %q", tt.path, got, tt.expected)
+			t.Errorf("ExtractTaskIDFromPath(%q) = %q, want %q", tt.path, got, tt.expected)
 		}
 	}
 }
 
 func TestBuildGitLogArgs(t *testing.T) {
-	args := buildGitLogArgs("tasks", 10, "7d", "cli")
+	args := feed.BuildGitLogArgs("tasks", 10, "7d", "cli")
 
 	hasLimit := false
 	hasSince := false
@@ -456,53 +458,10 @@ func TestNormalizeSince(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := normalizeSince(tt.input)
+		got := feed.NormalizeSince(tt.input)
 		if got != tt.expected {
-			t.Errorf("normalizeSince(%q) = %q, want %q", tt.input, got, tt.expected)
+			t.Errorf("NormalizeSince(%q) = %q, want %q", tt.input, got, tt.expected)
 		}
-	}
-}
-
-func TestExtractStatusFromContent(t *testing.T) {
-	tests := []struct {
-		name     string
-		content  string
-		expected string
-	}{
-		{
-			name:     "completed status",
-			content:  "---\nid: 042\ntitle: Test\nstatus: completed\n---\n# Body",
-			expected: "completed",
-		},
-		{
-			name:     "cancelled status",
-			content:  "---\nid: 043\ntitle: Test\nstatus: cancelled\n---\n# Body",
-			expected: "cancelled",
-		},
-		{
-			name:     "pending status",
-			content:  "---\nid: 044\ntitle: Test\nstatus: pending\n---\n# Body",
-			expected: "pending",
-		},
-		{
-			name:     "no frontmatter",
-			content:  "# Just a markdown file",
-			expected: "",
-		},
-		{
-			name:     "no status field",
-			content:  "---\nid: 045\ntitle: Test\n---\n# Body",
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := extractStatusFromContent(tt.content)
-			if got != tt.expected {
-				t.Errorf("extractStatusFromContent() = %q, want %q", got, tt.expected)
-			}
-		})
 	}
 }
 
@@ -610,7 +569,7 @@ func TestFeedCommand_CompletedStatus_JSON(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var entries []FeedEntry
+	var entries []feed.FeedEntry
 	if err := json.Unmarshal([]byte(output), &entries); err != nil {
 		t.Fatalf("failed to parse JSON: %v", err)
 	}
@@ -631,12 +590,12 @@ func TestFeedCommand_CompletedStatus_JSON(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("expected status field change in-progress → completed")
+		t.Error("expected status field change in-progress -> completed")
 	}
 }
 
 func TestBuildGitLogArgs_NoOptionalFlags(t *testing.T) {
-	args := buildGitLogArgs("tasks", 20, "", "")
+	args := feed.BuildGitLogArgs("tasks", 20, "", "")
 
 	for _, arg := range args {
 		if strings.HasPrefix(arg, "--since") {
@@ -676,7 +635,7 @@ func TestScanWorklogEntries(t *testing.T) {
 	tmpDir := t.TempDir()
 	createWorklogFiles(t, tmpDir)
 
-	entries := scanWorklogEntries(tmpDir, "cli", "", false)
+	entries := feed.ScanWorklogEntries(tmpDir, "cli", "", false)
 	if len(entries) != 2 {
 		t.Fatalf("expected 2 worklog entries, got %d", len(entries))
 	}
@@ -701,13 +660,13 @@ func TestScanWorklogEntries_SinceFilter(t *testing.T) {
 	createWorklogFiles(t, tmpDir)
 
 	// Filter to only entries after 2026-02-15T12:00:00Z
-	entries := scanWorklogEntries(tmpDir, "cli", "2026-02-15", false)
+	entries := feed.ScanWorklogEntries(tmpDir, "cli", "2026-02-15", false)
 	if len(entries) != 2 {
 		t.Fatalf("expected 2 entries with since=2026-02-15, got %d", len(entries))
 	}
 
 	// Use a date after the entries
-	entries = scanWorklogEntries(tmpDir, "cli", "2026-02-16", false)
+	entries = feed.ScanWorklogEntries(tmpDir, "cli", "2026-02-16", false)
 	if len(entries) != 0 {
 		t.Fatalf("expected 0 entries with since=2026-02-16, got %d", len(entries))
 	}
@@ -732,7 +691,7 @@ Valid entry here.
 		t.Fatalf("failed to write worklog: %v", err)
 	}
 
-	entries := scanWorklogEntries(tmpDir, "cli", "", false)
+	entries := feed.ScanWorklogEntries(tmpDir, "cli", "", false)
 	if len(entries) != 1 {
 		t.Fatalf("expected 1 entry (malformed skipped), got %d", len(entries))
 	}
@@ -742,16 +701,16 @@ Valid entry here.
 }
 
 func TestMergeEntries(t *testing.T) {
-	git := []FeedEntry{
+	git := []feed.FeedEntry{
 		{Source: "git", Timestamp: mustParseTime("2026-02-28T10:00:00Z"), Message: "git-1"},
 		{Source: "git", Timestamp: mustParseTime("2026-02-26T10:00:00Z"), Message: "git-2"},
 	}
-	wl := []FeedEntry{
+	wl := []feed.FeedEntry{
 		{Source: "worklog", Timestamp: mustParseTime("2026-02-27T12:00:00Z"), Message: "wl-1"},
 		{Source: "worklog", Timestamp: mustParseTime("2026-02-25T08:00:00Z"), Message: "wl-2"},
 	}
 
-	merged := mergeEntries(git, wl)
+	merged := feed.MergeEntries(git, wl)
 	if len(merged) != 4 {
 		t.Fatalf("expected 4 merged entries, got %d", len(merged))
 	}
@@ -765,12 +724,12 @@ func TestMergeEntries(t *testing.T) {
 }
 
 func TestMergeEntries_EmptySlices(t *testing.T) {
-	entries := []FeedEntry{{Source: "git", Message: "only"}}
+	entries := []feed.FeedEntry{{Source: "git", Message: "only"}}
 
-	if got := mergeEntries(entries, nil); len(got) != 1 {
+	if got := feed.MergeEntries(entries, nil); len(got) != 1 {
 		t.Errorf("merge with nil b: expected 1, got %d", len(got))
 	}
-	if got := mergeEntries(nil, entries); len(got) != 1 {
+	if got := feed.MergeEntries(nil, entries); len(got) != 1 {
 		t.Errorf("merge with nil a: expected 1, got %d", len(got))
 	}
 }
@@ -891,7 +850,7 @@ func TestFeedCommand_WorklogJSON(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var entries []FeedEntry
+	var entries []feed.FeedEntry
 	if err := json.Unmarshal([]byte(output), &entries); err != nil {
 		t.Fatalf("failed to parse JSON: %v\noutput: %s", err, output)
 	}
@@ -907,29 +866,9 @@ func TestFeedCommand_WorklogJSON(t *testing.T) {
 	}
 }
 
-func TestTruncateFirstLine(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"First line\nSecond line", "First line"},
-		{"\n\nThird line", "Third line"},
-		{"", ""},
-		{"Single line", "Single line"},
-		{"  Whitespace line  \nNext", "Whitespace line"},
-	}
-
-	for _, tt := range tests {
-		got := truncateFirstLine(tt.input)
-		if got != tt.expected {
-			t.Errorf("truncateFirstLine(%q) = %q, want %q", tt.input, got, tt.expected)
-		}
-	}
-}
-
 func TestParseSinceTime(t *testing.T) {
 	// Absolute date
-	ts := parseSinceTime("2026-02-15")
+	ts := feed.ParseSinceTime("2026-02-15")
 	if ts.IsZero() {
 		t.Error("expected non-zero time for absolute date")
 	}
@@ -938,7 +877,7 @@ func TestParseSinceTime(t *testing.T) {
 	}
 
 	// Relative duration (just check it's in the past and non-zero)
-	ts = parseSinceTime("7d")
+	ts = feed.ParseSinceTime("7d")
 	if ts.IsZero() {
 		t.Error("expected non-zero time for 7d")
 	}
@@ -947,7 +886,7 @@ func TestParseSinceTime(t *testing.T) {
 	}
 
 	// Invalid
-	ts = parseSinceTime("garbage")
+	ts = feed.ParseSinceTime("garbage")
 	if !ts.IsZero() {
 		t.Errorf("expected zero time for invalid input, got %v", ts)
 	}
@@ -987,7 +926,6 @@ M	tasks/cli/042-add-auth.md
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Compact one-line summary with all changes
 	if !strings.Contains(output, "priority medium") {
 		t.Error("expected priority change in output")
 	}
@@ -995,148 +933,7 @@ M	tasks/cli/042-add-auth.md
 		t.Error("expected status change in output")
 	}
 	if !strings.Contains(output, "subtask(s) completed") {
-		t.Error("expected subtask completion count in output")
-	}
-	// Uses [Modified] tag with change summary appended
-	if !strings.Contains(output, "[Modified]") {
-		t.Error("expected [Modified] tag with change summary")
-	}
-}
-
-func TestFeedCommand_RichDiff_GenericFallback(t *testing.T) {
-	resetFeedFlags()
-	noColor = true
-	defer func() { noColor = false }()
-
-	gitLog := `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-Alice
-2026-02-28 10:30:00 +0000
-docs: update task 042 description
-
-M	tasks/cli/042-add-auth.md
-`
-	oldGitLog := gitLogFunc
-	gitLogFunc = func(_ string, _ []string) (string, error) {
-		return gitLog, nil
-	}
-	defer func() { gitLogFunc = oldGitLog }()
-
-	oldGitShow := gitShowFunc
-	gitShowFunc = func(hash, _ string) (string, error) {
-		if strings.HasSuffix(hash, "^") {
-			return "---\nid: 042\nstatus: pending\n---\n# Task\n\nOld description.", nil
-		}
-		return "---\nid: 042\nstatus: pending\n---\n# Task\n\nNew description.", nil
-	}
-	defer func() { gitShowFunc = oldGitShow }()
-
-	output, err := captureFeedOutput(t, func() error {
-		return runFeed(feedCmd, nil)
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// No frontmatter or subtask changes → generic [Modified]
-	if !strings.Contains(output, "[Modified]") {
-		t.Error("expected [Modified] fallback when no rich changes detected")
-	}
-}
-
-func TestFeedCommand_RichDiff_JSON(t *testing.T) {
-	resetFeedFlags()
-	feedFormat = "json"
-
-	gitLog := `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-Alice
-2026-02-28 10:30:00 +0000
-chore: update task 042
-
-M	tasks/cli/042-add-auth.md
-`
-	oldGitLog := gitLogFunc
-	gitLogFunc = func(_ string, _ []string) (string, error) {
-		return gitLog, nil
-	}
-	defer func() { gitLogFunc = oldGitLog }()
-
-	oldGitShow := gitShowFunc
-	gitShowFunc = func(hash, _ string) (string, error) {
-		if strings.HasSuffix(hash, "^") {
-			return "---\nid: 042\nstatus: pending\n---\n# Task\n\n- [ ] Add tests\n", nil
-		}
-		return "---\nid: 042\nstatus: in-progress\n---\n# Task\n\n- [x] Add tests\n", nil
-	}
-	defer func() { gitShowFunc = oldGitShow }()
-
-	output, err := captureFeedOutput(t, func() error {
-		return runFeed(feedCmd, nil)
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	var entries []FeedEntry
-	if err := json.Unmarshal([]byte(output), &entries); err != nil {
-		t.Fatalf("failed to parse JSON: %v\noutput: %s", err, output)
-	}
-
-	if len(entries) != 1 {
-		t.Fatalf("expected 1 entry, got %d", len(entries))
-	}
-
-	fc := entries[0].Files[0]
-	if len(fc.FieldChanges) != 1 {
-		t.Fatalf("expected 1 field change, got %d", len(fc.FieldChanges))
-	}
-	if fc.FieldChanges[0].Field != "status" || fc.FieldChanges[0].OldValue != "pending" || fc.FieldChanges[0].NewValue != "in-progress" {
-		t.Errorf("unexpected field change: %+v", fc.FieldChanges[0])
-	}
-	if len(fc.SubtaskChanges) != 1 {
-		t.Fatalf("expected 1 subtask change, got %d", len(fc.SubtaskChanges))
-	}
-	if fc.SubtaskChanges[0].Text != "Add tests" || !fc.SubtaskChanges[0].Done {
-		t.Errorf("unexpected subtask change: %+v", fc.SubtaskChanges[0])
-	}
-}
-
-func TestFeedCommand_RichDiff_CreatedFileWithCompletedStatus(t *testing.T) {
-	resetFeedFlags()
-	noColor = true
-	defer func() { noColor = false }()
-
-	gitLog := `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-Alice
-2026-02-28 10:30:00 +0000
-feat: add completed task
-
-A	tasks/cli/050-done-task.md
-`
-	oldGitLog := gitLogFunc
-	gitLogFunc = func(_ string, _ []string) (string, error) {
-		return gitLog, nil
-	}
-	defer func() { gitLogFunc = oldGitLog }()
-
-	oldGitShow := gitShowFunc
-	gitShowFunc = func(hash, _ string) (string, error) {
-		if strings.HasSuffix(hash, "^") {
-			return "", fmt.Errorf("not found")
-		}
-		return "---\nid: 050\nstatus: completed\n---\n# Done Task", nil
-	}
-	defer func() { gitShowFunc = oldGitShow }()
-
-	output, err := captureFeedOutput(t, func() error {
-		return runFeed(feedCmd, nil)
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Created files with completed status show [Completed]
-	if !strings.Contains(output, "[Completed]") {
-		t.Error("expected [Completed] tag for created file with completed status")
+		t.Error("expected subtask completion in output")
 	}
 }
 

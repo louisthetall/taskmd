@@ -142,7 +142,7 @@ describe("NextPage URL sync", () => {
     mockNextData = undefined;
     mockNextError = undefined;
     mockNextLoading = false;
-    const { container } = renderPage();
+    renderPage();
     expect(screen.queryByLabelText("Folder:")).not.toBeInTheDocument();
   });
 });

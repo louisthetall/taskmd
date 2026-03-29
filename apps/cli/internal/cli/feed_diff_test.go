@@ -1,10 +1,14 @@
 package cli
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/driangle/taskmd/sdk/go/feed"
+)
 
 func TestExtractFrontmatterFields(t *testing.T) {
 	content := "---\nid: 042\ntitle: \"Add Auth\"\nstatus: pending\npriority: medium\n---\n# Body"
-	fields := extractFrontmatterFields(content)
+	fields := feed.ExtractFrontmatterFields(content)
 
 	if fields["id"] != "042" {
 		t.Errorf("expected id=042, got %q", fields["id"])
@@ -21,7 +25,7 @@ func TestExtractFrontmatterFields(t *testing.T) {
 }
 
 func TestExtractFrontmatterFields_NoFrontmatter(t *testing.T) {
-	fields := extractFrontmatterFields("# Just markdown")
+	fields := feed.ExtractFrontmatterFields("# Just markdown")
 	if len(fields) != 0 {
 		t.Errorf("expected no fields, got %d", len(fields))
 	}
@@ -29,7 +33,7 @@ func TestExtractFrontmatterFields_NoFrontmatter(t *testing.T) {
 
 func TestExtractSubtasks(t *testing.T) {
 	content := "---\nid: 042\n---\n# Task\n\n- [ ] Add tests\n- [x] Write docs\n- [ ] Deploy\n"
-	subtasks := extractSubtasks(content)
+	subtasks := feed.ExtractSubtasks(content)
 
 	if len(subtasks) != 3 {
 		t.Fatalf("expected 3 subtasks, got %d", len(subtasks))
@@ -47,7 +51,7 @@ func TestExtractSubtasks(t *testing.T) {
 
 func TestExtractSubtasks_NoFrontmatter(t *testing.T) {
 	content := "# Task\n\n- [x] Done\n- [ ] Not done\n"
-	subtasks := extractSubtasks(content)
+	subtasks := feed.ExtractSubtasks(content)
 	if len(subtasks) != 2 {
 		t.Fatalf("expected 2 subtasks, got %d", len(subtasks))
 	}
@@ -57,7 +61,7 @@ func TestAnalyzeDiff_StatusChange(t *testing.T) {
 	oldContent := "---\nid: 042\nstatus: pending\npriority: medium\n---\n# Task"
 	newContent := "---\nid: 042\nstatus: in-progress\npriority: medium\n---\n# Task"
 
-	fieldChanges, subtaskChanges := analyzeDiff(oldContent, newContent)
+	fieldChanges, subtaskChanges := feed.AnalyzeDiff(oldContent, newContent)
 
 	if len(fieldChanges) != 1 {
 		t.Fatalf("expected 1 field change, got %d", len(fieldChanges))
@@ -80,7 +84,7 @@ func TestAnalyzeDiff_PriorityChange(t *testing.T) {
 	oldContent := "---\nid: 042\nstatus: pending\npriority: medium\n---\n# Task"
 	newContent := "---\nid: 042\nstatus: pending\npriority: high\n---\n# Task"
 
-	fieldChanges, _ := analyzeDiff(oldContent, newContent)
+	fieldChanges, _ := feed.AnalyzeDiff(oldContent, newContent)
 
 	if len(fieldChanges) != 1 {
 		t.Fatalf("expected 1 field change, got %d", len(fieldChanges))
@@ -89,7 +93,7 @@ func TestAnalyzeDiff_PriorityChange(t *testing.T) {
 		t.Errorf("expected field 'priority', got %q", fieldChanges[0].Field)
 	}
 	if fieldChanges[0].OldValue != "medium" || fieldChanges[0].NewValue != "high" {
-		t.Errorf("expected medium → high, got %s → %s", fieldChanges[0].OldValue, fieldChanges[0].NewValue)
+		t.Errorf("expected medium -> high, got %s -> %s", fieldChanges[0].OldValue, fieldChanges[0].NewValue)
 	}
 }
 
@@ -97,7 +101,7 @@ func TestAnalyzeDiff_SubtaskCompletion(t *testing.T) {
 	oldContent := "---\nid: 042\nstatus: in-progress\n---\n# Task\n\n- [ ] Add tests\n- [ ] Write docs\n"
 	newContent := "---\nid: 042\nstatus: in-progress\n---\n# Task\n\n- [x] Add tests\n- [ ] Write docs\n"
 
-	fieldChanges, subtaskChanges := analyzeDiff(oldContent, newContent)
+	fieldChanges, subtaskChanges := feed.AnalyzeDiff(oldContent, newContent)
 
 	if len(fieldChanges) != 0 {
 		t.Errorf("expected no field changes, got %d", len(fieldChanges))
@@ -117,7 +121,7 @@ func TestAnalyzeDiff_MultipleSubtaskCompletions(t *testing.T) {
 	oldContent := "---\nid: 042\n---\n# Task\n\n- [ ] Add tests\n- [ ] Write docs\n- [ ] Deploy\n"
 	newContent := "---\nid: 042\n---\n# Task\n\n- [x] Add tests\n- [ ] Write docs\n- [x] Deploy\n"
 
-	_, subtaskChanges := analyzeDiff(oldContent, newContent)
+	_, subtaskChanges := feed.AnalyzeDiff(oldContent, newContent)
 
 	if len(subtaskChanges) != 2 {
 		t.Fatalf("expected 2 subtask changes, got %d", len(subtaskChanges))
@@ -135,7 +139,7 @@ func TestAnalyzeDiff_MixedChanges(t *testing.T) {
 	oldContent := "---\nid: 042\nstatus: pending\npriority: medium\n---\n# Task\n\n- [ ] Add tests\n"
 	newContent := "---\nid: 042\nstatus: in-progress\npriority: high\n---\n# Task\n\n- [x] Add tests\n"
 
-	fieldChanges, subtaskChanges := analyzeDiff(oldContent, newContent)
+	fieldChanges, subtaskChanges := feed.AnalyzeDiff(oldContent, newContent)
 
 	if len(fieldChanges) != 2 {
 		t.Fatalf("expected 2 field changes, got %d", len(fieldChanges))
@@ -156,7 +160,7 @@ func TestAnalyzeDiff_MixedChanges(t *testing.T) {
 func TestAnalyzeDiff_NoChanges(t *testing.T) {
 	content := "---\nid: 042\nstatus: pending\n---\n# Task\n\n- [ ] Add tests\n"
 
-	fieldChanges, subtaskChanges := analyzeDiff(content, content)
+	fieldChanges, subtaskChanges := feed.AnalyzeDiff(content, content)
 
 	if len(fieldChanges) != 0 {
 		t.Errorf("expected no field changes, got %d", len(fieldChanges))
@@ -170,7 +174,7 @@ func TestAnalyzeDiff_NoFrontmatter(t *testing.T) {
 	oldContent := "# Just markdown"
 	newContent := "# Updated markdown"
 
-	fieldChanges, subtaskChanges := analyzeDiff(oldContent, newContent)
+	fieldChanges, subtaskChanges := feed.AnalyzeDiff(oldContent, newContent)
 
 	if len(fieldChanges) != 0 {
 		t.Errorf("expected no field changes, got %d", len(fieldChanges))
@@ -184,7 +188,7 @@ func TestAnalyzeDiff_SubtaskUnchecked(t *testing.T) {
 	oldContent := "---\nid: 042\n---\n# Task\n\n- [x] Add tests\n"
 	newContent := "---\nid: 042\n---\n# Task\n\n- [ ] Add tests\n"
 
-	_, subtaskChanges := analyzeDiff(oldContent, newContent)
+	_, subtaskChanges := feed.AnalyzeDiff(oldContent, newContent)
 
 	if len(subtaskChanges) != 1 {
 		t.Fatalf("expected 1 subtask change, got %d", len(subtaskChanges))
@@ -198,7 +202,7 @@ func TestAnalyzeDiff_NewFieldAdded(t *testing.T) {
 	oldContent := "---\nid: 042\nstatus: pending\n---\n# Task"
 	newContent := "---\nid: 042\nstatus: pending\npriority: high\n---\n# Task"
 
-	fieldChanges, _ := analyzeDiff(oldContent, newContent)
+	fieldChanges, _ := feed.AnalyzeDiff(oldContent, newContent)
 
 	if len(fieldChanges) != 1 {
 		t.Fatalf("expected 1 field change, got %d", len(fieldChanges))
@@ -218,7 +222,7 @@ func TestAnalyzeDiff_StatusToCompleted(t *testing.T) {
 	oldContent := "---\nid: 042\nstatus: in-progress\n---\n# Task"
 	newContent := "---\nid: 042\nstatus: completed\n---\n# Task"
 
-	fieldChanges, _ := analyzeDiff(oldContent, newContent)
+	fieldChanges, _ := feed.AnalyzeDiff(oldContent, newContent)
 
 	if len(fieldChanges) != 1 {
 		t.Fatalf("expected 1 field change, got %d", len(fieldChanges))

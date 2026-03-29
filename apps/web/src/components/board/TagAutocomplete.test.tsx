@@ -56,7 +56,8 @@ describe("TagAutocomplete", () => {
     fireEvent.focus(input);
     fireEvent.click(screen.getByText("api"));
     expect(props.onTagsChange).toHaveBeenCalledOnce();
-    const result = props.onTagsChange.mock.calls[0][0] as Set<string>;
+    const mockFn = props.onTagsChange as ReturnType<typeof vi.fn>;
+    const result = mockFn.mock.calls[0][0] as Set<string>;
     expect(result.has("api")).toBe(true);
   });
 
@@ -89,7 +90,8 @@ describe("TagAutocomplete", () => {
     fireEvent.keyDown(input, { key: "ArrowDown" });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(props.onTagsChange).toHaveBeenCalledOnce();
-    const result = props.onTagsChange.mock.calls[0][0] as Set<string>;
+    const enterMockFn = props.onTagsChange as ReturnType<typeof vi.fn>;
+    const result = enterMockFn.mock.calls[0][0] as Set<string>;
     expect(result.has("frontend")).toBe(true);
   });
 
