@@ -231,6 +231,19 @@ func buildSetRequest(cmd *cobra.Command) (taskfile.UpdateRequest, error) {
 		return taskfile.UpdateRequest{}, err
 	}
 
+	// Auto-populate resolved date when status transitions to a terminal state;
+	// clear it when transitioning back to an active state.
+	if req.Status != nil {
+		status := model.Status(*req.Status)
+		if status.IsResolved() {
+			today := time.Now().Format("2006-01-02")
+			req.Resolved = &today
+		} else {
+			empty := ""
+			req.Resolved = &empty
+		}
+	}
+
 	if !hasUpdates(req) {
 		return taskfile.UpdateRequest{}, fmt.Errorf("nothing to update: provide --status, --priority, --effort, --type, --owner, --parent, --phase, --done, --add-tag, --remove-tag, --add-pr, --remove-pr, --add-touches, --remove-touches, or --depends-on")
 	}
@@ -240,7 +253,8 @@ func buildSetRequest(cmd *cobra.Command) (taskfile.UpdateRequest, error) {
 
 func hasUpdates(req taskfile.UpdateRequest) bool {
 	hasScalar := req.Status != nil || req.Priority != nil || req.Effort != nil ||
-		req.Type != nil || req.Owner != nil || req.Parent != nil || req.Phase != nil
+		req.Type != nil || req.Owner != nil || req.Parent != nil || req.Phase != nil ||
+		req.Resolved != nil
 	hasTags := len(req.AddTags) > 0 || len(req.RemTags) > 0
 	hasPRs := len(req.AddPRs) > 0 || len(req.RemPRs) > 0
 	hasTouches := len(req.AddTouches) > 0 || len(req.RemTouches) > 0
@@ -276,6 +290,9 @@ func buildChangeLog(task *model.Task, req taskfile.UpdateRequest) []changeEntry 
 		"parent":   task.Parent,
 		"phase":    task.Phase,
 	}
+	if !task.Resolved.Time.IsZero() {
+		oldValues["resolved"] = task.Resolved.Time.Format("2006-01-02")
+	}
 
 	var changes []changeEntry
 
@@ -299,6 +316,9 @@ func buildChangeLog(task *model.Task, req taskfile.UpdateRequest) []changeEntry 
 	}
 	if req.Phase != nil {
 		changes = append(changes, changeEntry{field: "phase", oldValue: oldValues["phase"], newValue: *req.Phase})
+	}
+	if req.Resolved != nil {
+		changes = append(changes, changeEntry{field: "resolved", oldValue: oldValues["resolved"], newValue: *req.Resolved})
 	}
 
 	for _, entry := range []struct {

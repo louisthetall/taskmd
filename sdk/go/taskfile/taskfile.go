@@ -25,6 +25,7 @@ type UpdateRequest struct {
 	AddTouches   []string  // add scope identifiers to touches
 	RemTouches   []string  // remove scope identifiers from touches
 	Phase        *string
+	Resolved     *string
 	Dependencies *[]string // replace dependencies entirely
 	Body         *string
 }
@@ -160,6 +161,9 @@ func buildScalarUpdates(req UpdateRequest) []scalarUpdate {
 	}
 	if req.Phase != nil {
 		updates = append(updates, scalarUpdate{key: "phase", value: *req.Phase})
+	}
+	if req.Resolved != nil {
+		updates = append(updates, scalarUpdate{key: "resolved", value: *req.Resolved})
 	}
 	return updates
 }

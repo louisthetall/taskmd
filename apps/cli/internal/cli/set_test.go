@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 
@@ -1934,5 +1935,130 @@ created: 2026-02-08
 	fileStr := string(updated)
 	if !strings.Contains(fileStr, "phase: ") || strings.Contains(fileStr, "phase: v0.1") {
 		t.Errorf("Expected phase to be cleared, got:\n%s", fileStr)
+	}
+}
+
+func TestSet_Resolved_AutoSetOnCompleted(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "001"
+	setStatus = "completed"
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "resolved:") {
+		t.Errorf("Expected resolved change in output, got: %s", output)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "001-setup.md"))
+	fileStr := string(content)
+	if !strings.Contains(fileStr, "resolved: "+time.Now().Format("2006-01-02")) {
+		t.Errorf("Expected resolved date to be today, got:\n%s", fileStr)
+	}
+}
+
+func TestSet_Resolved_AutoSetOnCancelled(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "001"
+	setStatus = "cancelled"
+
+	_, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "001-setup.md"))
+	fileStr := string(content)
+	if !strings.Contains(fileStr, "resolved: "+time.Now().Format("2006-01-02")) {
+		t.Errorf("Expected resolved date on cancelled, got:\n%s", fileStr)
+	}
+}
+
+func TestSet_Resolved_AutoSetOnDone(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setDone = true
+
+	output, err := captureSetOutputWithArgs(t, []string{"001"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "resolved:") {
+		t.Errorf("Expected resolved in output, got: %s", output)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "001-setup.md"))
+	fileStr := string(content)
+	if !strings.Contains(fileStr, "resolved: "+time.Now().Format("2006-01-02")) {
+		t.Errorf("Expected resolved date with --done, got:\n%s", fileStr)
+	}
+}
+
+func TestSet_Resolved_ClearedOnNonTerminalStatus(t *testing.T) {
+	tmpDir := t.TempDir()
+	content := `---
+id: "070"
+title: "Previously completed task"
+status: completed
+priority: medium
+effort: small
+dependencies: []
+tags: ["test"]
+resolved: 2026-03-15
+created: 2026-02-08
+---
+
+# Previously completed task
+`
+	path := filepath.Join(tmpDir, "070-resolved.md")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "070"
+	setStatus = "in-progress"
+
+	output, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(output, "resolved:") {
+		t.Errorf("Expected resolved change in output, got: %s", output)
+	}
+
+	updated, _ := os.ReadFile(path)
+	fileStr := string(updated)
+	if strings.Contains(fileStr, "resolved: 2026-03-15") {
+		t.Errorf("Expected resolved to be cleared, got:\n%s", fileStr)
+	}
+}
+
+func TestSet_Resolved_NotSetWithoutStatusChange(t *testing.T) {
+	tmpDir := createSetTestFiles(t)
+	resetSetFlags()
+	taskDir = tmpDir
+	setTaskID = "001"
+	setPriority = "low"
+
+	_, err := captureSetOutput(t)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(filepath.Join(tmpDir, "001-setup.md"))
+	fileStr := string(content)
+	if strings.Contains(fileStr, "resolved:") {
+		t.Errorf("Expected no resolved field when only changing priority, got:\n%s", fileStr)
 	}
 }

@@ -635,6 +635,101 @@ created: 2026-02-08
 	}
 }
 
+func TestUpdateTaskFile_Resolved_Set(t *testing.T) {
+	path := createTestFile(t, noTagsTask)
+
+	err := UpdateTaskFile(path, UpdateRequest{Resolved: strPtr("2026-04-10")})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if !strings.Contains(s, "resolved: 2026-04-10") {
+		t.Errorf("expected resolved to be set, got:\n%s", s)
+	}
+	if !strings.Contains(s, "status: pending") {
+		t.Error("expected status preserved")
+	}
+}
+
+func TestUpdateTaskFile_Resolved_Update(t *testing.T) {
+	task := `---
+id: "010"
+title: "Task with resolved"
+status: completed
+resolved: 2026-03-15
+created: 2026-02-08
+---
+
+# Task with resolved
+`
+	path := createTestFile(t, task)
+
+	err := UpdateTaskFile(path, UpdateRequest{Resolved: strPtr("2026-04-10")})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if !strings.Contains(s, "resolved: 2026-04-10") {
+		t.Errorf("expected resolved to be updated, got:\n%s", s)
+	}
+	if strings.Contains(s, "resolved: 2026-03-15") {
+		t.Error("expected old resolved to be replaced")
+	}
+}
+
+func TestUpdateTaskFile_Resolved_Clear(t *testing.T) {
+	task := `---
+id: "011"
+title: "Task with resolved"
+status: pending
+resolved: 2026-03-15
+created: 2026-02-08
+---
+
+# Task with resolved
+`
+	path := createTestFile(t, task)
+
+	err := UpdateTaskFile(path, UpdateRequest{Resolved: strPtr("")})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if strings.Contains(s, "resolved: 2026-03-15") {
+		t.Error("expected resolved to be cleared")
+	}
+}
+
+func TestUpdateTaskFile_Resolved_PreservesOtherFields(t *testing.T) {
+	path := createTestFile(t, inlineTagsTask)
+
+	err := UpdateTaskFile(path, UpdateRequest{Resolved: strPtr("2026-04-10")})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	content, _ := os.ReadFile(path)
+	s := string(content)
+	if !strings.Contains(s, "resolved: 2026-04-10") {
+		t.Errorf("expected resolved added, got:\n%s", s)
+	}
+	if !strings.Contains(s, "status: pending") {
+		t.Error("expected status preserved")
+	}
+	if !strings.Contains(s, `tags: ["infra", "setup"]`) {
+		t.Error("expected tags preserved")
+	}
+	if !strings.Contains(s, "# Setup project") {
+		t.Error("expected body preserved")
+	}
+}
+
 func TestFindFrontmatterBounds(t *testing.T) {
 	tests := []struct {
 		name      string

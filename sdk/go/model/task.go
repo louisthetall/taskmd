@@ -154,6 +154,7 @@ type Task struct {
 	Phase        string       `yaml:"phase,omitempty" json:"phase,omitempty"`
 	Parent       string       `yaml:"parent,omitempty" json:"parent,omitempty"`
 	Created      FlexibleTime `yaml:"created" json:"created"`
+	Resolved     FlexibleTime `yaml:"resolved,omitempty" json:"resolved,omitempty"`
 	Verify       []VerifyStep `yaml:"verify,omitempty" json:"verify,omitempty"`
 	ExternalID   string       `yaml:"external_id,omitempty" json:"external_id,omitempty"`
 	PRs          []string     `yaml:"pr,omitempty" json:"pr,omitempty"`
