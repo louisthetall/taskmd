@@ -62,7 +62,7 @@ func init() {
 
 	listCmd.Flags().StringVar(&listFormat, "format", "table", "output format (table, json, yaml)")
 	listCmd.Flags().StringArrayVar(&listFilters, "filter", []string{}, "filter tasks (e.g., --filter status=pending --filter \"priority>=medium\"); supports >=, >, <=, < for priority and effort")
-	listCmd.Flags().StringVar(&listSort, "sort", "", "sort by field (id, title, status, priority, effort, created)")
+	listCmd.Flags().StringVar(&listSort, "sort", "", "sort by field (id, title, status, priority, effort, created_at)")
 	listCmd.Flags().StringVar(&listColumns, "columns", "id,title,status,priority,file", "comma-separated list of columns to display")
 	listCmd.Flags().IntVar(&listLimit, "limit", 0, "maximum number of tasks to display (0 = unlimited)")
 	listCmd.Flags().StringVar(&listScope, "scope", "", "filter by scope; supports wildcards (e.g. cli, cli*)")
@@ -291,7 +291,7 @@ func sortTasks(tasks []*model.Task, sortField string) error {
 		sort.Slice(tasks, func(i, j int) bool {
 			return effortOrder[tasks[i].Effort] < effortOrder[tasks[j].Effort]
 		})
-	case "created":
+	case "created", "created_at":
 		sort.Slice(tasks, func(i, j int) bool {
 			return tasks[i].Created.Before(tasks[j].Created.Time)
 		})
@@ -405,7 +405,7 @@ func getColumnValue(task *model.Task, column string) string {
 		return scalar
 	}
 	switch column {
-	case "created":
+	case "created", "created_at":
 		if task.Created.IsZero() {
 			return ""
 		}

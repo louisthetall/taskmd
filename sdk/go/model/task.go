@@ -153,7 +153,8 @@ type Task struct {
 	Owner        string       `yaml:"owner" json:"owner,omitempty"`
 	Phase        string       `yaml:"phase,omitempty" json:"phase,omitempty"`
 	Parent       string       `yaml:"parent,omitempty" json:"parent,omitempty"`
-	Created      FlexibleTime `yaml:"created" json:"created"`
+	Created           FlexibleTime `yaml:"created_at" json:"created_at"`
+	CreatedDeprecated FlexibleTime `yaml:"created" json:"-"`
 	Completed    FlexibleTime `yaml:"completed_at,omitempty" json:"completed_at,omitempty"`
 	CancelledAt  FlexibleTime `yaml:"cancelled_at,omitempty" json:"cancelled_at,omitempty"`
 	Verify       []VerifyStep `yaml:"verify,omitempty" json:"verify,omitempty"`
