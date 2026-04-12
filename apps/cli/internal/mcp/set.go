@@ -67,23 +67,7 @@ func handleSet(_ context.Context, _ *gomcp.CallToolRequest, input SetInput) (*go
 		return nil, nil, fmt.Errorf("task not found: %s", input.TaskID)
 	}
 
-	// Auto-manage terminal date fields based on status transitions.
-	if req.Status != nil {
-		today := time.Now().Format("2006-01-02")
-		newStatus := model.Status(*req.Status)
-		wasTerminal := task.Status.IsResolved()
-		switch {
-		case newStatus == model.StatusCompleted:
-			req.Completed = &today
-			req.RemoveFields = append(req.RemoveFields, "cancelled_at")
-		case newStatus == model.StatusCancelled:
-			req.CancelledAt = &today
-			req.RemoveFields = append(req.RemoveFields, "completed_at")
-		case wasTerminal:
-			// Reopening: task was completed/cancelled, now moving to a non-terminal status.
-			req.RemoveFields = append(req.RemoveFields, "completed_at", "cancelled_at")
-		}
-	}
+	applyStatusTransitionDates(&req, task)
 
 	if err := taskfile.UpdateTaskFile(task.FilePath, req); err != nil {
 		return nil, nil, fmt.Errorf("update failed: %w", err)
@@ -98,6 +82,25 @@ func handleSet(_ context.Context, _ *gomcp.CallToolRequest, input SetInput) (*go
 	return &gomcp.CallToolResult{
 		Content: []gomcp.Content{&gomcp.TextContent{Text: string(data)}},
 	}, nil, nil
+}
+
+func applyStatusTransitionDates(req *taskfile.UpdateRequest, task *model.Task) {
+	if req.Status == nil {
+		return
+	}
+	today := time.Now().Format("2006-01-02")
+	newStatus := model.Status(*req.Status)
+	wasTerminal := task.Status.IsResolved()
+	switch {
+	case newStatus == model.StatusCompleted:
+		req.Completed = &today
+		req.RemoveFields = append(req.RemoveFields, "cancelled_at")
+	case newStatus == model.StatusCancelled:
+		req.CancelledAt = &today
+		req.RemoveFields = append(req.RemoveFields, "completed_at")
+	case wasTerminal:
+		req.RemoveFields = append(req.RemoveFields, "completed_at", "cancelled_at")
+	}
 }
 
 func buildUpdateRequest(input SetInput) taskfile.UpdateRequest {
