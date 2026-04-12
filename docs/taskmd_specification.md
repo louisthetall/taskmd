@@ -40,6 +40,8 @@ Description and subtasks go here.
 | `context` | array | No | Explicit file paths relevant to the task (e.g., `["docs/api.md"]`) |
 | `parent` | string | No | Single task ID (e.g., `"045"`) |
 | `created` | date | No | `YYYY-MM-DD` |
+| `completed_at` | date | No | `YYYY-MM-DD` — auto-set when status becomes `completed` |
+| `cancelled_at` | date | No | `YYYY-MM-DD` — auto-set when status becomes `cancelled` |
 | `verify` | array | No | List of typed verification checks (see below) |
 | `pr` | array | No | List of pull request URLs |
 | `external_id` | string | No | Identifier from an external system (e.g., `"PROJ-123"`, `"42"`) |
@@ -176,6 +178,10 @@ parent: "045"
 ```
 
 **`created`** — Date when the task was created, in `YYYY-MM-DD` format.
+
+**`completed_at`** — Date when the task was completed, in `YYYY-MM-DD` format. Auto-set to today's date when the status transitions to `completed`, and cleared when the status changes away from `completed`.
+
+**`cancelled_at`** — Date when the task was cancelled, in `YYYY-MM-DD` format. Auto-set to today's date when the status transitions to `cancelled`, and cleared when the status changes away from `cancelled`.
 
 **`verify`** — List of typed acceptance checks for validating task completion. Each entry is a map with a `type` field that determines the check kind. Run checks with `taskmd verify <ID>`.
 

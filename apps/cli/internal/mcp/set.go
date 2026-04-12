@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	gomcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/driangle/taskmd/sdk/go/model"
 	"github.com/driangle/taskmd/sdk/go/scanner"
 	"github.com/driangle/taskmd/sdk/go/taskfile"
 )
@@ -65,11 +67,27 @@ func handleSet(_ context.Context, _ *gomcp.CallToolRequest, input SetInput) (*go
 		return nil, nil, fmt.Errorf("task not found: %s", input.TaskID)
 	}
 
+	// Auto-manage terminal date fields based on status transitions.
+	if req.Status != nil {
+		today := time.Now().Format("2006-01-02")
+		newStatus := model.Status(*req.Status)
+		switch {
+		case newStatus == model.StatusCompleted:
+			req.Completed = &today
+			req.RemoveFields = append(req.RemoveFields, "cancelled_at")
+		case newStatus == model.StatusCancelled:
+			req.CancelledAt = &today
+			req.RemoveFields = append(req.RemoveFields, "completed_at")
+		case task.Status.IsResolved():
+			req.RemoveFields = append(req.RemoveFields, "completed_at", "cancelled_at")
+		}
+	}
+
 	if err := taskfile.UpdateTaskFile(task.FilePath, req); err != nil {
 		return nil, nil, fmt.Errorf("update failed: %w", err)
 	}
 
-	out := buildSetOutput(input, task.FilePath)
+	out := buildSetOutput(input, req, task.FilePath)
 	data, err := json.Marshal(out)
 	if err != nil {
 		return nil, nil, fmt.Errorf("json marshal failed: %w", err)
@@ -122,7 +140,7 @@ type setOutput struct {
 	Updated  map[string]string `json:"updated"`
 }
 
-func buildSetOutput(input SetInput, filePath string) setOutput {
+func buildSetOutput(input SetInput, req taskfile.UpdateRequest, filePath string) setOutput {
 	updated := make(map[string]string)
 	if input.Status != "" {
 		updated["status"] = input.Status
@@ -150,6 +168,12 @@ func buildSetOutput(input SetInput, filePath string) setOutput {
 	}
 	if len(input.RemPRs) > 0 {
 		updated["rem_prs"] = strings.Join(input.RemPRs, ", ")
+	}
+	if req.Completed != nil {
+		updated["completed_at"] = *req.Completed
+	}
+	if req.CancelledAt != nil {
+		updated["cancelled_at"] = *req.CancelledAt
 	}
 	return setOutput{
 		TaskID:   input.TaskID,
