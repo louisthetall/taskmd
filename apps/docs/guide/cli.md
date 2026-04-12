@@ -73,6 +73,10 @@ taskmd list --filter status=in-progress
 # Filter by priority
 taskmd list --filter priority=high
 
+# Filter by priority with comparison (>=, >, <=, <)
+taskmd list --filter "priority>=medium"
+taskmd list --filter "priority>low"
+
 # Filter by multiple criteria (AND logic)
 taskmd list --filter status=pending --filter priority=high
 
@@ -81,6 +85,9 @@ taskmd list --filter tag=cli
 
 # Filter by effort
 taskmd list --filter effort=small
+
+# Filter by effort with comparison
+taskmd list --filter "effort>=medium"
 ```
 
 **Sorting:**
@@ -114,7 +121,7 @@ taskmd list --sort priority --limit 5
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--filter` | | Filter tasks (repeatable, AND logic) |
+| `--filter` | | Filter tasks (repeatable, AND logic); `priority` and `effort` support `>=`, `>`, `<=`, `<` |
 | `--phase` | | Filter tasks by phase name |
 | `--sort` | | Sort by field (`id`, `title`, `status`, `priority`, `effort`, `created`) |
 | `--columns` | `id,title,status,priority,file` | Comma-separated list of columns to display |
@@ -125,6 +132,9 @@ taskmd list --sort priority --limit 5
 ```bash
 # High-priority pending tasks
 taskmd list --filter status=pending --filter priority=high
+
+# Medium priority and above
+taskmd list --filter status=pending --filter "priority>=medium"
 
 # Small tasks (quick wins)
 taskmd list --filter effort=small --filter status=pending
