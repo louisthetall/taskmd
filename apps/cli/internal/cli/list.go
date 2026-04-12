@@ -38,11 +38,15 @@ Output formats: table (default), json, yaml
 
 Multiple --filter flags are combined with AND logic.
 
+Priority and effort support comparison operators (>=, >, <=, <).
+
 Examples:
   taskmd list
   taskmd list ./tasks
   taskmd list --filter status=pending
   taskmd list --filter status=pending --filter priority=high
+  taskmd list --filter "priority>=medium"
+  taskmd list --filter "effort<large"
   taskmd list --sort priority
   taskmd list --columns id,title,deps
   taskmd list --format json
@@ -57,7 +61,7 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 
 	listCmd.Flags().StringVar(&listFormat, "format", "table", "output format (table, json, yaml)")
-	listCmd.Flags().StringArrayVar(&listFilters, "filter", []string{}, "filter tasks (can specify multiple times for AND conditions, e.g., --filter status=pending --filter priority=high)")
+	listCmd.Flags().StringArrayVar(&listFilters, "filter", []string{}, "filter tasks (e.g., --filter status=pending --filter \"priority>=medium\"); supports >=, >, <=, < for priority and effort")
 	listCmd.Flags().StringVar(&listSort, "sort", "", "sort by field (id, title, status, priority, effort, created)")
 	listCmd.Flags().StringVar(&listColumns, "columns", "id,title,status,priority,file", "comma-separated list of columns to display")
 	listCmd.Flags().IntVar(&listLimit, "limit", 0, "maximum number of tasks to display (0 = unlimited)")
