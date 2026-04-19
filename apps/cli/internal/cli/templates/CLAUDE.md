@@ -38,7 +38,7 @@ Files follow the pattern `NNN-descriptive-title.md` (e.g., `015-add-user-auth.md
 
 ```bash
 taskmd list                              # List all tasks
-taskmd list --filter status=pending --filter priority=high  # Filter tasks
+taskmd list --status pending --priority high  # Filter tasks
 taskmd next                              # Find next available task
 taskmd validate                          # Check for errors
 taskmd graph --format ascii              # View dependency graph

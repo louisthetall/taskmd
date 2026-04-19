@@ -15,13 +15,15 @@ import (
 )
 
 var (
-	listFormat  string
-	listFilters []string
-	listSort    string
-	listColumns string
-	listLimit   int
-	listScope   string
-	listPhase   string
+	listFormat   string
+	listFilters  []string
+	listSort     string
+	listColumns  string
+	listLimit    int
+	listScope    string
+	listPhase    string
+	listStatus   string
+	listPriority string
 )
 
 // listCmd represents the list command
@@ -43,7 +45,8 @@ Priority and effort support comparison operators (>=, >, <=, <).
 Examples:
   taskmd list
   taskmd list ./tasks
-  taskmd list --filter status=pending
+  taskmd list --status pending
+  taskmd list --status pending --priority high
   taskmd list --filter status=pending --filter priority=high
   taskmd list --filter "priority>=medium"
   taskmd list --filter "effort<large"
@@ -67,6 +70,8 @@ func init() {
 	listCmd.Flags().IntVar(&listLimit, "limit", 0, "maximum number of tasks to display (0 = unlimited)")
 	listCmd.Flags().StringVar(&listScope, "scope", "", "filter by scope; supports wildcards (e.g. cli, cli*)")
 	listCmd.Flags().StringVar(&listPhase, "phase", "", "filter by phase")
+	listCmd.Flags().StringVar(&listStatus, "status", "", "shortcut for --filter status=<value>")
+	listCmd.Flags().StringVar(&listPriority, "priority", "", "shortcut for --filter priority=<value>")
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -222,6 +227,14 @@ func outputProjectTable(ptasks []*ProjectTask, columnsStr string) error {
 // applyListFiltersAndSort applies all list filters, sorting, and limit.
 func applyListFiltersAndSort(tasks []*model.Task) ([]*model.Task, error) {
 	var err error
+
+	// Expand shortcut flags into filter expressions
+	if listStatus != "" {
+		listFilters = append(listFilters, "status="+listStatus)
+	}
+	if listPriority != "" {
+		listFilters = append(listFilters, "priority="+listPriority)
+	}
 
 	// Apply filters (multiple filters are AND'ed together)
 	if len(listFilters) > 0 {

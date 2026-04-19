@@ -10,7 +10,7 @@ List tasks by scanning task files directly — no CLI required.
 
 ## Instructions
 
-The user's arguments are in `$ARGUMENTS` (e.g. `--filter status=pending`, `--filter priority=high`, a directory path).
+The user's arguments are in `$ARGUMENTS` (e.g. `--status pending`, `--priority high`, a directory path).
 
 1. **Find the task directory**:
    - Read `.taskmd.yaml` if it exists to check for a custom `dir` field
@@ -25,8 +25,8 @@ The user's arguments are in `$ARGUMENTS` (e.g. `--filter status=pending`, `--fil
    - Parse fields: id, title, status, priority, effort, type, tags, group, owner, phase, dependencies, created
 
 4. **Apply filters** from `$ARGUMENTS`:
-   - `--filter status=<value>`: Show only tasks matching this status
-   - `--filter priority=<value>`: Show only tasks matching this priority (supports >=, >, <=, <)
+   - `--status <value>`: Show only tasks matching this status
+   - `--priority <value>`: Show only tasks matching this priority
    - `--filter effort=<value>`: Show only tasks matching this effort (supports >=, >, <=, <)
    - `--filter type=<value>`: Show only tasks matching this type
    - `--filter tags=<value>`: Show only tasks containing this tag
