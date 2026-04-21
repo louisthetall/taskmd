@@ -44,6 +44,16 @@ describe("applyFilters", () => {
     expect(result.map((t) => t.id)).toEqual(["001", "005"]);
   });
 
+  it("filters by in-review status", () => {
+    const tasksWithReview = [
+      ...sampleTasks,
+      makeTask({ id: "006", status: "in-review", priority: "medium", type: "feature" }),
+    ];
+    const filters = { ...defaultFilterState(), selectedStatuses: new Set(["in-review"]) };
+    const result = applyFilters(tasksWithReview, filters);
+    expect(result.map((t) => t.id)).toEqual(["006"]);
+  });
+
   it("filters by multiple statuses", () => {
     const filters = { ...defaultFilterState(), selectedStatuses: new Set(["pending", "blocked"]) };
     const result = applyFilters(sampleTasks, filters);
@@ -220,6 +230,10 @@ describe("hasActiveFilters", () => {
 describe("defaultFilterState", () => {
   it("has all statuses selected", () => {
     expect(defaultFilterState().selectedStatuses).toEqual(new Set(STATUSES));
+  });
+
+  it("includes in-review in default statuses", () => {
+    expect(defaultFilterState().selectedStatuses.has("in-review")).toBe(true);
   });
 
   it("has all priorities selected", () => {
