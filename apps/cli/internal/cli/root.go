@@ -14,7 +14,7 @@ import (
 
 var (
 	// Version information (set via build flags)
-	Version   = "0.2.4"
+	Version   = "0.2.5"
 	GitCommit = "unknown"
 	BuildDate = "unknown"
 	GitDirty  = ""
